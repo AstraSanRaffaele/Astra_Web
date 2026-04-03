@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 // ── Inline SVG Logo ──────────────────────────────────────────────
 function AstraLogo({ size = 36 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="18" cy="18" r="18" fill="#0E1F6B" />
-      <path d="M18 8L27 24H9L18 8Z" fill="none" stroke="white" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="18" cy="20" r="2.5" fill="white" />
-    </svg>
+    <Image
+      src="/logo.png"
+      alt="Astra logo"
+      width={size}
+      height={size}
+      style={{ objectFit: "contain" }}
+    />
   );
 }
 
@@ -145,10 +148,7 @@ export default function Home() {
           animation: "fadeDown .8s ease both",
         }}>
           <a href="#" style={{ display: "flex", alignItems: "center", gap: ".7rem", textDecoration: "none" }}>
-            <AstraLogo size={34} />
-            <span style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--blue)", letterSpacing: ".04em" }}>
-              ASTRA · San Raffaele
-            </span>
+            <AstraLogo size={120} />
           </a>
 
           {/* Desktop links */}
@@ -220,8 +220,7 @@ export default function Home() {
             color:"var(--blue-mid)", marginBottom:"1.4rem",
             display:"flex", alignItems:"center", gap:".6rem", opacity:0,
           }}>
-            <span style={{ display:"block", width:32, height:2, background:"var(--blue-mid)", borderRadius:2 }} />
-            Università Vita-Salute San Raffaele
+
           </p>
 
           <h1 className="serif hero-title" style={{
@@ -461,8 +460,7 @@ export default function Home() {
           display:"flex", alignItems:"center", justifyContent:"space-between", gap:"2rem", flexWrap:"wrap",
         }}>
           <div style={{ display:"flex", alignItems:"center", gap:".6rem" }}>
-            <AstraLogo size={28} />
-            <span style={{ fontWeight:700, fontSize:".9rem", color:"var(--blue)" }}>ASTRA · San Raffaele</span>
+            <AstraLogo size={120} />
           </div>
           <ul style={{ display:"flex", gap:"2rem", listStyle:"none", flexWrap:"wrap" }}>
             {[["Instagram","https://www.instagram.com/astrasanraffaele"],["Chi siamo","#about"],["Contatti","#join"],["Privacy","#"]].map(([l,h]) => (
