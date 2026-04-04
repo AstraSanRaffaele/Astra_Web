@@ -48,9 +48,10 @@ function validatePassword(password: string) {
     specialChar: /[^A-Za-z0-9]/.test(password),
   };
 
-  const isValid = Object.values(checks).every(Boolean);
-
-  return { isValid, checks };
+  return {
+    checks,
+    isValid: Object.values(checks).every(Boolean),
+  };
 }
 
 export default function SignupPage() {
@@ -81,6 +82,31 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
 
+    const normalizedNome = nome.trim();
+    const normalizedCognome = cognome.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPhone = telefono.trim();
+
+    if (!normalizedNome || !normalizedCognome) {
+      setError("Nome e cognome sono obbligatori.");
+      return;
+    }
+
+    if (!normalizedPhone) {
+      setError("Il numero di telefono è obbligatorio.");
+      return;
+    }
+
+    if (!normalizedEmail.endsWith("@studenti.unisr.it")) {
+      setError("Devi usare una mail istituzionale @studenti.unisr.it.");
+      return;
+    }
+
+    if (!facolta || !corsoDiLaurea || !annoImmatricolazione || !dataDiNascita) {
+      setError("Compila tutti i campi richiesti.");
+      return;
+    }
+
     if (!passwordValidation.isValid) {
       setError("La password non rispetta tutti i criteri richiesti.");
       return;
@@ -91,24 +117,25 @@ export default function SignupPage() {
       return;
     }
 
-    if (!email.toLowerCase().endsWith("@unisr.it")) {
-      setError("Devi usare una mail istituzionale @unisr.it.");
-      return;
-    }
-
     setLoading(true);
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: normalizedEmail,
       password,
       options: {
         emailRedirectTo:
           typeof window !== "undefined"
-            ? `${window.location.origin}/signup/confirmed`
+            ? `${window.location.origin}/auth/callback`
             : undefined,
         data: {
-          nome,
-          cognome,
+          nome: normalizedNome,
+          cognome: normalizedCognome,
+          numero_telefono: normalizedPhone,
+          facolta,
+          corso_di_laurea: corsoDiLaurea,
+          anno_immatricolazione: Number(annoImmatricolazione),
+          data_di_nascita: dataDiNascita,
+          email_istituzionale: normalizedEmail,
         },
       },
     });
@@ -119,34 +146,8 @@ export default function SignupPage() {
       return;
     }
 
-    const userId = data.user?.id;
-
-    if (!userId) {
-      setError("Utente creato ma ID non disponibile.");
-      setLoading(false);
-      return;
-    }
-
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: userId,
-      nome,
-      cognome,
-      email_istituzionale: email,
-      numero_telefono: telefono,
-      facolta,
-      corso_di_laurea: corsoDiLaurea,
-      anno_immatricolazione: Number(annoImmatricolazione),
-      data_di_nascita: dataDiNascita,
-    });
-
-    if (profileError) {
-      setError(profileError.message);
-      setLoading(false);
-      return;
-    }
-
     setLoading(false);
-    router.push(`/signup/check-email?email=${encodeURIComponent(email)}`);
+    router.push(`/signup/check-email?email=${encodeURIComponent(normalizedEmail)}`);
   }
 
   return (
@@ -201,7 +202,7 @@ export default function SignupPage() {
             id="email"
             type="email"
             className="input"
-            placeholder="nome@unisr.it"
+            placeholder="nome@studenti.unisr.it"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
