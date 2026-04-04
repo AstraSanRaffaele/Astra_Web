@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
+import { useRouter } from "next/navigation";
 
 const facultyOptions = [
   { value: "medicina", label: "Medicina" },
@@ -24,9 +25,7 @@ const degreeOptionsMap: Record<string, { value: string; label: string }[]> = {
     { value: "ostetricia", label: "Ostetricia" },
     { value: "health_informatics", label: "Health Informatics" },
   ],
-  psicologia: [
-    { value: "psicologia", label: "Psicologia" },
-  ],
+  psicologia: [{ value: "psicologia", label: "Psicologia" }],
   filosofia: [
     { value: "filosofia_triennale", label: "Filosofia" },
     { value: "filosofia_del_mondo_contemporaneo", label: "Filosofia del mondo contemporaneo" },
@@ -42,6 +41,7 @@ const enrollmentYearOptions = Array.from({ length: 15 }, (_, i) => {
 
 export default function SignupPage() {
   const supabase = createClient();
+  const router = useRouter();
 
   const [nome, setNome] = useState("");
   const [cognome, setCognome] = useState("");
@@ -56,7 +56,6 @@ export default function SignupPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const courseOptions = useMemo(() => {
     return degreeOptionsMap[facolta] ?? [];
@@ -65,7 +64,6 @@ export default function SignupPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
-    setSuccess("");
 
     if (password !== confirmPassword) {
       setError("Le password non coincidono.");
@@ -80,7 +78,7 @@ export default function SignupPage() {
       options: {
         emailRedirectTo:
           typeof window !== "undefined"
-            ? `${window.location.origin}/login`
+            ? `${window.location.origin}/signup/confirmed`
             : undefined,
       },
     });
@@ -117,8 +115,8 @@ export default function SignupPage() {
       return;
     }
 
-    setSuccess("Registrazione completata. Controlla la tua email per confermare l’account.");
     setLoading(false);
+    router.push(`/signup/check-email?email=${encodeURIComponent(email)}`);
   }
 
   return (
@@ -291,7 +289,7 @@ export default function SignupPage() {
           />
         </div>
 
-        <AuthMessage error={error} success={success} />
+        <AuthMessage error={error} success="" />
 
         <button
           type="submit"
