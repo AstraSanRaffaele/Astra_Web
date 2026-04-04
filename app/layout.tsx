@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Astra San-Raffaele",
+  title: "ASTRA San-Raffaele",
 };
 
 export default function RootLayout({

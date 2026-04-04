@@ -16,27 +16,41 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    setLoading(true);
+async function handleSubmit(e: FormEvent) {
+  e.preventDefault();
+  setError("");
+  setSuccess("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  const cleanEmail = email.trim().toLowerCase();
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    setSuccess("Accesso effettuato con successo.");
-    router.push("/");
-    router.refresh();
+  if (!cleanEmail || !password) {
+    setError("Inserisci email e password.");
+    return;
   }
+
+  setLoading(true);
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email: cleanEmail,
+    password,
+  });
+
+  if (error) {
+    if (error.message.toLowerCase().includes("email not confirmed")) {
+      setError("Devi prima confermare la tua email.");
+    } else {
+      setError("Email o password non corrette.");
+    }
+    setLoading(false);
+    return;
+  }
+
+  setSuccess("Accesso effettuato con successo.");
+  setLoading(false);
+
+  router.push("/");
+  router.refresh();
+}
 
   return (
     <AuthShell
@@ -57,7 +71,10 @@ export default function LoginPage() {
       }
       cardDescription="Inserisci email e password per entrare nella tua area Astra."
     >
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+      >
         <div>
           <FieldLabel htmlFor="email">Email</FieldLabel>
           <input
@@ -117,10 +134,17 @@ export default function LoginPage() {
           fontSize: ".92rem",
         }}
       >
-        <Link href="/signup" style={{ color: "var(--blue)", textDecoration: "none", fontWeight: 700 }}>
+        <Link
+          href="/signup"
+          style={{ color: "var(--blue)", textDecoration: "none", fontWeight: 700 }}
+        >
           Crea account
         </Link>
-        <Link href="/forgot-password" style={{ color: "var(--blue)", textDecoration: "none", fontWeight: 700 }}>
+
+        <Link
+          href="/forgot-password"
+          style={{ color: "var(--blue)", textDecoration: "none", fontWeight: 700 }}
+        >
           Password dimenticata?
         </Link>
       </div>

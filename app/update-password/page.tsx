@@ -6,9 +6,23 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
 
+function validatePassword(password: string) {
+  const checks = {
+    minLength: password.length >= 8,
+    upperCase: /[A-Z]/.test(password),
+    lowerCase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    specialChar: /[^A-Za-z0-9]/.test(password),
+  };
+
+  const isValid = Object.values(checks).every(Boolean);
+
+  return { isValid, checks };
+}
+
 export default function UpdatePasswordPage() {
-  const router = useRouter();
   const supabase = createClient();
+  const router = useRouter();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -16,10 +30,17 @@ export default function UpdatePasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const passwordValidation = validatePassword(password);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    if (!passwordValidation.isValid) {
+      setError("La password non rispetta tutti i criteri richiesti.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Le password non coincidono.");
@@ -39,11 +60,10 @@ export default function UpdatePasswordPage() {
       return;
     }
 
-    setSuccess("Password aggiornata con successo.");
+    setSuccess("Password aggiornata correttamente.");
 
     setTimeout(() => {
       router.push("/login");
-      router.refresh();
     }, 1200);
   }
 
@@ -51,20 +71,20 @@ export default function UpdatePasswordPage() {
     <AuthShell
       title={
         <>
-          Imposta una nuova
+          Imposta una
           <br />
-          password <em style={{ fontStyle: "italic", color: "#C2CEFF" }}>Astra</em>.
+          nuova <em style={{ fontStyle: "italic", color: "#C2CEFF" }}>password</em>.
         </>
       }
-      description="Scegli una nuova password per tornare ad accedere al tuo account in sicurezza."
+      description="Scegli una nuova password per il tuo account."
       cardTitle={
         <>
-          Nuova
+          Aggiorna la
           <br />
           password.
         </>
       }
-      cardDescription="Inserisci e conferma la nuova password del tuo account."
+      cardDescription="Inserisci la nuova password e confermala."
     >
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         <div>
@@ -78,6 +98,27 @@ export default function UpdatePasswordPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+
+          <div style={{ marginTop: ".5rem", fontSize: ".88rem", color: "var(--text-soft)" }}>
+            <div>La password deve contenere:</div>
+            <ul style={{ margin: ".5rem 0 0", paddingLeft: "1.2rem", display: "grid", gap: ".25rem" }}>
+              <li style={{ color: passwordValidation.checks.minLength ? "var(--blue)" : "var(--text-soft)" }}>
+                Almeno 8 caratteri
+              </li>
+              <li style={{ color: passwordValidation.checks.upperCase ? "var(--blue)" : "var(--text-soft)" }}>
+                Almeno una lettera maiuscola
+              </li>
+              <li style={{ color: passwordValidation.checks.lowerCase ? "var(--blue)" : "var(--text-soft)" }}>
+                Almeno una lettera minuscola
+              </li>
+              <li style={{ color: passwordValidation.checks.number ? "var(--blue)" : "var(--text-soft)" }}>
+                Almeno un numero
+              </li>
+              <li style={{ color: passwordValidation.checks.specialChar ? "var(--blue)" : "var(--text-soft)" }}>
+                Almeno un carattere speciale
+              </li>
+            </ul>
+          </div>
         </div>
 
         <div>
@@ -113,7 +154,7 @@ export default function UpdatePasswordPage() {
             opacity: loading ? 0.8 : 1,
           }}
         >
-          {loading ? "Aggiornamento in corso..." : "Aggiorna password"}
+          {loading ? "Salvataggio..." : "Salva nuova password"}
         </button>
       </form>
 

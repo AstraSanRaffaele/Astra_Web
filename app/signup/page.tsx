@@ -39,6 +39,20 @@ const enrollmentYearOptions = Array.from({ length: 15 }, (_, i) => {
   return { value: String(year), label: String(year) };
 });
 
+function validatePassword(password: string) {
+  const checks = {
+    minLength: password.length >= 8,
+    upperCase: /[A-Z]/.test(password),
+    lowerCase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    specialChar: /[^A-Za-z0-9]/.test(password),
+  };
+
+  const isValid = Object.values(checks).every(Boolean);
+
+  return { isValid, checks };
+}
+
 export default function SignupPage() {
   const supabase = createClient();
   const router = useRouter();
@@ -61,12 +75,24 @@ export default function SignupPage() {
     return degreeOptionsMap[facolta] ?? [];
   }, [facolta]);
 
+  const passwordValidation = validatePassword(password);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
 
+    if (!passwordValidation.isValid) {
+      setError("La password non rispetta tutti i criteri richiesti.");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Le password non coincidono.");
+      return;
+    }
+
+    if (!email.toLowerCase().endsWith("@unisr.it")) {
+      setError("Devi usare una mail istituzionale @unisr.it.");
       return;
     }
 
@@ -80,6 +106,10 @@ export default function SignupPage() {
           typeof window !== "undefined"
             ? `${window.location.origin}/signup/confirmed`
             : undefined,
+        data: {
+          nome,
+          cognome,
+        },
       },
     });
 
@@ -105,7 +135,7 @@ export default function SignupPage() {
       numero_telefono: telefono,
       facolta,
       corso_di_laurea: corsoDiLaurea,
-      anno_immatricolazione: annoImmatricolazione,
+      anno_immatricolazione: Number(annoImmatricolazione),
       data_di_nascita: dataDiNascita,
     });
 
@@ -274,6 +304,27 @@ export default function SignupPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+
+          <div style={{ marginTop: ".5rem", fontSize: ".88rem", color: "var(--text-soft)" }}>
+            <div>La password deve contenere:</div>
+            <ul style={{ margin: ".5rem 0 0", paddingLeft: "1.2rem", display: "grid", gap: ".25rem" }}>
+              <li style={{ color: passwordValidation.checks.minLength ? "green" : "inherit" }}>
+                Almeno 8 caratteri
+              </li>
+              <li style={{ color: passwordValidation.checks.upperCase ? "green" : "inherit" }}>
+                Almeno una lettera maiuscola
+              </li>
+              <li style={{ color: passwordValidation.checks.lowerCase ? "green" : "inherit" }}>
+                Almeno una lettera minuscola
+              </li>
+              <li style={{ color: passwordValidation.checks.number ? "green" : "inherit" }}>
+                Almeno un numero
+              </li>
+              <li style={{ color: passwordValidation.checks.specialChar ? "green" : "inherit" }}>
+                Almeno un carattere speciale
+              </li>
+            </ul>
+          </div>
         </div>
 
         <div>
