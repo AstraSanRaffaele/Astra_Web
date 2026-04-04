@@ -100,10 +100,10 @@ export function AuthStyles() {
       }
 
       @media (max-width: 980px) {
-        .login-grid { grid-template-columns: 1fr !important; gap: 2rem !important; }
+        .login-grid { grid-template-columns: 1fr !important; gap: 0 !important; }
         .page-padding { padding: 7rem 1.5rem 3rem !important; }
         .nav-padding { padding: 1rem 1.5rem !important; }
-        .left-panel { min-height: 320px !important; }
+        .left-panel { display: none !important; }
         .card-padding { padding: 2rem !important; }
       }
 
