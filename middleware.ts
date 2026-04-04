@@ -1,8 +1,10 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse } from 'next/server'
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(req: any) {
-  let res = NextResponse.next()
+export async function middleware(req: NextRequest) {
+  let res = NextResponse.next({
+    request: req,
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,31 +12,44 @@ export async function middleware(req: any) {
     {
       cookies: {
         getAll() {
-          return req.cookies.getAll()
+          return req.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }: any) => {
-            req.cookies.set(name, value)
-            res.cookies.set(name, value, options)
-          })
+          cookiesToSet.forEach(({ name, value }) => {
+            req.cookies.set(name, value);
+          });
+
+          res = NextResponse.next({
+            request: req,
+          });
+
+          cookiesToSet.forEach(({ name, value, options }) => {
+            res.cookies.set(name, value, options);
+          });
         },
       },
     }
-  )
+  );
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    const protectedRoutes = ['/dashboard', '/admin']
+  const protectedRoutes = ["/dashboard", "/admin", "/profile"];
 
-    const isProtected = protectedRoutes.some((route) =>
+  const isProtected = protectedRoutes.some((route) =>
     req.nextUrl.pathname.startsWith(route)
-    )
-    
-  if (!session && isProtected) {
-    return NextResponse.redirect(new URL('/login', req.url))
+  );
+
+  if (!user && isProtected) {
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  return res
+  return res;
 }
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};

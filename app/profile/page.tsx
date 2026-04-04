@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -55,6 +56,19 @@ const enrollmentYearOptions = Array.from({ length: 15 }, (_, i) => {
   const year = new Date().getFullYear() - i;
   return { value: String(year), label: String(year) };
 });
+
+function AstraLogo({ size = 120 }: { size?: number }) {
+  return (
+    <Image
+      src="/logo.png"
+      alt="Astra logo"
+      width={size}
+      height={size}
+      style={{ objectFit: "contain", height: "auto" }}
+      priority
+    />
+  );
+}
 
 export default function ProfilePage() {
   const supabase = createClient();
@@ -207,14 +221,11 @@ export default function ProfilePage() {
       <div className="bg-orb bg-orb-2" />
 
       <header className="topbar">
-        <Link href="/" className="brand">
-          Astra
+        <Link href="/" className="brand" aria-label="Astra Home">
+          <AstraLogo size={120} />
         </Link>
 
         <div className="topbarActions">
-          <Link href="/" className="ghostButton">
-            Home
-          </Link>
           <button type="button" onClick={handleLogout} className="primaryButton small">
             Logout
           </button>
@@ -234,9 +245,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="heroCard">
-            <div className="avatar">
-              {nome?.[0]?.toUpperCase() || "A"}
-            </div>
+            <div className="avatar">{nome?.[0]?.toUpperCase() || "A"}</div>
 
             <div>
               <div className="heroName">
@@ -431,6 +440,35 @@ export default function ProfilePage() {
         </section>
       </div>
 
+    <footer className="footer">
+      <div className="footerBrand">
+        <AstraLogo size={120} />
+      </div>
+
+      <ul className="footerLinks">
+        <li>
+          <a
+            href="https://www.instagram.com/astrasanraffaele"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Instagram
+          </a>
+        </li>
+        <li>
+          <a href="/#about">Chi siamo</a>
+        </li>
+        <li>
+          <a href="/#join">Contatti</a>
+        </li>
+        <li>
+          <a href="#">Privacy</a>
+        </li>
+      </ul>
+
+      <span className="footerCopy">© 2025 Astra San Raffaele</span>
+    </footer>
+
       <style jsx>{styles}</style>
     </main>
   );
@@ -488,11 +526,11 @@ const styles = `
 
   .brand {
     text-decoration: none;
-    font-size: 1.35rem;
-    font-weight: 900;
-    letter-spacing: -.02em;
     color: #0E1F6B;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    line-height: 0;
   }
 
   .topbarActions {
@@ -501,6 +539,46 @@ const styles = `
     gap: .75rem;
     flex-wrap: wrap;
     margin-left: auto;
+  }
+
+  .footer {
+    border-top: 1px solid rgba(14,31,107,.08);
+    padding: 3rem 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+  }
+
+  .footerBrand {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    line-height: 0;
+  }
+
+  .footerLinks {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+  }
+
+  .footerLinks a {
+    text-decoration: none;
+    font-size: .85rem;
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  .footerCopy {
+    font-size: .8rem;
+    color: #64748b;
   }
 
   .profile-shell {
@@ -882,6 +960,14 @@ const styles = `
       padding: 1.25rem 1rem 2rem;
     }
 
+    .footer {
+      padding: 2.5rem 1rem;
+    }
+
+    .footerLinks {
+      gap: 1rem;
+    }
+
     .hero {
       gap: 1rem;
       margin-bottom: 1rem;
@@ -977,6 +1063,16 @@ const styles = `
     .loading-card {
       padding: 1rem;
       border-radius: 20px;
+    }
+
+    .footer {
+      padding: 2.2rem .85rem;
+      align-items: flex-start;
+    }
+
+    .footerLinks {
+      flex-direction: column;
+      gap: .8rem;
     }
   }
 `;

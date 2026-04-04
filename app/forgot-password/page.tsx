@@ -1,9 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
+
+function AstraLogo({ size = 120 }: { size?: number }) {
+  return (
+    <Image
+      src="/logo.png"
+      alt="Astra logo"
+      width={size}
+      height={size}
+      style={{ objectFit: "contain", height: "auto" }}
+      priority
+    />
+  );
+}
 
 export default function ForgotPasswordPage() {
   const supabase = createClient();
@@ -37,75 +51,122 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <AuthShell
-      title={
-        <>
-          Recupera il tuo
-          <br />
-          accesso <em style={{ fontStyle: "italic", color: "#C2CEFF" }}>Astra</em>.
-        </>
-      }
-      description="Inserisci la tua email e ti invieremo il link per impostare una nuova password."
-      cardTitle={
-        <>
-          Password
-          <br />
-          dimenticata?
-        </>
-      }
-      cardDescription="Ti basta inserire l’email associata al tuo account."
-    >
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <div>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <input
-            id="email"
-            type="email"
-            className="input"
-            placeholder="nome@universita.it"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+    <>
+      <AuthShell
+        title={
+          <>
+            Recupera il tuo
+            <br />
+            accesso <em style={{ fontStyle: "italic", color: "#C2CEFF" }}>Astra</em>.
+          </>
+        }
+        description="Inserisci la tua email e ti invieremo il link per impostare una nuova password."
+        cardTitle={
+          <>
+            Password
+            <br />
+            dimenticata?
+          </>
+        }
+        cardDescription="Ti basta inserire l’email associata al tuo account."
+      >
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <input
+              id="email"
+              type="email"
+              className="input"
+              placeholder="nome@universita.it"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
 
-        <AuthMessage error={error} success={success} />
+          <AuthMessage error={error} success={success} />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-primary"
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary"
+            style={{
+              marginTop: ".4rem",
+              background: "var(--blue)",
+              color: "#fff",
+              padding: ".95rem 1.4rem",
+              borderRadius: "100px",
+              fontWeight: 800,
+              fontSize: ".95rem",
+              boxShadow: "0 4px 24px rgba(14,31,107,.18)",
+              border: "none",
+              cursor: "pointer",
+              opacity: loading ? 0.8 : 1,
+            }}
+          >
+            {loading ? "Invio in corso..." : "Invia link di recupero"}
+          </button>
+        </form>
+
+        <div
           style={{
-            marginTop: ".4rem",
-            background: "var(--blue)",
-            color: "#fff",
-            padding: ".95rem 1.4rem",
-            borderRadius: "100px",
-            fontWeight: 800,
-            fontSize: ".95rem",
-            boxShadow: "0 4px 24px rgba(14,31,107,.18)",
-            border: "none",
-            cursor: "pointer",
-            opacity: loading ? 0.8 : 1,
+            marginTop: "1.4rem",
+            display: "flex",
+            gap: "1rem",
+            flexWrap: "wrap",
+            fontSize: ".92rem",
           }}
         >
-          {loading ? "Invio in corso..." : "Invia link di recupero"}
-        </button>
-      </form>
+          <Link href="/login" style={{ color: "var(--blue)", textDecoration: "none", fontWeight: 700 }}>
+            Torna al login
+          </Link>
+        </div>
+      </AuthShell>
 
-      <div
+      <footer
         style={{
-          marginTop: "1.4rem",
+          borderTop: "1px solid rgba(14,31,107,.08)",
+          padding: "3rem 4rem",
           display: "flex",
-          gap: "1rem",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "2rem",
           flexWrap: "wrap",
-          fontSize: ".92rem",
         }}
       >
-        <Link href="/login" style={{ color: "var(--blue)", textDecoration: "none", fontWeight: 700 }}>
-          Torna al login
-        </Link>
-      </div>
-    </AuthShell>
+        <div style={{ display: "flex", alignItems: "center", gap: ".6rem" }}>
+          <AstraLogo size={120} />
+        </div>
+        <ul
+          style={{
+            display: "flex",
+            gap: "2rem",
+            listStyle: "none",
+            flexWrap: "wrap",
+            margin: 0,
+            padding: 0,
+          }}
+        >
+          {[
+            ["Instagram", "https://www.instagram.com/astrasanraffaele"],
+            ["Chi siamo", "/#about"],
+            ["Contatti", "/#join"],
+            ["Privacy", "#"],
+          ].map(([l, h]) => (
+            <li key={l}>
+              <a
+                href={h}
+                target={h.startsWith("http") ? "_blank" : undefined}
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none", fontSize: ".85rem", color: "var(--muted)", fontWeight: 500 }}
+              >
+                {l}
+              </a>
+            </li>
+          ))}
+        </ul>
+        <span style={{ fontSize: ".8rem", color: "var(--muted)" }}>© 2025 Astra San Raffaele</span>
+      </footer>
+    </>
   );
 }
