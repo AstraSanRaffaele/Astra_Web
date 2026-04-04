@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 // ── Inline SVG Logo ──────────────────────────────────────────────
 function AstraLogo({ size = 36 }: { size?: number }) {
@@ -153,9 +154,9 @@ export default function Home() {
 
           {/* Desktop links */}
           <ul style={{ display: "flex", gap: "2.5rem", listStyle: "none", alignItems: "center" }} className="hidden-mobile">
-            {["Chi siamo", "Cosa facciamo", "Facoltà"].map((l, i) => (
+            {["Chi siamo", "Cosa facciamo", "Facoltà", "Login"].map((l, i) => (
               <li key={l}>
-                <a href={["#about","#pillars","#facolta"][i]}
+                <a href={["#about","#pillars","#facolta", "/login"][i]}
                    style={{ textDecoration: "none", color: "var(--text)", fontSize: ".88rem", fontWeight: 500 }}>
                   {l}
                 </a>
@@ -187,9 +188,9 @@ export default function Home() {
             background: "#fff", borderBottom: "1px solid rgba(14,31,107,.08)",
             padding: "1.5rem 2rem", display: "flex", flexDirection: "column", gap: "1.2rem",
           }}>
-            {["Chi siamo","Cosa facciamo","Facoltà","Unisciti →"].map((l, i) => (
-              <a key={l} href={["#about","#pillars","#facolta","#join"][i]}
-                 onClick={() => setMenuOpen(false)}
+            {["Chi siamo","Cosa facciamo","Facoltà","Login","Unisciti →"].map((l, i) => (
+              <a key={l} href={["#about","#pillars","#facolta","#login","#join"][i]}
+                 onClick={() => setMenuOpen(true)}
                  style={{ textDecoration: "none", color: i === 3 ? "var(--blue)" : "var(--text)", fontWeight: i === 3 ? 700 : 500, fontSize: "1rem" }}>
                 {l}
               </a>
