@@ -1,15 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Footer from "@/components/ui/footer";
 import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +17,8 @@ export default function LoginPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+
+    if (loading) return;
     setError("");
     setSuccess("");
 
@@ -31,7 +31,7 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password,
     });
@@ -46,12 +46,20 @@ export default function LoginPage() {
       return;
     }
 
+    const session = data.session ?? (await supabase.auth.getSession()).data.session;
+
+    if (!session) {
+      setError("Login effettuato ma sessione non trovata. Riprova.");
+      setLoading(false);
+      return;
+    }
+
     setSuccess("Accesso effettuato con successo.");
     setLoading(false);
 
-    router.push("/profile");
-    router.refresh();
+    window.location.href = "/profile";
   }
+
 
   return (
     <>
@@ -75,9 +83,15 @@ export default function LoginPage() {
       >
         <form
           onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "1rem",
+            position: "relative",
+            zIndex: 20,
+          }}
         >
-          <div>
+          <div style={{ position: "relative", zIndex: 21 }}>
             <FieldLabel htmlFor="email">Email</FieldLabel>
             <input
               id="email"
@@ -86,11 +100,21 @@ export default function LoginPage() {
               placeholder="nome@studenti.unisr.it"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="email"
               required
+              style={{
+                position: "relative",
+                zIndex: 22,
+                pointerEvents: "auto",
+              }}
             />
           </div>
 
-          <div>
+          <div style={{ position: "relative", zIndex: 21 }}>
             <FieldLabel htmlFor="password">Password</FieldLabel>
             <input
               id="password"
@@ -99,7 +123,16 @@ export default function LoginPage() {
               placeholder="Inserisci la password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
+              style={{
+                position: "relative",
+                zIndex: 22,
+                pointerEvents: "auto",
+              }}
             />
           </div>
 
@@ -119,8 +152,13 @@ export default function LoginPage() {
               fontSize: ".95rem",
               boxShadow: "0 4px 24px rgba(14,31,107,.18)",
               border: "none",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               opacity: loading ? 0.8 : 1,
+              WebkitTapHighlightColor: "transparent",
+              position: "relative",
+              zIndex: 30,
+              pointerEvents: "auto",
+              touchAction: "manipulation",
             }}
           >
             {loading ? "Accesso in corso..." : "Accedi"}
@@ -134,6 +172,8 @@ export default function LoginPage() {
             gap: "1rem",
             flexWrap: "wrap",
             fontSize: ".92rem",
+            position: "relative",
+            zIndex: 20,
           }}
         >
           <Link
