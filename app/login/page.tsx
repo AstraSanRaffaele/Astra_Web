@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Footer from "@/components/ui/footer";
 import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
 
 export default function LoginPage() {
   const supabase = useMemo(() => createClient(), []);
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -57,7 +59,10 @@ export default function LoginPage() {
     setSuccess("Accesso effettuato con successo.");
     setLoading(false);
 
-    window.location.href = "/profile";
+    const nextPath = searchParams.get("next");
+    const redirectTo = nextPath && nextPath.startsWith("/") ? nextPath : "/";
+
+    window.location.href = redirectTo;
   }
 
 

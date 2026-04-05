@@ -85,7 +85,7 @@ export default function ConvenzioniPage() {
       } = await supabase.auth.getSession();
 
       if (!session?.user) {
-        router.replace("/login");
+        router.replace("/login?next=/convenzioni");
         return;
       }
 
@@ -668,21 +668,23 @@ export default function ConvenzioniPage() {
                 />
               </div>
 
-              <span
-                style={{
-                  width: "fit-content",
-                  padding: ".55rem .8rem",
-                  borderRadius: "999px",
-                  background: "rgba(14,31,107,.07)",
-                  border: "1px solid rgba(14,31,107,.10)",
-                  color: "#0E1F6B",
-                  fontSize: ".82rem",
-                  fontWeight: 800,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {filteredConvenzioni.length} {filteredConvenzioni.length === 1 ? "risultato trovato" : "risultati trovati"}
-              </span>
+              {searchTerm.trim() ? (
+                <span
+                  style={{
+                    width: "fit-content",
+                    padding: ".55rem .8rem",
+                    borderRadius: "999px",
+                    background: "rgba(14,31,107,.07)",
+                    border: "1px solid rgba(14,31,107,.10)",
+                    color: "#0E1F6B",
+                    fontSize: ".82rem",
+                    fontWeight: 800,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {filteredConvenzioni.length} {filteredConvenzioni.length === 1 ? "risultato trovato" : "risultati trovati"}
+                </span>
+              ) : null}
             </div>
           </div>
 
