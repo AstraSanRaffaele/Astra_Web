@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
 import { useRouter } from "next/navigation";
+import Footer from "@/components/ui/footer";
 
 const facultyOptions = [
   { value: "medicina", label: "Medicina" },
@@ -39,19 +39,6 @@ const enrollmentYearOptions = Array.from({ length: 15 }, (_, i) => {
   const year = new Date().getFullYear() - i;
   return { value: String(year), label: String(year) };
 });
-
-function AstraLogo({ size = 120 }: { size?: number }) {
-  return (
-    <Image
-      src="/logo.png"
-      alt="Astra logo"
-      width={size}
-      height={size}
-      style={{ objectFit: "contain", height: "auto" }}
-      priority
-    />
-  );
-}
 
 function validatePassword(password: string) {
   const checks = {
@@ -397,51 +384,7 @@ export default function SignupPage() {
           </Link>
         </div>
       </AuthShell>
-
-      <footer
-        style={{
-          borderTop: "1px solid rgba(14,31,107,.08)",
-          padding: "3rem 4rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "2rem",
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: ".6rem" }}>
-          <AstraLogo size={120} />
-        </div>
-        <ul
-          style={{
-            display: "flex",
-            gap: "2rem",
-            listStyle: "none",
-            flexWrap: "wrap",
-            margin: 0,
-            padding: 0,
-          }}
-        >
-          {[
-            ["Instagram", "https://www.instagram.com/astrasanraffaele"],
-            ["Chi siamo", "/#about"],
-            ["Contatti", "/#join"],
-            ["Privacy", "#"],
-          ].map(([l, h]) => (
-            <li key={l}>
-              <a
-                href={h}
-                target={h.startsWith("http") ? "_blank" : undefined}
-                rel="noopener noreferrer"
-                style={{ textDecoration: "none", fontSize: ".85rem", color: "var(--muted)", fontWeight: 500 }}
-              >
-                {l}
-              </a>
-            </li>
-          ))}
-        </ul>
-        <span style={{ fontSize: ".8rem", color: "var(--muted)" }}>© 2025 Astra San Raffaele</span>
-      </footer>
+      <Footer />
     </>
   );
 }

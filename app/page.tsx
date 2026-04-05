@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import Navbar from "@/components/ui/navbar";
+import Footer from "@/components/ui/footer";
+
 
 // ── Inline SVG Logo ──────────────────────────────────────────────
 function AstraLogo({ size = 36 }: { size?: number }) {
@@ -64,7 +66,6 @@ const marqueeItems = ["Medicina", "Psicologia", "Filosofia", "Rappresentanza", "
 
 // ── Main Page ────────────────────────────────────────────────────
 export default function Home() {
-  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <>
@@ -136,67 +137,7 @@ export default function Home() {
       `}</style>
 
       <div style={{ fontFamily: "'Nunito', sans-serif", background: "var(--white)", color: "var(--text)", overflowX: "hidden" }}>
-
-        {/* ── NAV ── */}
-        <nav style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "1.1rem 4rem",
-          background: "rgba(250,250,250,0.75)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-          borderBottom: "1px solid rgba(14,31,107,0.07)",
-          animation: "fadeDown .8s ease both",
-        }}>
-          <a href="#" style={{ display: "flex", alignItems: "center", gap: ".7rem", textDecoration: "none" }}>
-            <AstraLogo size={120} />
-          </a>
-
-          {/* Desktop links */}
-          <ul style={{ display: "flex", gap: "2.5rem", listStyle: "none", alignItems: "center" }} className="hidden-mobile">
-            {["Chi siamo", "Cosa facciamo", "Facoltà", "Login"].map((l, i) => (
-              <li key={l}>
-                <a href={["#about","#pillars","#facolta", "/login"][i]}
-                   style={{ textDecoration: "none", color: "var(--text)", fontSize: ".88rem", fontWeight: 500 }}>
-                  {l}
-                </a>
-              </li>
-            ))}
-            <li>
-              <a href="#join" className="nav-cta" style={{
-                background: "var(--blue)", color: "#fff",
-                padding: ".5rem 1.3rem", borderRadius: "100px",
-                textDecoration: "none", fontWeight: 700, fontSize: ".85rem",
-              }}>Unisciti →</a>
-            </li>
-          </ul>
-
-          {/* Hamburger */}
-          <button onClick={() => setMenuOpen(o => !o)}
-            style={{ display: "none", flexDirection: "column", gap: "5px", cursor: "pointer", border: "none", background: "none" }}
-            className="hamburger" aria-label="Menu">
-            <span style={{ width: 24, height: 2, background: "var(--blue)", borderRadius: 2, display: "block" }} />
-            <span style={{ width: 24, height: 2, background: "var(--blue)", borderRadius: 2, display: "block" }} />
-            <span style={{ width: 24, height: 2, background: "var(--blue)", borderRadius: 2, display: "block" }} />
-          </button>
-        </nav>
-
-        {/* Mobile menu */}
-        {menuOpen && (
-          <div style={{
-            position: "fixed", top: 64, left: 0, right: 0, zIndex: 99,
-            background: "#fff", borderBottom: "1px solid rgba(14,31,107,.08)",
-            padding: "1.5rem 2rem", display: "flex", flexDirection: "column", gap: "1.2rem",
-          }}>
-            {["Chi siamo","Cosa facciamo","Facoltà","Login","Unisciti →"].map((l, i) => (
-              <a key={l} href={["#about","#pillars","#facolta","#login","#join"][i]}
-                 onClick={() => setMenuOpen(true)}
-                 style={{ textDecoration: "none", color: i === 3 ? "var(--blue)" : "var(--text)", fontWeight: i === 3 ? 700 : 500, fontSize: "1rem" }}>
-                {l}
-              </a>
-            ))}
-          </div>
-        )}
+        <Navbar />
 
         {/* ── HERO ── */}
         <section style={{
@@ -454,27 +395,7 @@ export default function Home() {
           </Reveal>
         </div>
 
-        {/* ── FOOTER ── */}
-        <footer style={{
-          borderTop:"1px solid rgba(14,31,107,.08)",
-          padding:"3rem 4rem",
-          display:"flex", alignItems:"center", justifyContent:"space-between", gap:"2rem", flexWrap:"wrap",
-        }}>
-          <div style={{ display:"flex", alignItems:"center", gap:".6rem" }}>
-            <AstraLogo size={120} />
-          </div>
-          <ul style={{ display:"flex", gap:"2rem", listStyle:"none", flexWrap:"wrap" }}>
-            {[["Instagram","https://www.instagram.com/astrasanraffaele"],["Chi siamo","#about"],["Contatti","#join"],["Privacy","#"]].map(([l,h]) => (
-              <li key={l}>
-                <a href={h} target={h.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer"
-                   style={{ textDecoration:"none", fontSize:".85rem", color:"var(--muted)", fontWeight:500 }}>
-                  {l}
-                </a>
-              </li>
-            ))}
-          </ul>
-          <span style={{ fontSize:".8rem", color:"var(--muted)" }}>© 2025 Astra San Raffaele</span>
-        </footer>
+        <Footer />
 
         {/* ── Responsive overrides ── */}
         <style>{`
@@ -487,7 +408,6 @@ export default function Home() {
             section[id], div[id="join"] { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
             div[id="join"] > div > div { padding: 3.5rem 2rem !important; }
             nav { padding: 1rem 1.5rem !important; }
-            footer { padding: 2.5rem 1.5rem !important; }
           }
           @media (max-width: 600px) {
             .chips-grid { grid-template-columns: 1fr !important; }

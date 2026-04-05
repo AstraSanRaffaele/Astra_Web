@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Navbar from "@/components/ui/navbar";
+import Footer from "@/components/ui/footer";
 import { createClient } from "@/lib/supabase/client";
 
 type Role = "user" | "admin";
@@ -31,7 +32,7 @@ type DashboardStats = {
 };
 
 export default function AdminPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -110,14 +111,11 @@ export default function AdminPage() {
     loadAdminPage();
   }, [router, supabase]);
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.replace("/login");
-  }
 
   if (loading) {
     return (
       <main className="admin-page">
+        <Navbar />
         <div className="admin-shell">
           <div className="loading-card">
             <span className="section-tag">Admin</span>
@@ -125,7 +123,7 @@ export default function AdminPage() {
             <p className="admin-subtitle">Sto recuperando i dati amministrativi.</p>
           </div>
         </div>
-
+        <Footer />
         <style jsx>{styles}</style>
       </main>
     );
@@ -135,22 +133,7 @@ export default function AdminPage() {
     <main className="admin-page">
       <div className="bg-orb bg-orb-1" />
       <div className="bg-orb bg-orb-2" />
-
-      <header className="topbar">
-        <Link href="/" className="brand">
-          Astra
-        </Link>
-
-        <div className="topbarActions">
-          <Link href="/profile" className="ghostButton">
-            Profilo
-          </Link>
-          <button type="button" onClick={handleLogout} className="primaryButton small">
-            Logout
-          </button>
-        </div>
-      </header>
-
+      <Navbar />
       <div className="admin-shell">
         <section className="hero">
           <div className="heroText">
@@ -161,21 +144,6 @@ export default function AdminPage() {
             <p className="admin-subtitle">
               Gestisci utenti, ruoli e contenuti riservati della piattaforma Astra da un’unica area centrale.
             </p>
-          </div>
-
-          <div className="heroCard">
-            <div className="avatar">
-              {adminProfile?.nome?.[0]?.toUpperCase() || "A"}
-            </div>
-
-            <div>
-              <div className="heroName">
-                {adminProfile?.nome} {adminProfile?.cognome}
-              </div>
-              <div className="heroEmail">{adminProfile?.email_istituzionale}</div>
-            </div>
-
-            <div className="roleBadge admin">Amministratore</div>
           </div>
         </section>
 
@@ -345,7 +313,7 @@ export default function AdminPage() {
           </div>
         </section>
       </div>
-
+      <Footer />
       <style jsx>{styles}</style>
     </main>
   );
@@ -386,37 +354,6 @@ const styles = `
     left: -80px;
   }
 
-  .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-    padding: 1.1rem 1.4rem;
-    backdrop-filter: blur(16px);
-    background: rgba(255,255,255,.72);
-    border-bottom: 1px solid rgba(14,31,107,.08);
-  }
-
-  .brand {
-    text-decoration: none;
-    font-size: 1.35rem;
-    font-weight: 900;
-    letter-spacing: -.02em;
-    color: #0E1F6B;
-    flex-shrink: 0;
-  }
-
-  .topbarActions {
-    display: flex;
-    align-items: center;
-    gap: .75rem;
-    flex-wrap: wrap;
-    margin-left: auto;
-  }
 
   .admin-shell {
     width: 100%;
@@ -429,7 +366,7 @@ const styles = `
 
   .hero {
     display: grid;
-    grid-template-columns: 1.2fr .8fr;
+    grid-template-columns: 1fr;
     gap: 1.25rem;
     align-items: end;
     margin-bottom: 1.5rem;
@@ -472,7 +409,6 @@ const styles = `
     line-height: 1.7;
   }
 
-  .heroCard,
   .card,
   .loading-card,
   .statCard {
@@ -481,61 +417,6 @@ const styles = `
     box-shadow: 0 10px 30px rgba(15,23,42,.06);
   }
 
-  .heroCard {
-    background: linear-gradient(135deg, #0E1F6B 0%, #1f3aa8 100%);
-    color: white;
-    padding: 1.4rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    min-height: 230px;
-    justify-content: center;
-    min-width: 0;
-  }
-
-  .avatar {
-    width: 72px;
-    height: 72px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.14);
-    border: 1px solid rgba(255,255,255,.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    font-weight: 900;
-    flex-shrink: 0;
-  }
-
-  .heroName {
-    font-size: 1.35rem;
-    font-weight: 800;
-    line-height: 1.2;
-    word-break: break-word;
-  }
-
-  .heroEmail {
-    margin-top: .35rem;
-    color: rgba(255,255,255,.78);
-    word-break: break-word;
-    overflow-wrap: anywhere;
-  }
-
-  .roleBadge {
-    align-self: flex-start;
-    padding: .5rem .85rem;
-    border-radius: 999px;
-    font-size: .78rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    max-width: 100%;
-  }
-
-  .roleBadge.admin {
-    background: white;
-    color: #0E1F6B;
-  }
 
   .statsGrid {
     display: grid;
@@ -810,32 +691,13 @@ const styles = `
       align-items: stretch;
     }
 
-    .heroCard {
-      min-height: unset;
-    }
-
     .statsGrid {
       grid-template-columns: repeat(2, 1fr);
     }
   }
 
+
   @media (max-width: 640px) {
-    .topbar {
-      padding: 1rem;
-      align-items: stretch;
-    }
-
-    .topbarActions {
-      width: 100%;
-      margin-left: 0;
-    }
-
-    .topbarActions .ghostButton,
-    .topbarActions .primaryButton {
-      flex: 1 1 0;
-      min-width: 0;
-    }
-
     .admin-shell {
       padding: 1.25rem 1rem 2rem;
     }
@@ -845,7 +707,6 @@ const styles = `
       margin-bottom: 1rem;
     }
 
-    .heroCard,
     .card,
     .loading-card,
     .statCard {
@@ -860,16 +721,6 @@ const styles = `
 
     .sectionTitle {
       font-size: 1.28rem;
-    }
-
-    .avatar {
-      width: 62px;
-      height: 62px;
-      font-size: 1.25rem;
-    }
-
-    .heroName {
-      font-size: 1.15rem;
     }
 
     .statsGrid {
@@ -910,16 +761,6 @@ const styles = `
       font-size: .72rem;
     }
 
-    .topbarActions {
-      flex-direction: column;
-    }
-
-    .topbarActions .ghostButton,
-    .topbarActions .primaryButton {
-      width: 100%;
-    }
-
-    .heroCard,
     .card,
     .loading-card,
     .statCard {
