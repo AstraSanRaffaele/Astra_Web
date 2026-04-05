@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -29,10 +30,24 @@ function getInitials(fullName: string) {
 
 export default function Navbar() {
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+
+  const handleLogout = async () => {
+    setMenuOpen(false);
+
+    await supabase.auth.signOut({ scope: "global" });
+
+    setIsLoggedIn(false);
+    setProfileName("");
+    setIsAdmin(false);
+
+    router.replace("/");
+    router.refresh();
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -135,13 +150,18 @@ export default function Navbar() {
         </a>
 
         <ul style={{ display: "flex", gap: "2.5rem", listStyle: "none", alignItems: "center" }} className="hidden-mobile navbar-desktop-links">
-          {["Chi siamo", "Cosa facciamo", "Facoltà"].map((l, i) => (
-            <li key={l}>
+          {[
+            ["Chi siamo", "/#about"],
+            ["Cosa facciamo", "/#pillars"],
+            ["Facoltà", "/#facolta"],
+            ["Convenzioni", "/convenzioni"],
+          ].map(([label, href]) => (
+            <li key={label}>
               <a
-                href={["/#about", "/#pillars", "/#facolta"][i]}
+                href={href}
                 style={{ textDecoration: "none", color: "var(--text)", fontSize: ".88rem", fontWeight: 500 }}
               >
-                {l}
+                {label}
               </a>
             </li>
           ))}
@@ -230,6 +250,25 @@ export default function Navbar() {
                   </span>
                 </Link>
               </li>
+              <li>
+                <button
+                  onClick={handleLogout}
+                  className="logout-button"
+                  style={{
+                    border: "1px solid rgba(14,31,107,.14)",
+                    background: "#fff",
+                    color: "var(--text)",
+                    padding: ".72rem 1rem",
+                    borderRadius: "999px",
+                    fontWeight: 700,
+                    fontSize: ".85rem",
+                    cursor: "pointer",
+                    lineHeight: 1,
+                  }}
+                >
+                  Logout
+                </button>
+              </li>
             </>
           )}
         </ul>
@@ -253,14 +292,19 @@ export default function Navbar() {
           padding: "1.5rem 2rem", display: "flex", flexDirection: "column", gap: "1.2rem",
           fontFamily: "'Nunito', sans-serif",
         }}>
-          {["Chi siamo", "Cosa facciamo", "Facoltà"].map((l, i) => (
+          {[
+            ["Chi siamo", "/#about"],
+            ["Cosa facciamo", "/#pillars"],
+            ["Facoltà", "/#facolta"],
+            ["Convenzioni", "/convenzioni"],
+          ].map(([label, href]) => (
             <a
-              key={l}
-              href={["#about", "#pillars", "#facolta"][i]}
+              key={label}
+              href={href}
               onClick={() => setMenuOpen(false)}
               style={{ textDecoration: "none", color: "var(--text)", fontWeight: 500, fontSize: "1rem" }}
             >
-              {l}
+              {label}
             </a>
           ))}
 
@@ -293,7 +337,7 @@ export default function Navbar() {
                 </Link>
               )}
               <Link
-                href="/e"
+                href="/profile"
                 onClick={() => setMenuOpen(false)}
                 className="profile-chip-mobile"
                 style={{
@@ -335,6 +379,23 @@ export default function Navbar() {
                   </span>
                 </span>
               </Link>
+              <button
+                onClick={handleLogout}
+                className="logout-button logout-button-mobile"
+                style={{
+                  border: "1px solid rgba(14,31,107,.14)",
+                  background: "#fff",
+                  color: "var(--text)",
+                  padding: ".95rem 1rem",
+                  borderRadius: "1rem",
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                Logout
+              </button>
             </>
           )}
         </div>
@@ -375,6 +436,20 @@ export default function Navbar() {
 
         .navbar-hamburger:hover {
           opacity: .82;
+        }
+
+        .logout-button {
+          transition: background .18s ease, transform .18s ease, border-color .18s ease;
+        }
+
+        .logout-button:hover {
+          background: rgba(14,31,107,.05);
+          border-color: rgba(14,31,107,.22);
+          transform: translateY(-1px);
+        }
+
+        .logout-button-mobile {
+          width: 100%;
         }
 
         .profile-chip {

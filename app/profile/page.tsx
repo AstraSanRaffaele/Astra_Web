@@ -389,33 +389,13 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
-
-            {isAdmin && (
-              <div className="card adminCard">
-                <div className="sectionHead">
-                  <span className="section-tag">Amministrazione</span>
-                  <h2 className="sectionTitle">Area admin</h2>
-                </div>
-
-                <p className="adminText">
-                  Questo account ha privilegi amministratore. Qui potrai collegare la dashboard interna e le funzioni riservate.
-                </p>
-
-                <div className="pillWrap">
-                  <span className="pill">Gestione utenti</span>
-                  <span className="pill">Ruoli</span>
-                  <span className="pill">Dashboard</span>
-                  <span className="pill">Contenuti riservati</span>
-                </div>
-              </div>
-            )}
           </div>
         </section>
       </div>
 
       <Footer />
 
-      <style jsx>{styles}</style>
+      <style>{styles}</style>
     </main>
   );
 }
@@ -491,7 +471,7 @@ const styles = `
     width: 100%;
     max-width: 1240px;
     margin: 0 auto;
-    padding: 2rem 1.25rem 3rem;
+    padding: 7rem 1.25rem 3rem;
     position: relative;
     z-index: 1;
   }
@@ -863,7 +843,7 @@ const styles = `
     }
 
     .profile-shell {
-      padding: 1.25rem 1rem 2rem;
+      padding: 6.25rem 1rem 2rem;
     }
 
     .hero {
@@ -935,7 +915,7 @@ const styles = `
 
   @media (max-width: 420px) {
     .profile-shell {
-      padding: 1rem .85rem 1.6rem;
+      padding: 5.9rem .85rem 1.6rem;
     }
 
     .profile-title {

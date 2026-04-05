@@ -111,7 +111,6 @@ export default function AdminPage() {
     loadAdminPage();
   }, [router, supabase]);
 
-
   if (loading) {
     return (
       <main className="admin-page">
@@ -124,7 +123,7 @@ export default function AdminPage() {
           </div>
         </div>
         <Footer />
-        <style jsx>{styles}</style>
+        <style>{styles}</style>
       </main>
     );
   }
@@ -186,35 +185,11 @@ export default function AdminPage() {
 
               <div className="quickGrid">
                 <div className="quickCard">
-                  <h3>Gestione utenti</h3>
-                  <p>Visualizza gli utenti registrati, controlla i dati e prepara le azioni amministrative.</p>
-                  <button type="button" className="ghostButton fullButton">
-                    Apri sezione
-                  </button>
-                </div>
-
-                <div className="quickCard">
-                  <h3>Ruoli</h3>
-                  <p>Promuovi utenti ad amministratori o aggiorna i permessi interni della piattaforma.</p>
-                  <button type="button" className="ghostButton fullButton">
-                    Gestisci ruoli
-                  </button>
-                </div>
-
-                <div className="quickCard">
-                  <h3>Contenuti riservati</h3>
-                  <p>Collega qui documenti, aree private, avvisi o materiali dedicati agli iscritti.</p>
-                  <button type="button" className="ghostButton fullButton">
-                    Vai ai contenuti
-                  </button>
-                </div>
-
-                <div className="quickCard">
-                  <h3>Dashboard futura</h3>
-                  <p>Spazio pronto per integrare grafici, log attività, richieste e nuove funzioni admin.</p>
-                  <button type="button" className="ghostButton fullButton">
-                    Configura
-                  </button>
+                  <h3>Gestione convenzioni</h3>
+                  <p>Apri l’area dedicata per creare, modificare o eliminare le convenzioni visibili agli utenti registrati.</p>
+                  <a href="/convenzioni" className="ghostButton fullButton">
+                    Vai alle convenzioni
+                  </a>
                 </div>
               </div>
             </div>
@@ -291,30 +266,11 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-
-            <div className="card adminCard">
-              <div className="sectionHead">
-                <span className="section-tag">Prossimi step</span>
-                <h2 className="sectionTitle">Cosa collegare qui</h2>
-              </div>
-
-              <p className="adminText">
-                Questa pagina è pronta per essere collegata alle vere funzioni amministrative del progetto.
-              </p>
-
-              <div className="pillWrap">
-                <span className="pill">Lista utenti</span>
-                <span className="pill">Cambio ruoli</span>
-                <span className="pill">Statistiche</span>
-                <span className="pill">Moderazione</span>
-                <span className="pill">Contenuti premium</span>
-              </div>
-            </div>
           </div>
         </section>
       </div>
       <Footer />
-      <style jsx>{styles}</style>
+      <style>{styles}</style>
     </main>
   );
 }
@@ -354,12 +310,11 @@ const styles = `
     left: -80px;
   }
 
-
   .admin-shell {
     width: 100%;
     max-width: 1240px;
     margin: 0 auto;
-    padding: 2rem 1.25rem 3rem;
+    padding: 7rem 1.25rem 3rem;
     position: relative;
     z-index: 1;
   }
@@ -416,7 +371,6 @@ const styles = `
     border: 1px solid rgba(14,31,107,.08);
     box-shadow: 0 10px 30px rgba(15,23,42,.06);
   }
-
 
   .statsGrid {
     display: grid;
@@ -671,7 +625,7 @@ const styles = `
 
   .loading-card {
     max-width: 560px;
-    margin: 4rem auto 0;
+    margin: 0 auto;
   }
 
   @media (max-width: 1100px) {
@@ -696,10 +650,9 @@ const styles = `
     }
   }
 
-
   @media (max-width: 640px) {
     .admin-shell {
-      padding: 1.25rem 1rem 2rem;
+      padding: 6.25rem 1rem 2rem;
     }
 
     .hero {
@@ -749,7 +702,7 @@ const styles = `
 
   @media (max-width: 420px) {
     .admin-shell {
-      padding: 1rem .85rem 1.6rem;
+      padding: 5.9rem .85rem 1.6rem;
     }
 
     .admin-title {
