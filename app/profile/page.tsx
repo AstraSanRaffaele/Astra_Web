@@ -57,12 +57,21 @@ const enrollmentYearOptions = Array.from({ length: 15 }, (_, i) => {
   return { value: String(year), label: String(year) };
 });
 
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("it-IT", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 export default function ProfilePage() {
   const supabase = createClient();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -103,7 +112,8 @@ export default function ProfilePage() {
         .single();
 
       if (profileError || !data) {
-        setError("Impossibile caricare il profilo.");
+        console.error("Errore caricamento profilo:", profileError);
+        setError(profileError?.message || "Impossibile caricare il profilo.");
         setLoading(false);
         return;
       }
@@ -153,7 +163,7 @@ export default function ProfilePage() {
       return;
     }
 
-    const { data: updatedData, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from("profiles")
       .update({
         nome: normalizedNome,
@@ -164,20 +174,55 @@ export default function ProfilePage() {
         anno_immatricolazione: Number(annoImmatricolazione),
         data_di_nascita: dataDiNascita,
       })
-      .eq("id", profile.id)
-      .select()
-      .single();
+      .eq("id", profile.id);
 
-    if (updateError || !updatedData) {
-      setError("Non è stato possibile aggiornare il profilo.");
+    if (updateError) {
+      console.error("Errore aggiornamento profilo:", updateError);
+      setError(updateError.message || "Non è stato possibile aggiornare il profilo.");
       setSaving(false);
       return;
     }
 
-    const nextProfile = updatedData as Profile;
+    const nextProfile: Profile = {
+      ...profile,
+      nome: normalizedNome,
+      cognome: normalizedCognome,
+      numero_telefono: normalizedTelefono,
+      facolta: facolta as Facolta,
+      corso_di_laurea: corsoDiLaurea,
+      anno_immatricolazione: Number(annoImmatricolazione),
+      data_di_nascita: dataDiNascita,
+      updated_at: new Date().toISOString(),
+    };
+
     setProfile(nextProfile);
+    setNome(nextProfile.nome);
+    setCognome(nextProfile.cognome);
+    setEmailIstituzionale(nextProfile.email_istituzionale);
+    setNumeroTelefono(nextProfile.numero_telefono);
+    setFacolta(nextProfile.facolta);
+    setCorsoDiLaurea(nextProfile.corso_di_laurea);
+    setAnnoImmatricolazione(String(nextProfile.anno_immatricolazione));
+    setDataDiNascita(nextProfile.data_di_nascita);
     setSuccess("Profilo aggiornato con successo.");
+    setIsEditing(false);
     setSaving(false);
+  }
+
+  function handleCancelEdit() {
+    if (!profile) return;
+
+    setNome(profile.nome);
+    setCognome(profile.cognome);
+    setEmailIstituzionale(profile.email_istituzionale);
+    setNumeroTelefono(profile.numero_telefono);
+    setFacolta(profile.facolta);
+    setCorsoDiLaurea(profile.corso_di_laurea);
+    setAnnoImmatricolazione(String(profile.anno_immatricolazione));
+    setDataDiNascita(profile.data_di_nascita);
+    setError("");
+    setSuccess("");
+    setIsEditing(false);
   }
 
   const isAdmin = profile?.role === "admin";
@@ -235,9 +280,25 @@ export default function ProfilePage() {
 
         <section className="contentGrid">
           <div className="card">
-            <div className="sectionHead">
-              <span className="section-tag">Dati personali</span>
-              <h2 className="sectionTitle">Modifica profilo</h2>
+            <div className="sectionHead sectionHeadRow">
+              <div>
+                <span className="section-tag">Dati personali</span>
+                <h2 className="sectionTitle">{isEditing ? "Modifica profilo" : "Profilo"}</h2>
+              </div>
+
+              {!isEditing ? (
+                <button
+                  type="button"
+                  className="ghostButton smallActionButton"
+                  onClick={() => {
+                    setError("");
+                    setSuccess("");
+                    setIsEditing(true);
+                  }}
+                >
+                  Modifica
+                </button>
+              ) : null}
             </div>
 
             <form onSubmit={handleSave} className="form">
@@ -249,6 +310,7 @@ export default function ProfilePage() {
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
                     required
+                    disabled={!isEditing}
                   />
                 </div>
 
@@ -259,6 +321,7 @@ export default function ProfilePage() {
                     value={cognome}
                     onChange={(e) => setCognome(e.target.value)}
                     required
+                    disabled={!isEditing}
                   />
                 </div>
               </div>
@@ -275,6 +338,7 @@ export default function ProfilePage() {
                   value={numeroTelefono}
                   onChange={(e) => setNumeroTelefono(e.target.value)}
                   required
+                  disabled={!isEditing}
                 />
               </div>
 
@@ -289,6 +353,7 @@ export default function ProfilePage() {
                       setCorsoDiLaurea("");
                     }}
                     required
+                    disabled={!isEditing}
                   >
                     <option value="">Seleziona una facoltà</option>
                     {facultyOptions.map((option) => (
@@ -306,6 +371,7 @@ export default function ProfilePage() {
                     value={annoImmatricolazione}
                     onChange={(e) => setAnnoImmatricolazione(e.target.value)}
                     required
+                    disabled={!isEditing}
                   >
                     <option value="">Seleziona un anno</option>
                     {enrollmentYearOptions.map((option) => (
@@ -324,7 +390,7 @@ export default function ProfilePage() {
                   value={corsoDiLaurea}
                   onChange={(e) => setCorsoDiLaurea(e.target.value)}
                   required
-                  disabled={!facolta}
+                  disabled={!isEditing || !facolta}
                 >
                   <option value="">
                     {facolta ? "Seleziona un corso di laurea" : "Seleziona prima la facoltà"}
@@ -345,17 +411,29 @@ export default function ProfilePage() {
                   value={dataDiNascita}
                   onChange={(e) => setDataDiNascita(e.target.value)}
                   required
+                  disabled={!isEditing}
                 />
               </div>
 
               {error ? <div className="message error">{error}</div> : null}
               {success ? <div className="message success">{success}</div> : null}
 
-              <div className="actions">
-                <button type="submit" disabled={saving} className="primaryButton saveButton">
-                  {saving ? "Salvataggio..." : "Salva modifiche"}
-                </button>
-              </div>
+              {isEditing ? (
+                <div className="actions actionsRow">
+                  <button
+                    type="button"
+                    className="ghostButton secondaryActionButton"
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                  >
+                    Annulla
+                  </button>
+
+                  <button type="submit" disabled={saving} className="primaryButton saveButton">
+                    {saving ? "Salvataggio..." : "Salva modifiche"}
+                  </button>
+                </div>
+              ) : null}
             </form>
           </div>
 
@@ -380,12 +458,12 @@ export default function ProfilePage() {
                   <strong>{corsoDiLaurea || "-"}</strong>
                 </div>
                 <div className="infoRow">
+                  <span>Data prima iscrizione</span>
+                  <strong>{profile?.created_at ? formatDate(profile.created_at) : "-"}</strong>
+                </div>
+                <div className="infoRow">
                   <span>Ultimo aggiornamento</span>
-                  <strong>
-                    {profile?.updated_at
-                      ? new Date(profile.updated_at).toLocaleDateString("it-IT")
-                      : "-"}
-                  </strong>
+                  <strong>{profile?.updated_at ? formatDate(profile.updated_at) : "-"}</strong>
                 </div>
               </div>
             </div>
@@ -617,6 +695,13 @@ const styles = `
     margin-bottom: 1rem;
   }
 
+  .sectionHeadRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
   .sectionTitle {
     margin: 0;
     font-size: 1.5rem;
@@ -674,7 +759,8 @@ const styles = `
     box-shadow: 0 0 0 4px rgba(39,67,180,.08);
   }
 
-  .field input:disabled {
+  .field input:disabled,
+  .field select:disabled {
     background: #f1f5f9;
     color: #64748b;
     cursor: not-allowed;
@@ -704,6 +790,11 @@ const styles = `
     display: flex;
     justify-content: flex-start;
     margin-top: .25rem;
+  }
+
+  .actionsRow {
+    gap: .75rem;
+    flex-wrap: wrap;
   }
 
   .primaryButton,
@@ -740,10 +831,21 @@ const styles = `
     padding: .72rem 1rem;
     color: #0E1F6B;
     background: rgba(14,31,107,.06);
+    border: 1px solid rgba(14,31,107,.08);
+    cursor: pointer;
   }
 
   .saveButton {
     min-width: 220px;
+  }
+
+  .smallActionButton {
+    padding: .78rem 1rem;
+    white-space: nowrap;
+  }
+
+  .secondaryActionButton {
+    min-width: 130px;
   }
 
   .infoList {
@@ -884,11 +986,22 @@ const styles = `
       font-size: .95rem;
     }
 
+    .sectionHeadRow {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
     .actions {
       width: 100%;
     }
 
-    .saveButton {
+    .actionsRow {
+      flex-direction: column;
+    }
+
+    .saveButton,
+    .secondaryActionButton,
+    .smallActionButton {
       width: 100%;
       min-width: 0;
     }

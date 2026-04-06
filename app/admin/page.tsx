@@ -148,7 +148,7 @@ export default function AdminPage() {
 
         {error ? <div className="message error">{error}</div> : null}
 
-        <section className="statsGrid">
+        <section className="statsGrid mobile-hide">
           <div className="statCard">
             <span className="statLabel">Utenti totali</span>
             <strong className="statValue">{stats.totalUsers}</strong>
@@ -191,10 +191,17 @@ export default function AdminPage() {
                     Vai alle convenzioni
                   </a>
                 </div>
+                <div className="quickCard">
+                  <h3>Gestione utenti</h3>
+                  <p>Accedi all’area dedicata per visualizzare, cercare e gestire gli utenti registrati della piattaforma Astra.</p>
+                  <a href="/admin/utenti" className="ghostButton fullButton">
+                    Vai alla gestione utenti
+                  </a>
+                </div>
               </div>
             </div>
 
-            <div className="card">
+            <div className="card mobile-hide">
               <div className="sectionHead">
                 <span className="section-tag">Nuovi iscritti</span>
                 <h2 className="sectionTitle">Utenti recenti</h2>
@@ -227,43 +234,6 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-
-          <div className="sideColumn">
-            <div className="card">
-              <div className="sectionHead">
-                <span className="section-tag">Panoramica</span>
-                <h2 className="sectionTitle">Account admin</h2>
-              </div>
-
-              <div className="infoList">
-                <div className="infoRow">
-                  <span>Nome</span>
-                  <strong>
-                    {adminProfile?.nome} {adminProfile?.cognome}
-                  </strong>
-                </div>
-
-                <div className="infoRow">
-                  <span>Email</span>
-                  <strong>{adminProfile?.email_istituzionale}</strong>
-                </div>
-
-                <div className="infoRow">
-                  <span>Ruolo</span>
-                  <strong>Admin</strong>
-                </div>
-
-                <div className="infoRow">
-                  <span>Ultimo aggiornamento</span>
-                  <strong>
-                    {adminProfile?.updated_at
-                      ? new Date(adminProfile.updated_at).toLocaleDateString("it-IT")
-                      : "-"}
-                  </strong>
-                </div>
               </div>
             </div>
           </div>
@@ -403,13 +373,12 @@ const styles = `
 
   .contentGrid {
     display: grid;
-    grid-template-columns: 1.3fr .7fr;
+    grid-template-columns: 1fr;
     gap: 1.25rem;
     align-items: start;
   }
 
-  .mainColumn,
-  .sideColumn {
+  .mainColumn {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -697,6 +666,10 @@ const styles = `
     .pill {
       font-size: .82rem;
       padding: .58rem .82rem;
+    }
+
+    .mobile-hide {
+      display: none;
     }
   }
 

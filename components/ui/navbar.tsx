@@ -716,12 +716,31 @@ export default function Navbar() {
           font-family: 'Nunito', sans-serif;
         }
 
-        .navbar-desktop-links a {
+        .navbar-desktop-links a:not(.profile-chip) {
+          position: relative;
           transition: color .18s ease, opacity .18s ease;
         }
 
-        .navbar-desktop-links a:hover {
+        .navbar-desktop-links a:not(.profile-chip):hover {
           color: var(--blue);
+        }
+
+        .navbar-desktop-links a:not(.profile-chip)::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          bottom: -6px;
+          width: 100%;
+          height: 2px;
+          background: var(--blue);
+          border-radius: 999px;
+          transform: scaleX(0);
+          transform-origin: center;
+          transition: transform .18s ease;
+        }
+
+        .navbar-desktop-links a:not(.profile-chip):hover::after {
+          transform: scaleX(1);
         }
 
         .navbar-hamburger {
@@ -750,16 +769,28 @@ export default function Navbar() {
         .profile-chip {
           padding: .35rem .45rem .35rem .35rem;
           border-radius: 999px;
-          transition: background .18s ease, transform .18s ease;
+          transition: background .18s ease;
         }
 
-        .profile-chip:hover,
+        .profile-chip:hover {
+          background: rgba(14,31,107,.05);
+        }
+
+        .profile-chip-mobile {
+          border-radius: 1rem;
+          transition: background .18s ease;
+        }
+
         .profile-chip-mobile:hover {
           background: rgba(14,31,107,.05);
         }
 
-        .profile-chip:hover {
-          transform: translateY(-1px);
+        #mobile-menu a:not(.profile-chip-mobile) {
+          transition: color .18s ease, transform .18s ease, background .18s ease;
+        }
+
+        #mobile-menu a:not(.profile-chip-mobile):hover {
+          color: var(--blue);
         }
 
         .nav-cta {
