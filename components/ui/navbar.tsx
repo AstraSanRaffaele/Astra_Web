@@ -42,6 +42,7 @@ export default function Navbar() {
   const [profileName, setProfileName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuTop, setMobileMenuTop] = useState(0);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   const navLinks = [
     ["Chi siamo", "/#about"],
@@ -72,17 +73,19 @@ export default function Navbar() {
   };
 
   useEffect(() => {
-    const updateNavbarHeight = () => {
+    const updateNavbarLayout = () => {
       if (navRef.current) {
         setMobileMenuTop(navRef.current.offsetHeight);
       }
+
+      setIsMobileViewport(window.innerWidth <= 900);
     };
 
-    updateNavbarHeight();
-    window.addEventListener("resize", updateNavbarHeight);
+    updateNavbarLayout();
+    window.addEventListener("resize", updateNavbarLayout);
 
     return () => {
-      window.removeEventListener("resize", updateNavbarHeight);
+      window.removeEventListener("resize", updateNavbarLayout);
     };
   }, []);
 
@@ -168,6 +171,16 @@ export default function Navbar() {
   useEffect(() => {
     closeMenu();
   }, [pathname]);
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      closeMenu();
+    }
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    closeMenu();
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const handleResizeClose = () => {
@@ -536,7 +549,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {menuOpen && (
+      {menuOpen && isMobileViewport && (
         <>
           <div
             onClick={closeMenu}
