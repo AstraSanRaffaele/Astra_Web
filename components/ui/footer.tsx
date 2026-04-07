@@ -37,7 +37,7 @@ export default function Footer() {
           {[
             ["Instagram", "https://www.instagram.com/astrasanraffaele"],
             ["Chi siamo", "#about"],
-            ["Contatti", "#join"],
+            ["Contatti", "/#contatti"],
             ["Privacy", "#"],
           ].map(([l, h]) => (
             <li key={l}>
