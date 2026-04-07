@@ -6,7 +6,7 @@ export async function proxy(req: NextRequest) {
     request: req,
   });
 
-  const maintenanceMode = process.env.MAINTENANCE_MODE === "true";
+  const maintenanceMode = process.env.MAINTENANCE_MODE === "True";
   const { pathname } = req.nextUrl;
 
   if (maintenanceMode) {
