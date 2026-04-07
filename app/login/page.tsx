@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Footer from "@/components/ui/footer";
 import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
 
@@ -199,5 +199,13 @@ export default function LoginPage() {
 
       <Footer />
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
