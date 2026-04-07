@@ -47,7 +47,7 @@ export default function Navbar() {
   const navLinks = [
     ["Chi siamo", "/#about"],
     ["Cosa facciamo", "/#pillars"],
-    ["Facoltà", "/#facolta"],
+    ["Eventi", "/eventi"],
     ["Convenzioni", "/convenzioni"],
   ] as const;
 

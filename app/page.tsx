@@ -260,7 +260,7 @@ export default function Home() {
             <Reveal delay={0.15}>
               <div style={{
                 background: "var(--blue)", borderRadius: "2rem",
-                aspectRatio: "4/5", position: "relative",
+                aspectRatio: "4/4", position: "relative",
                 display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
               }}>
                 <span className="serif" style={{

@@ -98,11 +98,6 @@ export default function SignupPage() {
       return;
     }
 
-    if (!normalizedEmail.endsWith("@studenti.unisr.it")) {
-      setError("Devi usare una mail istituzionale @studenti.unisr.it.");
-      return;
-    }
-
     if (!facolta || !corsoDiLaurea || !annoImmatricolazione || !dataDiNascita) {
       setError("Compila tutti i campi richiesti.");
       return;
@@ -161,7 +156,7 @@ export default function SignupPage() {
             <em style={{ fontStyle: "italic", color: "#C2CEFF" }}>Astra</em>.
           </>
         }
-        description="Registrati per entrare nella community, partecipare alle iniziative e accedere alla tua area personale."
+        description="Registrati per entrare nella community, partecipare alle iniziative e accedere alla tua area personale con qualsiasi email."
         cardTitle={
           <>
             Crea il tuo
@@ -199,12 +194,12 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <FieldLabel htmlFor="email">Mail istituzionale</FieldLabel>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
             <input
               id="email"
               type="email"
               className="input"
-              placeholder="nome@studenti.unisr.it"
+              placeholder="Inserisci la tua email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

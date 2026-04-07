@@ -102,7 +102,7 @@ export default function LoginPage() {
               id="email"
               type="email"
               className="input"
-              placeholder="nome@studenti.unisr.it"
+              placeholder="Inserisci la tua mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
