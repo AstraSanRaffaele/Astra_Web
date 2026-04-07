@@ -109,11 +109,17 @@ export default function ProfilePage() {
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (profileError || !data) {
+      if (profileError) {
         console.error("Errore caricamento profilo:", profileError);
-        setError(profileError?.message || "Impossibile caricare il profilo.");
+        setError(profileError.message || "Impossibile caricare il profilo.");
+        setLoading(false);
+        return;
+      }
+
+      if (!data) {
+        setError("Profilo non trovato. Contatta un amministratore oppure completa di nuovo la registrazione.");
         setLoading(false);
         return;
       }
