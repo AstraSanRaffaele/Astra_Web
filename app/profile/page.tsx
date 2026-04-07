@@ -119,7 +119,7 @@ export default function ProfilePage() {
       }
 
       if (!data) {
-        setError("Profilo non trovato. Contatta un amministratore oppure completa di nuovo la registrazione.");
+        setError("Profilo non trovato. Contatta un amministratore.");
         setLoading(false);
         return;
       }
