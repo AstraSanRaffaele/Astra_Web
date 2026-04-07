@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/app/auth-shared";
 import Footer from "@/components/ui/footer";
@@ -10,6 +10,14 @@ import { createClient } from "@/lib/supabase/client";
 const RESEND_DELAY_SECONDS = 60;
 
 export default function SignupCheckEmailPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupCheckEmailContent />
+    </Suspense>
+  );
+}
+
+function SignupCheckEmailContent() {
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const email = searchParams.get("email") ?? "";
