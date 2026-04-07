@@ -249,8 +249,6 @@ export default function ProfilePage() {
     );
   }
 
-  Ciambella
-
   return (
     <main className="profile-page">
       <Navbar />
