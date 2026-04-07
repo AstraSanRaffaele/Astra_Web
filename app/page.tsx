@@ -504,6 +504,7 @@ export default function Home() {
             .hidden-mobile { display: none !important; }
             .hamburger { display: flex !important; }
             .about-grid { grid-template-columns: 1fr !important; gap: 3rem !important; }
+            .about-grid > div:nth-child(2) > div { padding-top: 2.5rem !important; padding-bottom: 2.5rem !important; }
             .pillars-grid { grid-template-columns: 1fr !important; }
             .chips-grid { grid-template-columns: 1fr 1fr !important; }
             .contacts-grid { grid-template-columns: 1fr !important; }
