@@ -59,13 +59,13 @@ export async function GET(request: Request) {
   if (!existingProfile) {
     const metadata = user.user_metadata ?? {};
 
-    const facoltaMap: Record<string, "Medicina" | "Psicologia" | "Filosofia"> = {
-      medicina: "Medicina",
-      psicologia: "Psicologia",
-      filosofia: "Filosofia",
-      Medicina: "Medicina",
-      Psicologia: "Psicologia",
-      Filosofia: "Filosofia",
+    const facoltaMap: Record<string, "medicina" | "psicologia" | "filosofia"> = {
+      medicina: "medicina",
+      psicologia: "psicologia",
+      filosofia: "filosofia",
+      Medicina: "medicina",
+      Psicologia: "psicologia",
+      Filosofia: "filosofia",
     };
 
     const nome = String(metadata.nome ?? "").trim();
