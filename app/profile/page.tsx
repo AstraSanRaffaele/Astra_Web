@@ -264,7 +264,7 @@ export default function ProfilePage() {
               Il tuo profilo <em>Astra</em>
             </h1>
             <p className="profile-subtitle">
-              Gestisci i tuoi dati personali e visualizza le informazioni legate al tuo account.
+              Gestisci il tuo profilo e visualizza le informazioni legate al tuo account.
             </p>
           </div>
 
