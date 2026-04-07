@@ -6,10 +6,11 @@ export async function proxy(req: NextRequest) {
     request: req,
   });
 
-  const maintenanceMode = process.env.MAINTENANCE_MODE === "True";
+  const maintenanceMode = process.env.MAINTENANCE_MODE === "true";
+  const isProduction = process.env.VERCEL_ENV === "production";
   const { pathname } = req.nextUrl;
 
-  if (maintenanceMode) {
+  if (maintenanceMode && isProduction) {
     const allowedPaths = ["/maintenance", "/favicon.ico", "/robots.txt", "/sitemap.xml"];
 
     const isAllowedPath =
