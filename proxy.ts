@@ -6,6 +6,26 @@ export async function proxy(req: NextRequest) {
     request: req,
   });
 
+  const maintenanceMode = process.env.MAINTENANCE_MODE === "true";
+  const { pathname } = req.nextUrl;
+
+  if (maintenanceMode) {
+    const allowedPaths = ["/maintenance", "/favicon.ico", "/robots.txt", "/sitemap.xml"];
+
+    const isAllowedPath =
+      allowedPaths.includes(pathname) ||
+      pathname.startsWith("/_next/") ||
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/images/") ||
+      pathname.startsWith("/icons/");
+
+    if (!isAllowedPath) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/maintenance";
+      return NextResponse.rewrite(url);
+    }
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
