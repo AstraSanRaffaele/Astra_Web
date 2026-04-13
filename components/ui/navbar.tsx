@@ -38,7 +38,6 @@ export default function Navbar() {
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [authReady, setAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -68,7 +67,6 @@ export default function Navbar() {
     setIsLoggedIn(false);
     setProfileName("");
     setIsAdmin(false);
-    setAuthReady(true);
 
     router.replace("/");
     router.refresh();
@@ -95,91 +93,73 @@ export default function Navbar() {
     let mounted = true;
 
     const loadUser = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-        if (!mounted) return;
+      if (!mounted) return;
 
-        if (!user) {
-          setIsLoggedIn(false);
-          setProfileName("");
-          setIsAdmin(false);
-          return;
-        }
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-
-        if (!mounted) return;
-
-        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
-          .filter(Boolean)
-          .join(" ")
-          .trim();
-
-        setIsLoggedIn(true);
-        setIsAdmin(profile?.role === "admin");
-        setProfileName(fullName || user.email || "Profilo");
-      } catch {
-        if (!mounted) return;
+      if (!user) {
         setIsLoggedIn(false);
         setProfileName("");
         setIsAdmin(false);
-      } finally {
-        if (mounted) {
-          setAuthReady(true);
-        }
+        return;
       }
+
+      setIsLoggedIn(true);
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (!mounted) return;
+
+      setIsAdmin(profile?.role === "admin");
+
+      const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+      setProfileName(fullName || user.email || "Profilo");
     };
 
     loadUser();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       const user = session?.user;
 
       if (!mounted) return;
 
-      try {
-        if (!user) {
-          setIsLoggedIn(false);
-          setProfileName("");
-          setIsAdmin(false);
-          return;
-        }
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-
-        if (!mounted) return;
-
-        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
-          .filter(Boolean)
-          .join(" ")
-          .trim();
-
-        setIsLoggedIn(true);
-        setIsAdmin(profile?.role === "admin");
-        setProfileName(fullName || user.email || "Profilo");
-      } catch {
-        if (!mounted) return;
+      if (!user) {
         setIsLoggedIn(false);
         setProfileName("");
         setIsAdmin(false);
-      } finally {
-        if (mounted) {
-          setAuthReady(true);
-        }
+        return;
       }
+
+      setIsLoggedIn(true);
+
+      supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+        .then(({ data: profile }) => {
+          if (!mounted) return;
+          setIsAdmin(profile?.role === "admin");
+        });
+
+      const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+      setProfileName(fullName || user.email || "Profilo");
     });
 
     return () => {
@@ -311,7 +291,7 @@ export default function Navbar() {
             </li>
           ))}
 
-          {!authReady ? null : !isLoggedIn ? (
+          {!isLoggedIn ? (
             <>
               <li>
                 <a
@@ -462,7 +442,7 @@ export default function Navbar() {
             zIndex: 121,
           }}
         >
-          {!authReady ? null : !isLoggedIn ? (
+          {!isLoggedIn ? (
             <Link
               href="/login"
               style={{
@@ -619,7 +599,7 @@ export default function Navbar() {
               </a>
             ))}
 
-            {!authReady ? null : !isLoggedIn ? (
+            {!isLoggedIn ? (
               <a
                 href="/#join"
                 onClick={closeMenu}
