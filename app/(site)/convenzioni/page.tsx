@@ -826,8 +826,6 @@ export default function ConvenzioniPage() {
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 }

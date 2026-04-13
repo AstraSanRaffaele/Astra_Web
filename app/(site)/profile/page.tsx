@@ -476,8 +476,6 @@ export default function ProfilePage() {
         </section>
       </div>
 
-      <Footer />
-
       <style>{styles}</style>
     </main>
   );

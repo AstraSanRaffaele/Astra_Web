@@ -226,8 +226,6 @@ function SignupCheckEmailContent() {
           </div>
         </div>
       </AuthShell>
-
-      <Footer />
     </>
   );
 }

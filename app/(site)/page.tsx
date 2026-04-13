@@ -494,7 +494,6 @@ export default function Home() {
             </div>
           </Reveal>
         </section>
-        <Footer />
 
         {/* ── Responsive overrides ── */}
         <style>{`

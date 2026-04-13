@@ -174,8 +174,6 @@ export default function UpdatePasswordPage() {
           </Link>
         </div>
       </AuthShell>
-
-      <Footer />
     </>
   );
 }
