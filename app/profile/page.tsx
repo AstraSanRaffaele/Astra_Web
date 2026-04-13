@@ -52,8 +52,8 @@ const degreeOptionsMap: Record<string, { value: string; label: string }[]> = {
   ],
 };
 
-const enrollmentYearOptions = Array.from({ length: 15 }, (_, i) => {
-  const year = new Date().getFullYear() - i;
+const graduationYearOptions = Array.from({ length: 2040 - 2020 + 1 }, (_, i) => {
+  const year = 2040 - i;
   return { value: String(year), label: String(year) };
 });
 
@@ -380,7 +380,7 @@ export default function ProfilePage() {
                     disabled={!isEditing}
                   >
                     <option value="">Seleziona un anno</option>
-                    {enrollmentYearOptions.map((option) => (
+                    {graduationYearOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
