@@ -93,7 +93,7 @@ const sortableColumns: Array<{ label: string; key: SortKey }> = [
   { label: "Telefono", key: "numero_telefono" },
   { label: "Facoltà", key: "facolta" },
   { label: "Corso di laurea", key: "corso_di_laurea" },
-  { label: "Anno immatricolazione", key: "anno_di_laurea" },
+  { label: "Anno di laurea", key: "anno_di_laurea" },
   { label: "Data di nascita", key: "data_di_nascita" },
   { label: "Ruolo", key: "role" },
   { label: "Ruolo tessera", key: "ruolo_tessera" },
@@ -541,7 +541,7 @@ export default function AdminUtentiPage() {
       { key: "numero_telefono", label: "Numero di telefono" },
       { key: "facolta", label: "Facoltà" },
       { key: "corso_di_laurea", label: "Corso di laurea" },
-      { key: "anno_di_laurea", label: "Anno di immatricolazione" },
+      { key: "anno_di_laurea", label: "Anno di laurea" },
       { key: "data_di_nascita", label: "Data di nascita" },
       { key: "role", label: "Ruolo" },
       { key: "ruolo_tessera", label: "Ruolo tessera" },
@@ -974,7 +974,7 @@ export default function AdminUtentiPage() {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
-                <label style={{ fontWeight: 700, color: "#17315f" }}>Filtro anno</label>
+                <label style={{ fontWeight: 700, color: "#17315f" }}>Filtro anno di laurea</label>
                 <select
                   value={filters.anno}
                   onChange={(event) => {

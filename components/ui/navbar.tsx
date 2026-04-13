@@ -38,6 +38,7 @@ export default function Navbar() {
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -67,6 +68,7 @@ export default function Navbar() {
     setIsLoggedIn(false);
     setProfileName("");
     setIsAdmin(false);
+    setAuthReady(true);
 
     router.replace("/");
     router.refresh();
@@ -103,10 +105,9 @@ export default function Navbar() {
         setIsLoggedIn(false);
         setProfileName("");
         setIsAdmin(false);
+        setAuthReady(true);
         return;
       }
-
-      setIsLoggedIn(true);
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -116,21 +117,22 @@ export default function Navbar() {
 
       if (!mounted) return;
 
-      setIsAdmin(profile?.role === "admin");
-
       const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
         .filter(Boolean)
         .join(" ")
         .trim();
 
+      setIsLoggedIn(true);
+      setIsAdmin(profile?.role === "admin");
       setProfileName(fullName || user.email || "Profilo");
+      setAuthReady(true);
     };
 
     loadUser();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const user = session?.user;
 
       if (!mounted) return;
@@ -139,27 +141,27 @@ export default function Navbar() {
         setIsLoggedIn(false);
         setProfileName("");
         setIsAdmin(false);
+        setAuthReady(true);
         return;
       }
 
-      setIsLoggedIn(true);
-
-      supabase
+      const { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", user.id)
-        .single()
-        .then(({ data: profile }) => {
-          if (!mounted) return;
-          setIsAdmin(profile?.role === "admin");
-        });
+        .single();
+
+      if (!mounted) return;
 
       const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
         .filter(Boolean)
         .join(" ")
         .trim();
 
+      setIsLoggedIn(true);
+      setIsAdmin(profile?.role === "admin");
       setProfileName(fullName || user.email || "Profilo");
+      setAuthReady(true);
     });
 
     return () => {
@@ -230,6 +232,10 @@ export default function Navbar() {
       window.removeEventListener("keydown", handleEscape);
     };
   }, []);
+
+  if (!authReady) {
+    return null;
+  }
 
   return (
     <>
