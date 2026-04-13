@@ -17,7 +17,7 @@ type Profile = {
   numero_telefono: string;
   facolta: Facolta;
   corso_di_laurea: string;
-  anno_immatricolazione: number;
+  anno_di_laurea: number;
   data_di_nascita: string;
   role: Role;
   created_at: string;
@@ -83,7 +83,7 @@ export default function ProfilePage() {
   const [numeroTelefono, setNumeroTelefono] = useState("");
   const [facolta, setFacolta] = useState("");
   const [corsoDiLaurea, setCorsoDiLaurea] = useState("");
-  const [annoImmatricolazione, setAnnoImmatricolazione] = useState("");
+  const [annoLaurea, setAnnoLaurea] = useState("");
   const [dataDiNascita, setDataDiNascita] = useState("");
 
   const courseOptions = useMemo(() => {
@@ -133,7 +133,7 @@ export default function ProfilePage() {
       setNumeroTelefono(loadedProfile.numero_telefono);
       setFacolta(loadedProfile.facolta);
       setCorsoDiLaurea(loadedProfile.corso_di_laurea);
-      setAnnoImmatricolazione(String(loadedProfile.anno_immatricolazione));
+      setAnnoLaurea(String(loadedProfile.anno_di_laurea));
       setDataDiNascita(loadedProfile.data_di_nascita);
 
       setLoading(false);
@@ -161,7 +161,7 @@ export default function ProfilePage() {
       !normalizedTelefono ||
       !facolta ||
       !corsoDiLaurea ||
-      !annoImmatricolazione ||
+      !annoLaurea ||
       !dataDiNascita
     ) {
       setError("Compila tutti i campi richiesti.");
@@ -177,7 +177,7 @@ export default function ProfilePage() {
         numero_telefono: normalizedTelefono,
         facolta,
         corso_di_laurea: corsoDiLaurea,
-        anno_immatricolazione: Number(annoImmatricolazione),
+        anno_di_laurea: Number(annoLaurea),
         data_di_nascita: dataDiNascita,
       })
       .eq("id", profile.id);
@@ -196,7 +196,7 @@ export default function ProfilePage() {
       numero_telefono: normalizedTelefono,
       facolta: facolta as Facolta,
       corso_di_laurea: corsoDiLaurea,
-      anno_immatricolazione: Number(annoImmatricolazione),
+      anno_di_laurea: Number(annoLaurea),
       data_di_nascita: dataDiNascita,
       updated_at: new Date().toISOString(),
     };
@@ -208,7 +208,7 @@ export default function ProfilePage() {
     setNumeroTelefono(nextProfile.numero_telefono);
     setFacolta(nextProfile.facolta);
     setCorsoDiLaurea(nextProfile.corso_di_laurea);
-    setAnnoImmatricolazione(String(nextProfile.anno_immatricolazione));
+    setAnnoLaurea(String(nextProfile.anno_di_laurea));
     setDataDiNascita(nextProfile.data_di_nascita);
     setSuccess("Profilo aggiornato con successo.");
     setIsEditing(false);
@@ -224,7 +224,7 @@ export default function ProfilePage() {
     setNumeroTelefono(profile.numero_telefono);
     setFacolta(profile.facolta);
     setCorsoDiLaurea(profile.corso_di_laurea);
-    setAnnoImmatricolazione(String(profile.anno_immatricolazione));
+    setAnnoLaurea(String(profile.anno_di_laurea));
     setDataDiNascita(profile.data_di_nascita);
     setError("");
     setSuccess("");
@@ -371,11 +371,11 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="field">
-                  <label htmlFor="anno">Anno di immatricolazione</label>
+                  <label htmlFor="anno">Anno di laurea</label>
                   <select
                     id="anno"
-                    value={annoImmatricolazione}
-                    onChange={(e) => setAnnoImmatricolazione(e.target.value)}
+                    value={annoLaurea}
+                    onChange={(e) => setAnnoLaurea(e.target.value)}
                     required
                     disabled={!isEditing}
                   >

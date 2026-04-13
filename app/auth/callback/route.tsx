@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     const numeroTelefono = String(metadata.numero_telefono ?? "").trim();
     const facolta = facoltaMap[String(metadata.facolta ?? "").trim()] ?? null;
     const corsoDiLaurea = String(metadata.corso_di_laurea ?? "").trim();
-    const annoImmatricolazione = Number(metadata.anno_immatricolazione);
+    const annoLaurea = Number(metadata.anno_di_laurea);
     const dataDiNascita = String(metadata.data_di_nascita ?? "").trim();
 
     if (
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
       !numeroTelefono ||
       !facolta ||
       !corsoDiLaurea ||
-      Number.isNaN(annoImmatricolazione) ||
+      Number.isNaN(annoLaurea) ||
       !dataDiNascita
     ) {
       return NextResponse.redirect(
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
       numero_telefono: numeroTelefono,
       facolta,
       corso_di_laurea: corsoDiLaurea,
-      anno_immatricolazione: annoImmatricolazione,
+      anno_di_laurea: annoLaurea,
       data_di_nascita: dataDiNascita,
       role: "user",
     });

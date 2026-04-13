@@ -65,7 +65,7 @@ export default function SignupPage() {
   const [telefono, setTelefono] = useState("");
   const [facolta, setFacolta] = useState("");
   const [corsoDiLaurea, setCorsoDiLaurea] = useState("");
-  const [annoImmatricolazione, setAnnoImmatricolazione] = useState("");
+  const [annoLaurea, setAnnoLaurea] = useState("");
   const [dataDiNascita, setDataDiNascita] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -98,7 +98,7 @@ export default function SignupPage() {
       return;
     }
 
-    if (!facolta || !corsoDiLaurea || !annoImmatricolazione || !dataDiNascita) {
+    if (!facolta || !corsoDiLaurea || !annoLaurea || !dataDiNascita) {
       setError("Compila tutti i campi richiesti.");
       return;
     }
@@ -129,7 +129,7 @@ export default function SignupPage() {
           numero_telefono: normalizedPhone,
           facolta,
           corso_di_laurea: corsoDiLaurea,
-          anno_immatricolazione: Number(annoImmatricolazione),
+          anno_di_laurea: Number(annoLaurea),
           data_di_nascita: dataDiNascita,
           email_istituzionale: normalizedEmail,
         },
@@ -262,12 +262,12 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <FieldLabel htmlFor="annoImmatricolazione">Anno di immatricolazione</FieldLabel>
+            <FieldLabel htmlFor="annoLaurea">Anno di laurea</FieldLabel>
             <select
-              id="annoImmatricolazione"
+              id="annoLaurea"
               className="input"
-              value={annoImmatricolazione}
-              onChange={(e) => setAnnoImmatricolazione(e.target.value)}
+              value={annoLaurea}
+              onChange={(e) => setAnnoLaurea(e.target.value)}
               required
             >
               <option value="">Seleziona un anno</option>

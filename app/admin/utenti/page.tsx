@@ -18,7 +18,7 @@ type Profile = {
   numero_telefono: string;
   facolta: Facolta | string;
   corso_di_laurea: string;
-  anno_immatricolazione: number;
+  anno_di_laurea: number;
   data_di_nascita: string;
   role: Role;
   ruolo_tessera: RuoloTessera;
@@ -41,7 +41,7 @@ type SortKey =
   | "numero_telefono"
   | "facolta"
   | "corso_di_laurea"
-  | "anno_immatricolazione"
+  | "anno_di_laurea"
   | "data_di_nascita"
   | "role"
   | "ruolo_tessera"
@@ -93,7 +93,7 @@ const sortableColumns: Array<{ label: string; key: SortKey }> = [
   { label: "Telefono", key: "numero_telefono" },
   { label: "Facoltà", key: "facolta" },
   { label: "Corso di laurea", key: "corso_di_laurea" },
-  { label: "Anno immatricolazione", key: "anno_immatricolazione" },
+  { label: "Anno immatricolazione", key: "anno_di_laurea" },
   { label: "Data di nascita", key: "data_di_nascita" },
   { label: "Ruolo", key: "role" },
   { label: "Ruolo tessera", key: "ruolo_tessera" },
@@ -134,7 +134,7 @@ function profilesAreDifferent(original: Profile, edited: Profile | undefined) {
     edited.numero_telefono !== original.numero_telefono ||
     edited.facolta !== original.facolta ||
     edited.corso_di_laurea !== original.corso_di_laurea ||
-    Number(edited.anno_immatricolazione) !== Number(original.anno_immatricolazione) ||
+    Number(edited.anno_di_laurea) !== Number(original.anno_di_laurea) ||
     edited.data_di_nascita !== original.data_di_nascita ||
     edited.role !== original.role ||
     edited.ruolo_tessera !== original.ruolo_tessera
@@ -240,7 +240,7 @@ export default function AdminUtentiPage() {
     return Array.from(
       new Set(
         profiles
-          .map((profile) => profile.anno_immatricolazione)
+          .map((profile) => profile.anno_di_laurea)
           .filter((year) => typeof year === "number" && !Number.isNaN(year))
       )
     ).sort((a, b) => b - a);
@@ -263,7 +263,7 @@ export default function AdminUtentiPage() {
   function getComparableValue(profile: Profile, key: SortKey) {
     const value = profile[key];
 
-    if (key === "anno_immatricolazione") {
+    if (key === "anno_di_laurea") {
       return Number(value ?? 0);
     }
 
@@ -294,7 +294,7 @@ export default function AdminUtentiPage() {
           profile.role,
           profile.ruolo_tessera,
           profile.id,
-          profile.anno_immatricolazione,
+          profile.anno_di_laurea,
         ]
           .map((value) => normalize(value))
           .some((value) => value.includes(query));
@@ -304,7 +304,7 @@ export default function AdminUtentiPage() {
         !filters.ruolo_tessera || profile.ruolo_tessera === filters.ruolo_tessera;
       const matchesFaculty = !filters.facolta || profile.facolta === filters.facolta;
       const matchesCourse = !filters.corso || profile.corso_di_laurea === filters.corso;
-      const matchesYear = !filters.anno || String(profile.anno_immatricolazione) === filters.anno;
+      const matchesYear = !filters.anno || String(profile.anno_di_laurea) === filters.anno;
 
       return (
         matchesSearch &&
@@ -386,7 +386,7 @@ export default function AdminUtentiPage() {
 
       const nextProfile: Profile = {
         ...baseProfile,
-        [field]: field === "anno_immatricolazione" ? Number(value) : value,
+        [field]: field === "anno_di_laurea" ? Number(value) : value,
       } as Profile;
 
       if (field === "facolta") {
@@ -467,7 +467,7 @@ export default function AdminUtentiPage() {
       numero_telefono: profile.numero_telefono,
       facolta: profile.facolta,
       corso_di_laurea: profile.corso_di_laurea,
-      anno_immatricolazione: Number(profile.anno_immatricolazione),
+      anno_di_laurea: Number(profile.anno_di_laurea),
       data_di_nascita: profile.data_di_nascita,
       role: profile.role,
       ruolo_tessera: profile.ruolo_tessera,
@@ -541,7 +541,7 @@ export default function AdminUtentiPage() {
       { key: "numero_telefono", label: "Numero di telefono" },
       { key: "facolta", label: "Facoltà" },
       { key: "corso_di_laurea", label: "Corso di laurea" },
-      { key: "anno_immatricolazione", label: "Anno di immatricolazione" },
+      { key: "anno_di_laurea", label: "Anno di immatricolazione" },
       { key: "data_di_nascita", label: "Data di nascita" },
       { key: "role", label: "Ruolo" },
       { key: "ruolo_tessera", label: "Ruolo tessera" },
@@ -1243,11 +1243,11 @@ export default function AdminUtentiPage() {
                           <td style={cellStyle}>
                             <input
                               type="number"
-                              value={current.anno_immatricolazione ?? ""}
+                              value={current.anno_di_laurea ?? ""}
                               onChange={(event) =>
                                 updateEditedProfile(
                                   profile.id,
-                                  "anno_immatricolazione",
+                                  "anno_di_laurea",
                                   event.target.value
                                 )
                               }

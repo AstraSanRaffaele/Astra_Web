@@ -16,7 +16,7 @@ type Profile = {
   numero_telefono: string;
   facolta: string;
   corso_di_laurea: string;
-  anno_immatricolazione: number;
+  anno_di_laurea: number;
   data_di_nascita: string;
   role: Role;
   created_at: string;
