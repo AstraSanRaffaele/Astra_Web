@@ -2,7 +2,6 @@
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { createClient } from "@/lib/supabase/client";
 
@@ -636,7 +635,6 @@ export default function AdminUtentiPage() {
 
   return (
     <>
-      <Navbar />
 
       <main
         style={{

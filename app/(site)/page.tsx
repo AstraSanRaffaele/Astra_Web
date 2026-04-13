@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 
 
@@ -137,7 +136,6 @@ export default function Home() {
       `}</style>
 
       <div style={{ fontFamily: "'Nunito', sans-serif", background: "var(--white)", color: "var(--text)", overflowX: "hidden" }}>
-        <Navbar />
 
         {/* ── HERO ── */}
         <section style={{

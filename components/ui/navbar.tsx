@@ -27,6 +27,36 @@ function getInitials(fullName: string) {
     .join("");
 }
 
+function readNavbarAuthCache(): {
+  authReady: boolean;
+  isLoggedIn: boolean;
+  profileName: string;
+  isAdmin: boolean;
+} | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem("navbar-auth-cache");
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as {
+      authReady?: boolean;
+      isLoggedIn?: boolean;
+      profileName?: string;
+      isAdmin?: boolean;
+    };
+
+    return {
+      authReady: parsed.authReady === true,
+      isLoggedIn: parsed.isLoggedIn === true,
+      profileName: typeof parsed.profileName === "string" ? parsed.profileName : "",
+      isAdmin: parsed.isAdmin === true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function Navbar() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -36,8 +66,11 @@ export default function Navbar() {
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const mobileActionsRef = useRef<HTMLDivElement | null>(null);
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
+  const hasResolvedInitialAuthRef = useRef(false);
+  const hasAppliedCachedAuthRef = useRef(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -67,6 +100,13 @@ export default function Navbar() {
     setIsLoggedIn(false);
     setProfileName("");
     setIsAdmin(false);
+    setAuthReady(false);
+    hasResolvedInitialAuthRef.current = false;
+    hasAppliedCachedAuthRef.current = false;
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("navbar-auth-cache");
+    }
 
     router.replace("/");
     router.refresh();
@@ -90,76 +130,135 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    if (hasAppliedCachedAuthRef.current) return;
+
+    const cachedAuth = readNavbarAuthCache();
+    if (!cachedAuth) {
+      hasAppliedCachedAuthRef.current = true;
+      return;
+    }
+
+    setAuthReady(cachedAuth.authReady);
+    setIsLoggedIn(cachedAuth.isLoggedIn);
+    setProfileName(cachedAuth.profileName);
+    setIsAdmin(cachedAuth.isAdmin);
+    hasAppliedCachedAuthRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !authReady) return;
+
+    window.sessionStorage.setItem(
+      "navbar-auth-cache",
+      JSON.stringify({
+        authReady,
+        isLoggedIn,
+        profileName,
+        isAdmin,
+      })
+    );
+  }, [authReady, isLoggedIn, profileName, isAdmin]);
+
+  useEffect(() => {
     let mounted = true;
+    hasResolvedInitialAuthRef.current = false;
 
     const loadUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      if (!user) {
+        const user = session?.user;
+
+        if (!user) {
+          setIsLoggedIn(false);
+          setProfileName("");
+          setIsAdmin(false);
+          setAuthReady(true);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!mounted) return;
+
+        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+
+        setIsLoggedIn(true);
+        setIsAdmin(profile?.role === "admin");
+        setProfileName(fullName || user.email || "Profilo");
+        setAuthReady(true);
+      } catch {
+        if (!mounted) return;
         setIsLoggedIn(false);
         setProfileName("");
         setIsAdmin(false);
-        return;
+        setAuthReady(true);
+      } finally {
+        if (mounted) {
+          hasResolvedInitialAuthRef.current = true;
+        }
       }
-
-      setIsLoggedIn(true);
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (!mounted) return;
-
-      setIsAdmin(profile?.role === "admin");
-
-      const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
-
-      setProfileName(fullName || user.email || "Profilo");
     };
 
     loadUser();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted || !hasResolvedInitialAuthRef.current) return;
+      if (event === "INITIAL_SESSION") return;
+
       const user = session?.user;
 
-      if (!mounted) return;
+      try {
+        if (!user) {
+          setIsLoggedIn(false);
+          setProfileName("");
+          setIsAdmin(false);
+          setAuthReady(true);
 
-      if (!user) {
+          if (typeof window !== "undefined") {
+            window.sessionStorage.removeItem("navbar-auth-cache");
+          }
+
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!mounted) return;
+
+        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+
+        setIsLoggedIn(true);
+        setIsAdmin(profile?.role === "admin");
+        setProfileName(fullName || user.email || "Profilo");
+        setAuthReady(true);
+      } catch {
+        if (!mounted) return;
         setIsLoggedIn(false);
         setProfileName("");
         setIsAdmin(false);
-        return;
+        setAuthReady(true);
       }
-
-      setIsLoggedIn(true);
-
-      supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single()
-        .then(({ data: profile }) => {
-          if (!mounted) return;
-          setIsAdmin(profile?.role === "admin");
-        });
-
-      const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
-
-      setProfileName(fullName || user.email || "Profilo");
     });
 
     return () => {
@@ -251,7 +350,6 @@ export default function Navbar() {
           WebkitBackdropFilter: "none",
           borderBottom: "1px solid rgba(14,31,107,0.07)",
           animation: "fadeDown .8s ease both",
-          fontFamily: "'Nunito', sans-serif",
         }}
       >
         <a
@@ -291,7 +389,30 @@ export default function Navbar() {
             </li>
           ))}
 
-          {!isLoggedIn ? (
+          {!authReady ? (
+            <>
+              <li>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    width: 64,
+                    height: 20,
+                  }}
+                />
+              </li>
+              <li>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    width: 110,
+                    height: 38,
+                    borderRadius: "999px",
+                    background: "rgba(14,31,107,.08)",
+                  }}
+                />
+              </li>
+            </>
+          ) : !isLoggedIn ? (
             <>
               <li>
                 <a
@@ -442,7 +563,17 @@ export default function Navbar() {
             zIndex: 121,
           }}
         >
-          {!isLoggedIn ? (
+          {!authReady ? (
+            <span
+              style={{
+                display: "inline-flex",
+                width: 88,
+                height: 38,
+                borderRadius: "999px",
+                background: "rgba(14,31,107,.08)",
+              }}
+            />
+          ) : !isLoggedIn ? (
             <Link
               href="/login"
               style={{
@@ -482,7 +613,6 @@ export default function Navbar() {
                 whiteSpace: "nowrap",
                 boxShadow: "0 8px 20px rgba(14,31,107,.16)",
                 cursor: "pointer",
-                fontFamily: "'Nunito', sans-serif",
               }}
             >
               Logout
@@ -579,7 +709,6 @@ export default function Navbar() {
               display: "flex",
               flexDirection: "column",
               gap: "1.2rem",
-              fontFamily: "'Nunito', sans-serif",
               boxShadow: "0 18px 40px rgba(10,15,44,.10)",
             }}
           >
@@ -599,7 +728,17 @@ export default function Navbar() {
               </a>
             ))}
 
-            {!isLoggedIn ? (
+            {!authReady ? (
+              <span
+                style={{
+                  display: "inline-flex",
+                  width: 110,
+                  height: 20,
+                  borderRadius: "999px",
+                  background: "rgba(14,31,107,.08)",
+                }}
+              />
+            ) : !isLoggedIn ? (
               <a
                 href="/#join"
                 onClick={closeMenu}
@@ -709,11 +848,6 @@ export default function Navbar() {
         .site-navbar,
         .site-navbar * {
           box-sizing: border-box;
-        }
-
-        .site-navbar a,
-        .site-navbar button {
-          font-family: 'Nunito', sans-serif;
         }
 
         .navbar-desktop-links a:not(.profile-chip) {

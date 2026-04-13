@@ -257,13 +257,11 @@ export default function ConvenzioniPage() {
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: "#F7F8FC" }}>
-        <Navbar />
         <main
           style={{
             maxWidth: "1200px",
             margin: "0 auto",
             padding: "9rem 1.25rem 4rem",
-            fontFamily: "'Nunito', sans-serif",
           }}
         >
           <div
@@ -292,7 +290,6 @@ export default function ConvenzioniPage() {
           maxWidth: "1200px",
           margin: "0 auto",
           padding: "8.5rem 1.25rem 4rem",
-          fontFamily: "'Nunito', sans-serif",
           display: "flex",
           flexDirection: "column",
           gap: "2rem",
