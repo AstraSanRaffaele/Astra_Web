@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/next"
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 
@@ -12,6 +13,7 @@ export default function SiteLayout({
       <Navbar />
       {children}
       <Footer />
+      <Analytics/>
     </>
   );
 }
