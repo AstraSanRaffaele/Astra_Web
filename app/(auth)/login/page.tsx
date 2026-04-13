@@ -196,8 +196,6 @@ function LoginPageContent() {
           </Link>
         </div>
       </AuthShell>
-
-      <Footer />
     </>
   );
 }

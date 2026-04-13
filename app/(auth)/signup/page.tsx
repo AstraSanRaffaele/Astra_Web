@@ -379,7 +379,6 @@ export default function SignupPage() {
           </Link>
         </div>
       </AuthShell>
-      <Footer />
     </>
   );
 }

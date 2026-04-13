@@ -56,6 +56,24 @@ const graduationYearOptions = Array.from({ length: 2040 - 2020 + 1 }, (_, i) => 
   return { value: String(year), label: String(year) };
 });
 
+const PASSWORD_RESET_COOLDOWN_MS = 60 * 60 * 1000;
+
+function formatCooldownRemaining(milliseconds: number) {
+  const totalMinutes = Math.ceil(milliseconds / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0 && minutes > 0) {
+    return `${hours} ora${hours > 1 ? "e" : ""} e ${minutes} minuto${minutes > 1 ? "i" : ""}`;
+  }
+
+  if (hours > 0) {
+    return `${hours} ora${hours > 1 ? "e" : ""}`;
+  }
+
+  return `${minutes} minuto${minutes > 1 ? "i" : ""}`;
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("it-IT", {
     day: "2-digit",
@@ -73,6 +91,9 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [passwordResetMessage, setPasswordResetMessage] = useState("");
+  const [passwordResetCooldownUntil, setPasswordResetCooldownUntil] = useState<number | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -84,6 +105,17 @@ export default function ProfilePage() {
   const [corsoDiLaurea, setCorsoDiLaurea] = useState("");
   const [annoLaurea, setAnnoLaurea] = useState("");
   const [dataDiNascita, setDataDiNascita] = useState("");
+
+  const passwordResetStorageKey = useMemo(() => {
+    if (!emailIstituzionale) return "";
+    return `password-reset-cooldown:${emailIstituzionale.toLowerCase()}`;
+  }, [emailIstituzionale]);
+
+  const remainingPasswordResetMs = passwordResetCooldownUntil
+    ? Math.max(passwordResetCooldownUntil - Date.now(), 0)
+    : 0;
+
+  const isPasswordResetLocked = remainingPasswordResetMs > 0;
 
   const courseOptions = useMemo(() => {
     return degreeOptionsMap[facolta] ?? [];
@@ -135,11 +167,89 @@ export default function ProfilePage() {
       setAnnoLaurea(String(loadedProfile.anno_di_laurea));
       setDataDiNascita(loadedProfile.data_di_nascita);
 
+      if (typeof window !== "undefined") {
+        const storageKey = `password-reset-cooldown:${loadedProfile.email_istituzionale.toLowerCase()}`;
+        const storedCooldown = window.localStorage.getItem(storageKey);
+
+        if (storedCooldown) {
+          const cooldownUntil = Number(storedCooldown);
+
+          if (Number.isFinite(cooldownUntil) && cooldownUntil > Date.now()) {
+            setPasswordResetCooldownUntil(cooldownUntil);
+          } else {
+            window.localStorage.removeItem(storageKey);
+            setPasswordResetCooldownUntil(null);
+          }
+        } else {
+          setPasswordResetCooldownUntil(null);
+        }
+      }
+
       setLoading(false);
     }
 
     loadProfile();
   }, [router, supabase]);
+
+  useEffect(() => {
+    if (!passwordResetCooldownUntil) return;
+
+    const interval = window.setInterval(() => {
+      if (passwordResetCooldownUntil <= Date.now()) {
+        if (passwordResetStorageKey) {
+          window.localStorage.removeItem(passwordResetStorageKey);
+        }
+        setPasswordResetCooldownUntil(null);
+        setPasswordResetMessage("Ora puoi richiedere una nuova email per reimpostare la password.");
+      }
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [passwordResetCooldownUntil, passwordResetStorageKey]);
+
+  async function handlePasswordReset() {
+    if (!emailIstituzionale) {
+      setPasswordResetMessage("Email istituzionale non disponibile.");
+      return;
+    }
+
+    if (isPasswordResetLocked) {
+      setPasswordResetMessage(
+        `Puoi richiedere una nuova email di reimpostazione tra ${formatCooldownRemaining(remainingPasswordResetMs)}.`
+      );
+      return;
+    }
+
+    setPasswordResetLoading(true);
+    setPasswordResetMessage("");
+
+    const redirectTo = `${window.location.origin}/update-password`;
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(emailIstituzionale, {
+      redirectTo,
+    });
+
+    if (resetError) {
+      console.error("Errore invio reset password:", resetError);
+      setPasswordResetMessage(
+        resetError.message || "Non è stato possibile inviare l'email di reimpostazione."
+      );
+      setPasswordResetLoading(false);
+      return;
+    }
+
+    const cooldownUntil = Date.now() + PASSWORD_RESET_COOLDOWN_MS;
+
+    if (passwordResetStorageKey) {
+      window.localStorage.setItem(passwordResetStorageKey, String(cooldownUntil));
+    }
+
+    setPasswordResetCooldownUntil(cooldownUntil);
+    setPasswordResetMessage(
+      "Ti abbiamo inviato un'email per reimpostare la password. Puoi richiederne una nuova solo una volta ogni ora."
+    );
+    setPasswordResetLoading(false);
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -337,6 +447,28 @@ export default function ProfilePage() {
               </div>
 
               <div className="field">
+                <label>Password</label>
+                <div className="passwordResetBox">
+                  <button
+                    type="button"
+                    className="ghostButton passwordResetButton"
+                    onClick={handlePasswordReset}
+                    disabled={passwordResetLoading || isPasswordResetLocked}
+                  >
+                    {passwordResetLoading
+                      ? "Invio in corso..."
+                      : isPasswordResetLocked
+                        ? `Riprova tra ${formatCooldownRemaining(remainingPasswordResetMs)}`
+                        : "Reimposta password"}
+                  </button>
+
+                  <p className="passwordResetHint">
+                    Per sicurezza puoi richiedere una nuova email di reimpostazione solo una volta ogni ora.
+                  </p>
+                </div>
+              </div>
+
+              <div className="field">
                 <label htmlFor="telefono">Numero di telefono</label>
                 <input
                   id="telefono"
@@ -422,6 +554,17 @@ export default function ProfilePage() {
 
               {error ? <div className="message error">{error}</div> : null}
               {success ? <div className="message success">{success}</div> : null}
+              {passwordResetMessage ? (
+                <div
+                  className={`message ${passwordResetMessage.includes("Non è stato possibile") ||
+                    passwordResetMessage.includes("non disponibile")
+                    ? "error"
+                    : "success"
+                    }`}
+                >
+                  {passwordResetMessage}
+                </div>
+              ) : null}
 
               {isEditing ? (
                 <div className="actions actionsRow">
@@ -475,9 +618,6 @@ export default function ProfilePage() {
           </div>
         </section>
       </div>
-
-      <Footer />
-
       <style>{styles}</style>
     </main>
   );
@@ -771,6 +911,29 @@ const styles = `
     cursor: not-allowed;
   }
 
+  .passwordResetBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .75rem;
+}
+
+.passwordResetButton {
+  min-width: 220px;
+}
+
+.passwordResetButton:disabled {
+  opacity: .75;
+  cursor: not-allowed;
+}
+
+.passwordResetHint {
+  margin: 0;
+  color: #64748b;
+  font-size: .9rem;
+  line-height: 1.55;
+}
+
   .message {
     border-radius: 16px;
     padding: .95rem 1rem;
@@ -1006,7 +1169,8 @@ const styles = `
 
     .saveButton,
     .secondaryActionButton,
-    .smallActionButton {
+    .smallActionButton,
+    .passwordResetButton {
       width: 100%;
       min-width: 0;
     }

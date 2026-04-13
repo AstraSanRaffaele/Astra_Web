@@ -109,8 +109,6 @@ export default function ForgotPasswordPage() {
           </Link>
         </div>
       </AuthShell>
-
-      <Footer />
     </>
   );
 }

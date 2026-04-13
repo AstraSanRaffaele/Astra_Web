@@ -239,7 +239,6 @@ export default function AdminPage() {
           </div>
         </section>
       </div>
-      <Footer />
       <style>{styles}</style>
     </main>
   );
