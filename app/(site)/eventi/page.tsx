@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Navbar from "@/components/ui/navbar";
 
 export default function EventiPage() {
   const [events, setEvents] = useState<any[]>([]);
@@ -27,7 +26,6 @@ export default function EventiPage() {
           borderTop: "1px solid rgba(8,16,42,.06)",
         }}
       >
-        <Navbar />
 
         {/* ══ HERO ══ */}
         <section

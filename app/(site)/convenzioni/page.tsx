@@ -2,8 +2,6 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/ui/navbar";
-import Footer from "@/components/ui/footer";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ConvenzioniPage() {
@@ -39,7 +37,6 @@ export default function ConvenzioniPage() {
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: "#fff" }}>
-        <Navbar />
         <div style={{ padding: "8rem 2rem" }}>Caricamento...</div>
       </div>
     );
@@ -56,7 +53,6 @@ export default function ConvenzioniPage() {
           borderTop: "1px solid rgba(8,16,42,.06)",
         }}
       >
-        <Navbar />
 
         {/* ══ HERO ══ */}
         <section
@@ -153,8 +149,6 @@ export default function ConvenzioniPage() {
             ))}
           </div>
         </section>
-
-        <Footer />
       </div>
 
       {/* STYLE */}
