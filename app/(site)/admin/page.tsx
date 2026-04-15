@@ -52,15 +52,13 @@ export default function AdminPage() {
       setLoading(true);
       setError("");
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
 
-      if (userError || !user) {
-        router.replace("/login");
-        return;
-      }
+     if (!user) {
+  router.replace("/login");
+  return;
+}
 
       const { data: myProfile, error: profileError } = await supabase
         .from("profiles")
@@ -187,14 +185,21 @@ export default function AdminPage() {
                 <div className="quickCard">
                   <h3>Gestione convenzioni</h3>
                   <p>Apri l’area dedicata per creare, modificare o eliminare le convenzioni visibili agli utenti registrati.</p>
-                  <a href="/convenzioni" className="ghostButton fullButton">
-                    Vai alle convenzioni
+                  <a href="/admin/convenzioni" className="ctaButton primary">
+                    Vai alla gestione convenzioni
                   </a>
                 </div>
                 <div className="quickCard">
+                  <h3>Gestione eventi</h3>
+                  <p>Apri l’area dedicata per creare, modificare o eliminare le convenzioni visibili agli utenti registrati.</p>
+                  <a href="/admin/eventi" className="ctaButton primary">
+                    Vai alla gestione eventi
+                  </a>
+                </div>    
+                <div className="quickCard">
                   <h3>Gestione utenti</h3>
                   <p>Accedi all’area dedicata per visualizzare, cercare e gestire gli utenti registrati della piattaforma Astra.</p>
-                  <a href="/admin/utenti" className="ghostButton fullButton">
+                  <a href="/admin/utenti" className="ctaButton primary">
                     Vai alla gestione utenti
                   </a>
                 </div>
@@ -245,6 +250,48 @@ export default function AdminPage() {
 }
 
 const styles = `
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+
+        body {
+          font-family: 'DM Sans', sans-serif;
+        }
+
+.ctaButton {
+  border-radius: 999px;
+  font-weight: 800;
+  text-decoration: none;
+  padding: .85rem 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .25s ease;
+  font-size: .9rem;
+}
+
+/* PRIMARY (azione principale) */
+.ctaButton.primary {
+  background: linear-gradient(135deg, #0E1F6B, #2743b4);
+  color: white;
+  box-shadow: 0 10px 25px rgba(14,31,107,.25);
+}
+
+.ctaButton.primary:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 14px 30px rgba(14,31,107,.35);
+}
+
+/* SECONDARY (azione meno importante) */
+.ctaButton.secondary {
+  background: rgba(14,31,107,.06);
+  color: #0E1F6B;
+  border: 1px solid rgba(14,31,107,.12);
+}
+
+.ctaButton.secondary:hover {
+  background: rgba(14,31,107,.12);
+  transform: translateY(-1px);
+}
+  
   .admin-page {
     min-height: 100vh;
     position: relative;

@@ -232,7 +232,7 @@ export default function ProfilePage() {
               </h1>
               <span style={{
                 fontSize: ".72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em",
-                padding: ".3rem .85rem", borderRadius: "999px",
+                padding: ".3rem .85rem", borderRadius: "12px",
                 background: isAdmin ? "#08102A" : "rgba(8,16,42,.08)",
                 color: isAdmin ? "#fff" : "#08102A",
               }}>
@@ -251,7 +251,7 @@ export default function ProfilePage() {
               onClick={() => { setError(""); setSuccess(""); setIsEditing(true); }}
               style={{
                 border: "1px solid rgba(8,16,42,.15)", background: "#fff", color: "#08102A",
-                padding: ".6rem 1.3rem", borderRadius: "999px", fontWeight: 600, fontSize: ".88rem",
+                padding: ".6rem 1.3rem", borderRadius: "12px", fontWeight: 600, fontSize: ".88rem",
                 cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                 transition: "background .18s, border-color .18s",
               }}
@@ -298,7 +298,7 @@ export default function ProfilePage() {
                     style={{
                       background: isPasswordResetLocked ? "rgba(8,16,42,.05)" : "#08102A",
                       color: isPasswordResetLocked ? "#6B7280" : "#fff",
-                      border: "none", borderRadius: "999px",
+                      border: "none", borderRadius: "12px",
                       padding: ".6rem 1.3rem", fontWeight: 600, fontSize: ".86rem",
                       cursor: isPasswordResetLocked ? "not-allowed" : "pointer",
                       width: "fit-content", transition: "background .18s",
@@ -350,14 +350,14 @@ export default function ProfilePage() {
                     type="button"
                     onClick={handleCancelEdit}
                     disabled={saving}
-                    style={{ border: "1px solid rgba(8,16,42,.15)", background: "#fff", color: "#08102A", padding: ".7rem 1.6rem", borderRadius: "999px", fontWeight: 600, fontSize: ".9rem", cursor: "pointer" }}
+                    style={{ border: "1px solid rgba(8,16,42,.15)", background: "#fff", color: "#08102A", padding: ".7rem 1.6rem", borderRadius: "12px", fontWeight: 600, fontSize: ".9rem", cursor: "pointer" }}
                   >
                     Annulla
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    style={{ background: "#08102A", color: "#fff", border: "none", padding: ".7rem 2rem", borderRadius: "999px", fontWeight: 700, fontSize: ".9rem", cursor: saving ? "wait" : "pointer", opacity: saving ? .7 : 1, boxShadow: "0 4px 16px rgba(8,16,42,.18)" }}
+                    style={{ background: "#08102A", color: "#fff", border: "none", padding: ".7rem 2rem", borderRadius: "12px", fontWeight: 700, fontSize: ".9rem", cursor: saving ? "wait" : "pointer", opacity: saving ? .7 : 1, boxShadow: "0 4px 16px rgba(8,16,42,.18)" }}
                   >
                     {saving ? "Salvataggio..." : "Salva modifiche"}
                   </button>
@@ -373,6 +373,60 @@ export default function ProfilePage() {
             <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "2rem", padding: "2rem", boxShadow: "0 2px 20px rgba(8,16,42,.04)" }}>
               <p style={{ fontSize: ".65rem", fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: "#2E4080", margin: "0 0 .4rem" }}>Panoramica</p>
               <h2 style={{ margin: "0 0 1.5rem", fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-.02em" }}>Account</h2>
+              <div style={{
+                }}>
+                  <p style={{
+                    fontSize: ".65rem",
+                    fontWeight: 700,
+                    letterSpacing: ".2em",
+                    textTransform: "uppercase",
+                    color: "#2E4080",
+                    marginBottom: ".8rem"
+                  }}>
+                    Tessera digitale
+                  </p>
+
+                  <h3 style={{
+                    fontSize: "1.1rem",
+                    fontWeight: 700,
+                    marginBottom: "1rem"
+                  }}>
+                    Astra Card
+                  </h3>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: ".7rem" }}>
+
+                    <button
+                      onClick={() => window.location.href = "/api/wallet/apple"}
+                      style={{
+                        background: "#000",
+                        color: "#fff",
+                        borderRadius: "12px",
+                        padding: ".7rem",
+                        fontWeight: 600
+                      }}
+                    >
+                      Apple Wallet
+                    </button>
+
+                    <button
+                      onClick={() => window.location.href = "/api/wallet/google"}
+                      style={{
+                        background: "#4285F4",
+                        color: "#fff",
+                        borderRadius: "12px",
+                        padding: ".7rem",
+                        textAlign: "center",
+                        fontWeight: 600,
+                        textDecoration: "none",
+                        border: "none",
+                      }}
+                    >
+                       Google Wallet
+                    </button>
+
+                  </div>
+                </div>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 {[
                   ["Ruolo", isAdmin ? "Admin" : "User"],
@@ -416,6 +470,16 @@ export default function ProfilePage() {
           .profile-grid { grid-template-columns: 1fr !important; }
         }
 
+        .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+}
+
+.form-row > * {
+  min-width: 0; /* 🔥 QUESTO risolve il bug di overflow */
+}
+
         @media (max-width: 560px) {
           .form-row { grid-template-columns: 1fr !important; }
         }
@@ -431,16 +495,15 @@ function Field({ label, id, value, onChange, disabled, type = "text" }: {
   onChange?: (v: string) => void; disabled?: boolean; type?: string;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
       <label htmlFor={id} style={{ fontSize: ".8rem", fontWeight: 700, color: "#1e293b" }}>{label}</label>
       <input
         id={id} type={type} value={value}
         onChange={e => onChange?.(e.target.value)}
         disabled={disabled} required={!disabled}
         style={{
-          width: "100%",
           padding: ".8rem 1rem",
-          borderRadius: "999px",
+          borderRadius: "12px",
           border: "1px solid rgba(8,16,42,.12)",
 
           // ✅ usa backgroundColor invece di background
@@ -455,9 +518,6 @@ function Field({ label, id, value, onChange, disabled, type = "text" }: {
 
           // 👇 questo ora NON entra più in conflitto
           backgroundRepeat: "no-repeat",
-          backgroundPosition: "right 1rem center",
-
-          paddingRight: "2.5rem",
         }}
         onFocus={e => { if (!disabled) { e.target.style.borderColor = "rgba(46,64,128,.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(46,64,128,.1)"; } }}
         onBlur={e => { e.target.style.borderColor = "rgba(8,16,42,.12)"; e.target.style.boxShadow = "none"; }}
@@ -472,21 +532,19 @@ function SelectField({ label, id, value, onChange, disabled, options }: {
   options: { value: string; label: string }[];
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
       <label htmlFor={id} style={{ fontSize: ".8rem", fontWeight: 700, color: "#1e293b" }}>{label}</label>
       <select
         id={id} value={value}
         onChange={e => onChange(e.target.value)}
         disabled={disabled} required
-        style={{
+style={{
   width: "100%",
-  padding: ".8rem 1rem",
-  borderRadius: "999px",
+  height: "44px", // ✅ allineato agli input
+  padding: "0 14px",
+  borderRadius: "12px", // 🔥 NON 999px
   border: "1px solid rgba(8,16,42,.12)",
-
-  // ✅ usa backgroundColor invece di background
   backgroundColor: disabled ? "rgba(8,16,42,.04)" : "#fff",
-
   color: value ? "#08102A" : "#6B7280",
   fontSize: ".9rem",
   outline: "none",
@@ -494,12 +552,12 @@ function SelectField({ label, id, value, onChange, disabled, options }: {
   cursor: disabled ? "default" : "pointer",
   appearance: "none",
 
-  // 👇 questo ora NON entra più in conflitto
+  // freccia
   backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
   backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 1rem center",
+  backgroundPosition: "right 12px center",
 
-  paddingRight: "2.5rem",
+  paddingRight: "36px", // solo per select
 }}
         onFocus={e => { if (!disabled) { e.target.style.borderColor = "rgba(46,64,128,.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(46,64,128,.1)"; } }}
         onBlur={e => { e.target.style.borderColor = "rgba(8,16,42,.12)"; e.target.style.boxShadow = "none"; }}
@@ -514,7 +572,7 @@ function Msg({ type, children }: { type: "error" | "success"; children: React.Re
   const isError = type === "error";
   return (
     <div style={{
-      padding: ".85rem 1.1rem", borderRadius: "999px",
+      padding: ".85rem 1.1rem", borderRadius: "12px",
       background: isError ? "#fff1f2" : "#f0fdf4",
       border: `1px solid ${isError ? "#fecdd3" : "#bbf7d0"}`,
       color: isError ? "#be123c" : "#15803d",

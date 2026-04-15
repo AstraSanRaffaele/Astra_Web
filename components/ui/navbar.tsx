@@ -92,19 +92,33 @@ export default function Navbar() {
   const toggleMenu = () => setMenuOpen((prev) => !prev);
   const closeMenu = () => setMenuOpen(false);
 
-  const handleLogout = async () => {
+const handleLogout = async () => {
+  try {
     closeMenu();
-    await supabase.auth.signOut({ scope: "global" });
+
+    await supabase.auth.signOut(); // ✅ niente scope
+
+    // reset stato locale
     setIsLoggedIn(false);
     setProfileName("");
     setIsAdmin(false);
-    setAuthReady(false);
+    setAuthReady(true);
+
     hasResolvedInitialAuthRef.current = false;
     hasAppliedCachedAuthRef.current = false;
-    if (typeof window !== "undefined") window.sessionStorage.removeItem("navbar-auth-cache");
-    router.replace("/");
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("navbar-auth-cache");
+    }
+
+    // 🔥 importante: hard refresh UI
+    router.push("/");
     router.refresh();
-  };
+
+  } catch (err) {
+    console.error("Logout error:", err);
+  }
+};
 
   useEffect(() => {
     const update = () => {

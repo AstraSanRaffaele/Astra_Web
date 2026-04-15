@@ -145,46 +145,54 @@ export function AuthShell({
         }}
       >
         <nav
-          className="nav-enter nav-padding"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "1.1rem 4rem",
-            background: "rgba(250,250,250,0.75)",
-            backdropFilter: "blur(18px)",
-            WebkitBackdropFilter: "blur(18px)",
-            borderBottom: "1px solid rgba(14,31,107,0.07)",
-          }}
-        >
-          <Link
-            href="/"
-            style={{ display: "flex", alignItems: "center", gap: ".7rem", textDecoration: "none" }}
-          >
-            <AstraLogo size={120} />
-          </Link>
+  className="nav-enter nav-padding"
+  style={{
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    height: 64, // ✅ altezza controllata
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "0 2rem", // ✅ meno padding
+    background: "rgba(250,250,250,0.75)",
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    borderBottom: "1px solid rgba(14,31,107,0.07)",
+  }}
+>
+  <Link
+    href="/"
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: ".6rem",
+      textDecoration: "none",
+    }}
+  >
+    {/* ✅ logo RIDOTTO */}
+    <AstraLogo size={100} />
+  </Link>
 
-          <Link
-            href="/"
-            className="btn-ghost"
-            style={{
-              border: "1.5px solid rgba(14,31,107,.14)",
-              color: "var(--text)",
-              padding: ".7rem 1.3rem",
-              borderRadius: "100px",
-              textDecoration: "none",
-              fontWeight: 700,
-              fontSize: ".9rem",
-            }}
-          >
-            Torna alla home
-          </Link>
-        </nav>
+  <Link
+    href="/"
+    className="btn-ghost"
+    style={{
+      border: "1px solid rgba(14,31,107,.12)",
+      color: "var(--text)",
+      padding: ".55rem 1rem", // ✅ più compatto
+      borderRadius: "999px",
+      textDecoration: "none",
+      fontWeight: 700,
+      fontSize: ".82rem",
+      transition: "all .2s ease",
+    }}
+  >
+    ← Home
+  </Link>
+</nav>
 
         <main
           className="page-padding"
