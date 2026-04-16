@@ -77,13 +77,6 @@ const managersMembers: TeamMember[] = [
         contact: "Contatto disponibile su richiesta",
         // image: "/team/eleonora-pazzali.jpg",
     },
-    {
-        firstName: "Cesare",
-        lastName: "Morales",
-        role: "Responsabile Eventi ludici",
-        contact: "Contatto disponibile su richiesta",
-        // image: "/team/cesare-morales.jpg",
-    },
 ];
 
 function getInitials(firstName: string, lastName: string) {
