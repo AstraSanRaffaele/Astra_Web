@@ -532,7 +532,7 @@ export default function Home() {
                 </p>
               </div>
               <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: "1rem", alignItems: "flex-start" }}>
-                <a href="https://www.instagram.com/astrasanraffaele" target="_blank" rel="noopener noreferrer" className="btn-dark" style={{ background: "#fff", color: "var(--ink)" }}>
+                <a href="/calltoaction" target="_blank" rel="noopener noreferrer" className="btn-dark" style={{ background: "#fff", color: "var(--ink)" }}>
                   Candidati ora
                   <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
                     <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
