@@ -74,13 +74,22 @@ function EventModal({
   const set = (k: keyof EventForm, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.title.trim()) { setErr("Il titolo è obbligatorio."); return; }
-    if (!form.event_date) { setErr("La data è obbligatoria."); return; }
-    setSaving(true); setErr("");
+  e.preventDefault();
+  if (!form.title.trim()) { setErr("Il titolo è obbligatorio."); return; }
+  if (!form.event_date) { setErr("La data è obbligatoria."); return; }
+
+  setSaving(true);
+  setErr("");
+
+  try {
     await onSave(form);
+  } catch (error) {
+    console.error("Errore submit modal:", error);
+    setErr(error instanceof Error ? error.message : "Errore durante il salvataggio.");
+  } finally {
     setSaving(false);
   }
+}
 
   return (
     <div
@@ -185,46 +194,117 @@ export default function AdminEventi() {
   }, [supabase, router]);
 
   async function fetchEvents() {
-    setLoading(true);
-    const { data } = await supabase.from("events").select("*").order("event_date", { ascending: false });
-    setEvents((data ?? []) as Event[]);
+  setLoading(true);
+  setError("");
+
+  const { data, error: err } = await supabase
+    .from("events")
+    .select("*")
+    .order("event_date", { ascending: false });
+
+  console.log("FETCH EVENTS DATA:", data);
+  console.log("FETCH EVENTS ERROR:", err);
+
+  if (err) {
+    console.error("Errore fetch eventi:", err);
+    setError(err.message ?? "Caricamento eventi non riuscito.");
+    setEvents([]);
     setLoading(false);
+    return;
   }
+
+  setEvents((data ?? []) as Event[]);
+  setLoading(false);
+}
 
   // ── CRUD ──
   async function handleSave(form: EventForm, editingId?: string) {
-    const isoDate = `${form.event_date}T${form.event_time}:00`;
-    const payload = {
-      title: form.title.trim(),
-      description: form.description.trim() || null,
-      location: form.location.trim() || null,
-      cover_image: form.cover_image.trim() || null,
-      event_date: isoDate,
-    };
+  setError("");
+  setSuccess("");
 
+  const isoDate = `${form.event_date}T${form.event_time}:00`;
+
+  const payload = {
+    title: form.title.trim(),
+    description: form.description.trim() || null,
+    location: form.location.trim() || null,
+    cover_image: form.cover_image.trim() || null,
+    event_date: isoDate,
+  };
+
+  console.log("EVENT SAVE MODE:", editingId ? "edit" : "create");
+  console.log("EVENT PAYLOAD:", payload);
+
+  try {
     if (editingId) {
-      const { error: err } = await supabase.from("events").update(payload).eq("id", editingId);
-      if (err) { setError("Salvataggio non riuscito."); return; }
-      setEvents(c => c.map(e => e.id === editingId ? { ...e, ...payload, updated_at: new Date().toISOString() } : e));
+      const { data, error: err } = await supabase
+        .from("events")
+        .update(payload)
+        .eq("id", editingId)
+        .select("*")
+        .single();
+
+      console.log("UPDATE DATA:", data);
+      console.log("UPDATE ERROR:", err);
+
+      if (err) {
+        console.error("Errore update evento:", err);
+        setError(err.message ?? "Salvataggio non riuscito.");
+        throw new Error(err.message ?? "Salvataggio non riuscito.");
+      }
+
+      setEvents(c => c.map(e => e.id === editingId ? (data as Event) : e));
       setSuccess("Evento aggiornato.");
     } else {
-      const { data, error: err } = await supabase.from("events").insert(payload).select("*").single();
-      if (err || !data) { setError("Creazione non riuscita."); return; }
+      const { data, error: err } = await supabase
+        .from("events")
+        .insert(payload)
+        .select("*")
+        .single();
+
+      console.log("INSERT DATA:", data);
+      console.log("INSERT ERROR:", err);
+
+      if (err || !data) {
+        console.error("Errore creazione evento:", err);
+        setError(err?.message ?? "Creazione non riuscita.");
+        throw new Error(err?.message ?? "Creazione non riuscita.");
+      }
+
       setEvents(c => [data as Event, ...c]);
       setSuccess("Evento creato.");
     }
+
     setModal(null);
+  } catch (error) {
+    console.error("handleSave exception:", error);
+    throw error;
   }
+}
 
   async function handleDelete(id: string, title: string) {
-    if (!window.confirm(`Eliminare "${title}"?`)) return;
-    setDeletingId(id);
-    const { error: err } = await supabase.from("events").delete().eq("id", id);
-    if (err) { setError("Eliminazione non riuscita."); setDeletingId(null); return; }
-    setEvents(c => c.filter(e => e.id !== id));
-    setSuccess("Evento eliminato.");
+  if (!window.confirm(`Eliminare "${title}"?`)) return;
+
+  setDeletingId(id);
+  setError("");
+  setSuccess("");
+
+  const { error: err } = await supabase.from("events").delete().eq("id", id);
+
+  console.log("DELETE ID:", id);
+  console.log("DELETE ERROR:", err);
+
+  if (err) {
+    console.error("Errore eliminazione evento:", err);
+    setError(err.message ?? "Eliminazione non riuscita.");
     setDeletingId(null);
+    return;
   }
+
+  setEvents(c => c.filter(e => e.id !== id));
+  setSuccess("Evento eliminato.");
+  setDeletingId(null);
+}
 
   const filtered = useMemo(() => {
     if (filter === "prossimi") return events.filter(e => !isPast(e.event_date));
