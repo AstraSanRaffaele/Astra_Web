@@ -33,6 +33,7 @@ const footerLinks = [
       ["Eventi", "/eventi"],
       ["Convenzioni", "/convenzioni"],
       ["Profilo", "/profile"],
+      ["Team", "/team"],
     ],
   },
   {

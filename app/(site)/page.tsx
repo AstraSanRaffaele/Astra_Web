@@ -388,6 +388,14 @@ export default function Home() {
                 Lavoriamo per costruire una comunità coesa, dare voce agli studenti
                 e creare opportunità concrete — dentro e fuori dall&apos;università.
               </p>
+              <div style={{ marginTop: "2rem" }}>
+                <a href="/team" className="btn-primary">
+                  Scopri il team
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </a>
+              </div>
               <div style={{ marginTop: "2.8rem", display: "flex", gap: "3rem", flexWrap: "wrap" }}>
                 {stats.map(([n, l]) => (
                   <div key={l} style={{ display: "flex", flexDirection: "column", gap: ".2rem" }}>
