@@ -6,11 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 
 const categoryColors: Record<string, { bg: string; text: string; dot: string }> = {
   default: { bg: "rgba(8,16,42,.06)", text: "#2E4080", dot: "#2E4080" },
-  salute:  { bg: "rgba(16,107,60,.08)", text: "#0a6638", dot: "#0a6638" },
+  trasporti:  { bg: "rgba(16,107,60,.08)", text: "#0a6638", dot: "#0a6638" },
   sport:   { bg: "rgba(107,16,16,.08)", text: "#8b1111", dot: "#c0392b" },
-  cultura: { bg: "rgba(107,60,16,.08)", text: "#7a4010", dot: "#c06a1a" },
+  Libri_e_Materiale_Didattico: { bg: "rgba(107,60,16,.08)", text: "#7a4010", dot: "#c06a1a" },
   tech:    { bg: "rgba(14,31,107,.08)", text: "#0E1F6B", dot: "#1A3399" },
-  cibo:    { bg: "rgba(120,16,107,.08)", text: "#7a0f70", dot: "#9b12a0" },
+  Bar_e_Ristoranti:    { bg: "rgba(120,16,107,.08)", text: "#7a0f70", dot: "#9b12a0" },
 };
 
 function getCategoryStyle(cat: string) {
@@ -146,7 +146,7 @@ export default function ConvenzioniPage() {
             <span style={{ color: "#2E4080" }}>la community.</span>
           </h1>
           <p className="conv-hero-sub" style={{ fontSize: "1rem", color: "#6B7280", maxWidth: 440, lineHeight: 1.75, fontWeight: 400 }}>
-            Tutte le convenzioni attive per studenti Astra: servizi, opportunità e sconti dedicati.
+            Tutte le convenzioni attive per studenti ASTRA: servizi, opportunità e sconti dedicati.
           </p>
 
           {!loading && convenzioni.length > 0 && (

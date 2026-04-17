@@ -40,9 +40,9 @@ const pillars = [
   { num: "03", title: "Opportunità", desc: "Da SOS CASA alle borse di studio: ti aiutiamo a trovare tutto quello che cerchi." },
 ];
 
-const chips = ["Medicina e Chirurgia", "Psicologia", "Filosofia", "SOS CASA", "Matricole UniSR", "Astra Network"];
+const chips = ["ASTRA San Raffaele","ASTRA Bocconi", "ASTRA Cattolica", "ASTRA IULM", "ASTRA Bicocca", "ASTRA UniPR"];
 const marqueeItems = ["Medicina", "Psicologia", "Filosofia", "Rappresentanza", "Comunità", "Innovazione", "Milano"];
-const stats = [["2.9k", "Followers"], ["99+", "Iniziative"], ["3", "Facoltà"]];
+const stats = [["2.9k", "Followers"], ["30+", "Iniziative"], ["3", "Facoltà"]];
 
 // ── Main Page ────────────────────────────────────────────────────
 export default function Home() {
@@ -290,7 +290,7 @@ export default function Home() {
 
           <div style={{ position: "relative", zIndex: 1, maxWidth: 900 }}>
             <p className="eyebrow hero-eyebrow" style={{ opacity: 0 }}>
-              Associazione Studentesca UniSR
+              Studenti x Studenti
             </p>
 
             <h1
@@ -304,8 +304,8 @@ export default function Home() {
                 opacity: 0,
               }}
             >
-              Il futuro della<br />
-              <span style={{ color: "var(--ink-soft)" }}>medicina</span><br />
+              Il futuro degli<br />
+              <span style={{ color: "var(--ink-soft)" }}>studenti</span><br />
               <span style={{ display: "inline-flex", alignItems: "center", gap: "1rem" }}>
                 parte da{" "}
                 <span style={{
@@ -327,8 +327,8 @@ export default function Home() {
               opacity: 0,
             }} />
 
-            <p className="hero-sub" style={{ fontSize: "1.1rem", lineHeight: 1.8, color: "var(--mist)", maxWidth: 480, fontWeight: 400, opacity: 0 }}>
-              Siamo l&apos;associazione studentesca di UniSR. Rappresentiamo,
+            <p className="hero-sub" style={{ fontSize: "1.1rem", lineHeight: 1.9, color: "var(--mist)", maxWidth: 480, fontWeight: 400, opacity: 0 }}>
+              Siamo un team di studenti dell'Università "Vita-Salute" San Raffaele. Rappresentiamo,
               connettiamo e ispiriamo chi studia Medicina, Psicologia e Filosofia
               a Milano.
             </p>
@@ -337,7 +337,7 @@ export default function Home() {
               <a href="#join" className="btn-primary">
                 Candidati ora
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </a>
               <a href="#about" className="btn-outline">Scopri chi siamo</a>
@@ -392,7 +392,7 @@ export default function Home() {
                 <a href="/team" className="btn-primary">
                   Scopri il team
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </a>
               </div>
@@ -422,7 +422,7 @@ export default function Home() {
                   <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
                     {[
                       ["2.9k", "Studenti nella community", true],
-                      ["99+", "Iniziative realizzate", false],
+                      ["30+", "Iniziative realizzate", false],
                       ["3", "Facoltà rappresentate", false],
                     ].map(([n, l, accent]) => (
                       <div key={String(l)} style={{
@@ -480,15 +480,13 @@ export default function Home() {
         <section id="facolta" className="page-section" style={{ padding: "9rem 3rem" }}>
           <div className="facolta-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6rem", alignItems: "center" }}>
             <Reveal>
-              <p className="eyebrow">Facoltà</p>
+              <p className="eyebrow">ASTRA network</p>
               <h2 className="display" style={{ fontSize: "clamp(2.6rem,4.8vw,4rem)", fontWeight: 700, lineHeight: 1.08, letterSpacing: "-.02em", color: "var(--ink)" }}>
-                Tre percorsi,<br />
+                Diversi atenei,<br />
                 <span style={{ color: "var(--ink-soft)" }}>un&apos;unica casa.</span>
               </h2>
               <p style={{ fontSize: "1rem", lineHeight: 1.85, color: "var(--mist)", marginTop: "1.8rem", maxWidth: 400 }}>
-                Siamo per tutti gli studenti UniSR — qualunque corso tu stia
-                seguendo, Astra è anche tua.
-              </p>
+                Diversi percorsi, stessa visione. ASTRA è anche tua: uno spazio dove ogni studente può crescere, confrontarsi e sentirsi parte di qualcosa di più grande.              </p>
             </Reveal>
             <Reveal delay={0.12}>
               <div className="chips-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: ".85rem" }}>
@@ -535,7 +533,7 @@ export default function Home() {
                 <a href="/calltoaction" target="_blank" rel="noopener noreferrer" className="btn-dark" style={{ background: "#fff", color: "var(--ink)" }}>
                   Candidati ora
                   <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
-                    <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </a>
                 <span style={{ fontSize: ".78rem", color: "rgba(255,255,255,.35)", fontWeight: 400 }}>Seguici su Instagram per restare aggiornato</span>
