@@ -402,8 +402,8 @@ function EventModal({
               {saving
                 ? "Salvataggio..."
                 : mode === "create"
-                  ? "Crea evento"
-                  : "Salva modifiche"}
+                ? "Crea evento"
+                : "Salva modifiche"}
             </button>
           </div>
         </form>
@@ -888,7 +888,7 @@ export default function AdminEventi() {
                   ? "Caricamento..."
                   : `${filtered.length} event${filtered.length === 1 ? "o" : "i"}`}
               </h2>
-              <div style={{ display: "flex", gap: ".5rem" }}>
+              <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
                 {(["tutti", "prossimi", "passati"] as const).map((f) => (
                   <button
                     key={f}
@@ -969,11 +969,13 @@ export default function AdminEventi() {
                         borderRadius: "1.4rem",
                         opacity: past ? 0.75 : 1,
                         transition: "box-shadow .2s, transform .2s",
+                        flexWrap: "wrap",
                       }}
                       className="ev-admin-row"
                     >
                       {/* Date box */}
                       <div
+                        className="ev-admin-date"
                         style={{
                           width: 52,
                           flexShrink: 0,
@@ -1014,7 +1016,7 @@ export default function AdminEventi() {
                       </div>
 
                       {/* Info */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="ev-admin-info" style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{
                             display: "flex",
@@ -1034,7 +1036,7 @@ export default function AdminEventi() {
                               overflow: "hidden",
                               textOverflow: "ellipsis",
                               whiteSpace: "nowrap",
-                              maxWidth: 400,
+                              maxWidth: "100%",
                             }}
                           >
                             {e.title}
@@ -1088,6 +1090,7 @@ export default function AdminEventi() {
                             alignItems: "center",
                             gap: ".5rem",
                             flexWrap: "wrap",
+                            minWidth: 0,
                           }}
                         >
                           <span>
@@ -1101,7 +1104,7 @@ export default function AdminEventi() {
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
                                   whiteSpace: "nowrap",
-                                  maxWidth: 200,
+                                  maxWidth: "100%",
                                 }}
                               >
                                 {e.location}
@@ -1151,6 +1154,7 @@ export default function AdminEventi() {
                       {/* Cover image thumb */}
                       {e.cover_image && (
                         <div
+                          className="ev-admin-thumb"
                           style={{
                             width: 56,
                             height: 56,
@@ -1173,7 +1177,7 @@ export default function AdminEventi() {
                       )}
 
                       {/* Actions */}
-                      <div style={{ display: "flex", gap: ".5rem", flexShrink: 0 }}>
+                      <div className="ev-admin-actions" style={{ display: "flex", gap: ".5rem", flexShrink: 0 }}>
                         <button
                           onClick={() => setModal({ mode: "edit", event: e })}
                           style={{
@@ -1224,6 +1228,59 @@ export default function AdminEventi() {
         @keyframes sk { 0%,100%{opacity:.4} 50%{opacity:.85} }
         .ev-admin-row:hover { box-shadow: 0 8px 32px rgba(15,47,110,.1) !important; transform: translateY(-2px); }
         .btn-edit-ev:hover { background: rgba(15,47,110,.05) !important; }
+
+        @media (max-width: 820px) {
+          .ev-admin-row {
+            align-items: flex-start !important;
+            gap: .9rem !important;
+            padding: 1rem !important;
+          }
+
+          .ev-admin-info {
+            min-width: 0 !important;
+            flex: 1 1 calc(100% - 68px) !important;
+          }
+
+          .ev-admin-thumb {
+            width: 52px !important;
+            height: 52px !important;
+          }
+
+          .ev-admin-actions {
+            width: 100%;
+            flex-wrap: wrap;
+            margin-top: .1rem;
+          }
+
+          .ev-admin-actions button {
+            flex: 1 1 100%;
+            justify-content: center;
+            padding: .72rem 1rem !important;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .ev-admin-row {
+            display: grid !important;
+            grid-template-columns: 52px 1fr;
+            align-items: start !important;
+            column-gap: .85rem !important;
+            row-gap: .8rem !important;
+          }
+
+          .ev-admin-info {
+            flex: unset !important;
+          }
+
+          .ev-admin-thumb,
+          .ev-admin-actions {
+            grid-column: 1 / -1;
+          }
+
+          .ev-admin-actions {
+            margin-top: 0;
+          }
+        }
       `}</style>
     </>
   );

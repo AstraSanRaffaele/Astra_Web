@@ -435,13 +435,16 @@ export default function AdminConvenzioni() {
                       key={c.id}
                       className="conv-admin-row"
                       style={{
-                        display: "flex", alignItems: "center", gap: "1.2rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "1.2rem",
                         padding: "1.2rem 1.4rem",
                         background: c.attiva ? "#fff" : "rgba(15,47,110,.02)",
                         border: `1px solid ${c.attiva ? "rgba(15,47,110,.08)" : "rgba(15,47,110,.05)"}`,
                         borderRadius: "1.4rem",
                         opacity: c.attiva ? 1 : .65,
                         transition: "box-shadow .2s, transform .2s",
+                        flexWrap: "wrap",
                       }}
                     >
                       {/* Logo initials */}
@@ -450,9 +453,20 @@ export default function AdminConvenzioni() {
                       </div>
 
                       {/* Info */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="conv-admin-info" style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: ".6rem", flexWrap: "wrap", marginBottom: ".25rem" }}>
-                          <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#08102A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 300 }}>
+                          <h3
+                            style={{
+                              margin: 0,
+                              fontSize: "1rem",
+                              fontWeight: 700,
+                              color: "#08102A",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              maxWidth: "100%",
+                            }}
+                          >
                             {c.titolo}
                           </h3>
                           <span style={{ fontSize: ".68rem", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", background: catStyle.bg, color: catStyle.text, padding: ".22rem .65rem", borderRadius: "999px" }}>
@@ -466,19 +480,45 @@ export default function AdminConvenzioni() {
                         </div>
                         <p style={{ margin: 0, fontSize: ".84rem", color: "#2E4080", fontWeight: 600 }}>{c.partner}</p>
                         {c.vantaggio && (
-                          <p style={{ margin: ".25rem 0 0", fontSize: ".82rem", color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 480 }}>
+                          <p
+                            style={{
+                              margin: ".25rem 0 0",
+                              fontSize: ".82rem",
+                              color: "#6b7280",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              maxWidth: "100%",
+                            }}
+                          >
                             {c.vantaggio}
                           </p>
                         )}
                       </div>
 
                       {/* Order badge */}
-                      <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "50%", background: "rgba(15,47,110,.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".75rem", fontWeight: 700, color: "#4a5a7a" }} title="Ordine">
+                      <div
+                        className="conv-admin-order"
+                        style={{
+                          flexShrink: 0,
+                          width: 32,
+                          height: 32,
+                          borderRadius: "50%",
+                          background: "rgba(15,47,110,.06)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: ".75rem",
+                          fontWeight: 700,
+                          color: "#4a5a7a",
+                        }}
+                        title="Ordine"
+                      >
                         {c.ordine}
                       </div>
 
                       {/* Actions */}
-                      <div style={{ display: "flex", gap: ".5rem", flexShrink: 0 }}>
+                      <div className="conv-admin-actions" style={{ display: "flex", gap: ".5rem", flexShrink: 0 }}>
                         <button
                           onClick={() => toggleAttiva(c)}
                           style={{
@@ -518,6 +558,63 @@ export default function AdminConvenzioni() {
         @keyframes sk { 0%,100%{opacity:.4} 50%{opacity:.85} }
         .conv-admin-row:hover { box-shadow: 0 8px 32px rgba(15,47,110,.1) !important; transform: translateY(-2px); }
         .btn-edit-conv:hover { background: rgba(15,47,110,.05) !important; }
+        @media (max-width: 720px) {
+          .conv-admin-row {
+            align-items: flex-start !important;
+            gap: .9rem !important;
+            padding: 1rem !important;
+          }
+
+          .conv-admin-info {
+            min-width: 0 !important;
+            flex: 1 1 calc(100% - 60px) !important;
+          }
+
+          .conv-admin-order {
+            order: 3;
+            width: 28px !important;
+            height: 28px !important;
+            font-size: .72rem !important;
+          }
+
+          .conv-admin-actions {
+            order: 4;
+            width: 100%;
+            flex-wrap: wrap;
+            margin-top: .15rem;
+          }
+
+          .conv-admin-actions button {
+            flex: 1 1 100%;
+            justify-content: center;
+            padding: .72rem 1rem !important;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .conv-admin-row {
+            display: grid !important;
+            grid-template-columns: 44px 1fr;
+            align-items: start !important;
+            column-gap: .85rem !important;
+            row-gap: .8rem !important;
+          }
+
+          .conv-admin-info {
+            flex: unset !important;
+          }
+
+          .conv-admin-order {
+            grid-column: 1 / -1;
+            order: unset;
+          }
+
+          .conv-admin-actions {
+            grid-column: 1 / -1;
+            order: unset;
+            margin-top: 0;
+          }
+        }
       `}</style>
     </>
   );
