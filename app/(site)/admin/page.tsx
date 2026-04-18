@@ -203,6 +203,13 @@ export default function AdminPage() {
                     Vai alla gestione utenti
                   </a>
                 </div>
+                <div className="quickCard">
+                  <h3>Gestione RSVPs</h3>
+                  <p>Accedi all’area dedicata per visualizzare, cercare e gestire gli RSVPs degli eventi della piattaforma Astra.</p>
+                  <a href="/admin/rsvp" className="ctaButton primary">
+                    Vai alla gestione RSVPs
+                  </a>
+                </div>
               </div>
             </div>
 

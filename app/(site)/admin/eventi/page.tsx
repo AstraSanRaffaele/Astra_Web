@@ -14,6 +14,7 @@ type Event = {
   event_date: string;
   created_at: string;
   updated_at: string;
+  partnership: string | null;
 };
 
 type EventForm = {
@@ -23,11 +24,17 @@ type EventForm = {
   event_date: string;
   event_time: string;
   cover_image: string;
+  partnership: string;
 };
 
 const EMPTY_FORM: EventForm = {
-  title: "", description: "", location: "",
-  event_date: "", event_time: "18:00", cover_image: "",
+  title: "",
+  description: "",
+  location: "",
+  event_date: "",
+  event_time: "18:00",
+  cover_image: "",
+  partnership: "",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -50,6 +57,7 @@ function EventModal({
   mode, initial, onClose, onSave,
 }: {
   mode: "create" | "edit";
+  
   initial?: Event;
   onClose: () => void;
   onSave: (f: EventForm) => Promise<void>;
@@ -64,6 +72,7 @@ function EventModal({
         event_date: date,
         event_time: time,
         cover_image: initial.cover_image ?? "",
+        partnership: initial?.partnership ?? "",
       };
     }
     return EMPTY_FORM;
@@ -123,6 +132,13 @@ function EventModal({
 
           <MField label="Luogo" value={form.location} onChange={v => set("location", v)} placeholder="es. Aula Magna, Campus San Raffaele" />
 
+          <MField
+            label="Partnership"
+            value={form.partnership}
+            onChange={v => set("partnership", v)}
+            placeholder="es. Red Bull, UniSR, Nike"
+          />
+          
           <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
             <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Descrizione</label>
             <textarea
@@ -229,6 +245,7 @@ export default function AdminEventi() {
     description: form.description.trim() || null,
     location: form.location.trim() || null,
     cover_image: form.cover_image.trim() || null,
+    partnership: form.partnership.trim() || null, // ✅ NEW
     event_date: isoDate,
   };
 
@@ -456,6 +473,15 @@ export default function AdminEventi() {
                           <span>{fmtDate(e.event_date)} • {fmtTime(e.event_date)}</span>
                           {e.location && <><span style={{ opacity: .4 }}>·</span><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{e.location}</span></>}
                         </p>
+
+                        {e.partnership && (
+                          <>
+                            <span style={{ opacity: .4 }}>·</span>
+                            <span style={{ fontWeight: 600, color: "#2E4080" }}>
+                              {e.partnership}
+                            </span>
+                          </>
+                        )}
                         {e.description && (
                           <p style={{ margin: ".35rem 0 0", fontSize: ".82rem", color: "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 500 }}>
                             {e.description}
