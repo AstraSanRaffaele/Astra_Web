@@ -33,12 +33,12 @@ export async function GET() {
 
     // ── CREA PASS ────────────────
     const pass = await PKPass.from({
-      model: path.resolve("./pass-model"),
+      model: path.join(process.cwd(), "pass-model.pass"),
       certificates: {
         wwdr: formatCert(process.env.APPLE_WWDR!),
         signerCert: formatCert(process.env.APPLE_CERT!),
         signerKey: formatCert(process.env.APPLE_KEY!),
-        signerKeyPassphrase: process.env.APPLE_KEY_PASSWORD!,
+        signerKeyPassphrase: "dummy", // 👈 AGGIUNGI QUESTO
       },
     });
 
