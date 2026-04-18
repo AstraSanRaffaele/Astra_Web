@@ -324,49 +324,88 @@ export function AuthShell({
               </div>
 
               <div
-                className="stats-grid"
                 style={{
                   position: "relative",
                   zIndex: 1,
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3,1fr)",
-                  gap: "1rem",
+                  marginTop: "2rem",
                 }}
               >
-                {[
-                  ["2.9k", "Studenti nella community"],
-                  ["30+", "Iniziative create"],
-                  ["3", "Facoltà coinvolte"],
-                ].map(([n, l]) => (
-                  <div
-                    key={l}
+                <div
+                  style={{
+                    marginBottom: "1.2rem",
+                    minHeight: 165,
+                    position: "relative",
+                  }}
+                >
+                  <p
                     style={{
-                      background: "rgba(255,255,255,.09)",
-                      border: "1px solid rgba(255,255,255,.14)",
-                      borderRadius: "1.2rem",
-                      padding: "1.2rem 1.1rem",
-                      backdropFilter: "blur(12px)",
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      fontSize: ".8rem",
+                      lineHeight: 1.7,
+                      color: "rgba(255,255,255,.72)",
+                      maxWidth: 620,
                     }}
                   >
-                    <div className="serif" style={{ fontSize: "2rem", color: "#fff", opacity: 0.95 }}>
-                      {n}
-                    </div>
+                    <span style={{ fontWeight: 800, color: "#fff" }}>* </span>
+                    Ai sensi del Regolamento UE 2016/679 (GDPR), ti informiamo che i dati
+                    personali raccolti in questo modulo saranno trattati dal team ASTRA San
+                    Raffaele esclusivamente per le seguenti finalità: inserimento nel Libro
+                    Soci, gestione del rapporto associativo, invio di comunicazioni relative
+                    alle attività e adempimento degli obblighi di legge. I dati non verranno
+                    ceduti a terzi. Puoi richiedere in qualsiasi momento la cancellazione o
+                    la modifica dei tuoi dati scrivendo a info@astrasanraffaele.it.
+                  </p>
+                </div>
+
+                <div
+                  className="stats-grid"
+                  style={{
+                    position: "relative",
+                    zIndex: 1,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3,1fr)",
+                    gap: "1rem",
+                  }}
+                >
+                  {[
+                    ["2.9k", "Studenti nella community"],
+                    ["30+", "Iniziative create"],
+                    ["3", "Facoltà coinvolte"],
+                  ].map(([n, l]) => (
                     <div
+                      key={l}
                       style={{
-                        fontSize: ".7rem",
-                        fontWeight: 700,
-                        letterSpacing: ".1em",
-                        textTransform: "uppercase",
-                        color: "rgba(255,255,255,.52)",
-                        marginTop: ".35rem",
-                        lineHeight: 1.5,
+                        background: "rgba(255,255,255,.09)",
+                        border: "1px solid rgba(255,255,255,.14)",
+                        borderRadius: "1.2rem",
+                        padding: "1.2rem 1.1rem",
+                        backdropFilter: "blur(12px)",
                       }}
                     >
-                      {l}
+                      <div className="serif" style={{ fontSize: "2rem", color: "#fff", opacity: 0.95 }}>
+                        {n}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: ".7rem",
+                          fontWeight: 700,
+                          letterSpacing: ".1em",
+                          textTransform: "uppercase",
+                          color: "rgba(255,255,255,.52)",
+                          marginTop: ".35rem",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {l}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+
             </section>
 
             <section

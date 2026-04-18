@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -52,7 +51,6 @@ function SkeletonRow() {
 // ── Main ──────────────────────────────────────────────────────────
 export default function EventiPage() {
   const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
 
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,15 +58,17 @@ export default function EventiPage() {
   const [view, setView] = useState<"list" | "grid">("list");
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/login"); return; }
-      const { data } = await supabase.from("events").select("*").order("event_date", { ascending: true });
-      setEvents(data || []);
-      setLoading(false);
-    }
-    load();
-  }, [supabase, router]);
+  async function load() {
+    const { data } = await supabase
+      .from("events")
+      .select("*")
+      .order("event_date", { ascending: true });
+
+    setEvents(data || []);
+    setLoading(false);
+  }
+  load();
+}, [supabase]);
 
   const upcoming = useMemo(() => events.filter(e => !isPast(getEventDate(e))), [events]);
   const next = upcoming[0];

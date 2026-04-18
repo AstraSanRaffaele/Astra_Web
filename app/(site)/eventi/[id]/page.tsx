@@ -81,6 +81,7 @@ export default function EventoDetailPage() {
   const date = getEventDate(event);
   const past = isPast(date);
   const cover = getCover(event);
+  const iscrizioniAperte = Boolean(event.iscrizioni_aperte);
 
   return (
     <>
@@ -304,7 +305,44 @@ export default function EventoDetailPage() {
                 </div>
               </div>
 
-              <RsvpButton eventId={event.id} maxPosti={event.max_posti} />
+              {!past ? (
+                iscrizioniAperte ? (
+                  <RsvpButton eventId={event.id} maxPosti={event.max_posti} />
+                ) : (
+                  <div
+                    style={{
+                      background: "#fff",
+                      border: "1px solid rgba(8,16,42,.08)",
+                      borderRadius: "1.75rem",
+                      padding: "1.25rem 1.2rem",
+                      boxShadow: "0 2px 12px rgba(8,16,42,.04)",
+                      textAlign: "center",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: ".72rem",
+                        fontWeight: 700,
+                        letterSpacing: ".16em",
+                        textTransform: "uppercase",
+                        color: "#2E4080",
+                        marginBottom: ".65rem",
+                      }}
+                    >
+                      Iscrizioni chiuse
+                    </p>
+                    <p
+                      style={{
+                        fontSize: ".92rem",
+                        lineHeight: 1.6,
+                        color: "#374151",
+                      }}
+                    >
+                      Le iscrizioni a questo evento non sono ancora aperte.
+                    </p>
+                  </div>
+                )
+              ) : null}
 
               {event.locandina && (
                 <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.07)", borderRadius: "1.75rem", overflow: "hidden", boxShadow: "0 2px 12px rgba(8,16,42,.04)" }}>
