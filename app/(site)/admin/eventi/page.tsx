@@ -15,6 +15,7 @@ type Event = {
   created_at: string;
   updated_at: string;
   partnership: string | null;
+  max_posti: number | null;
 };
 
 type EventForm = {
@@ -25,6 +26,7 @@ type EventForm = {
   event_time: string;
   cover_image: string;
   partnership: string;
+  max_posti: string;
 };
 
 const EMPTY_FORM: EventForm = {
@@ -35,6 +37,7 @@ const EMPTY_FORM: EventForm = {
   event_time: "18:00",
   cover_image: "",
   partnership: "",
+  max_posti: "",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -73,6 +76,7 @@ function EventModal({
         event_time: time,
         cover_image: initial.cover_image ?? "",
         partnership: initial?.partnership ?? "",
+        max_posti: initial.max_posti != null ? String(initial.max_posti) : "",
       };
     }
     return EMPTY_FORM;
@@ -130,13 +134,16 @@ function EventModal({
             <MField label="Ora" type="time" value={form.event_time} onChange={v => set("event_time", v)} />
           </div>
 
-          <MField label="Luogo" value={form.location} onChange={v => set("location", v)} placeholder="es. Aula Magna, Campus San Raffaele" />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: "1rem" }}>
+            <MField label="Luogo" value={form.location} onChange={v => set("location", v)} placeholder="es. Aula Magna, Campus San Raffaele" />
+            <MField label="Max posti" type="number" value={form.max_posti} onChange={v => set("max_posti", v)} placeholder="es. 80" />
+          </div>
 
           <MField
             label="Partnership"
             value={form.partnership}
             onChange={v => set("partnership", v)}
-            placeholder="es. Red Bull, UniSR, Nike"
+            placeholder="es. Red Bull, Nike"
           />
           
           <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
@@ -240,12 +247,19 @@ export default function AdminEventi() {
 
   const isoDate = `${form.event_date}T${form.event_time}:00`;
 
+  const parsedMaxSeats = form.max_posti.trim() === "" ? null : Number(form.max_posti);
+
+  if (parsedMaxSeats !== null && (!Number.isFinite(parsedMaxSeats) || parsedMaxSeats < 1)) {
+    throw new Error("Il numero massimo di posti deve essere almeno 1.");
+  }
+
   const payload = {
     title: form.title.trim(),
     description: form.description.trim() || null,
     location: form.location.trim() || null,
     cover_image: form.cover_image.trim() || null,
     partnership: form.partnership.trim() || null, // ✅ NEW
+    max_posti: parsedMaxSeats,
     event_date: isoDate,
   };
 
@@ -356,7 +370,7 @@ export default function AdminEventi() {
                   Gestione eventi.
                 </h1>
                 <p style={{ margin: 0, color: "rgba(255,255,255,.8)", lineHeight: 1.6, maxWidth: 500 }}>
-                  Crea, modifica ed elimina gli eventi visibili agli studenti UniSR.
+                  Crea, modifica ed elimina gli eventi visibili agli studenti della community.
                 </p>
               </div>
               <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap" }}>
@@ -472,6 +486,7 @@ export default function AdminEventi() {
                         <p style={{ margin: 0, fontSize: ".84rem", color: "#6b7280", display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
                           <span>{fmtDate(e.event_date)} • {fmtTime(e.event_date)}</span>
                           {e.location && <><span style={{ opacity: .4 }}>·</span><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{e.location}</span></>}
+                          {e.max_posti != null && <><span style={{ opacity: .4 }}>·</span><span style={{ fontWeight: 600, color: "#2E4080" }}>Max {e.max_posti} posti</span></>}
                         </p>
 
                         {e.partnership && (

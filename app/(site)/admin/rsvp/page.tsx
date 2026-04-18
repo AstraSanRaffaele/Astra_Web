@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -49,6 +49,21 @@ type RsvpRow = {
   };
 };
 
+type SearchProfileRow = {
+  id: string;
+  nome: string;
+  cognome: string;
+  email_istituzionale: string;
+  numero_telefono: string;
+  facolta: string;
+};
+
+type EventParticipant = SearchProfileRow & {
+  rsvpId?: number;
+  stato?: string;
+  created_at?: string;
+};
+
 function normalizeRsvp(raw: RsvpRaw): RsvpRow | null {
   const p = Array.isArray(raw.profiles) ? raw.profiles[0] : raw.profiles;
   if (!p) return null;
@@ -68,6 +83,23 @@ function fmtDateTime(v: string) {
   return new Date(v).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function normalizeSearchValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function matchesSearch(profile: SearchProfileRow, search: string) {
+  const q = normalizeSearchValue(search);
+  if (!q) return true;
+
+  return [
+    profile.nome,
+    profile.cognome,
+    `${profile.nome} ${profile.cognome}`,
+    `${profile.cognome} ${profile.nome}`,
+    profile.email_istituzionale,
+  ].some((field) => field?.toLowerCase().includes(q));
+}
+
 export default function AdminRsvpPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -75,45 +107,80 @@ export default function AdminRsvpPage() {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null);
   const [rsvps, setRsvps] = useState<RsvpRow[]>([]);
+  const [searchValue, setSearchValue] = useState("");
+  const [availableProfiles, setAvailableProfiles] = useState<SearchProfileRow[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingRsvps, setLoadingRsvps] = useState(false);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [savingProfileId, setSavingProfileId] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/login"); return; }
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-      if (!profile || profile.role !== "admin") { router.replace("/"); return; }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { router.replace("/login"); return; }
+        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+        if (!profile || profile.role !== "admin") { router.replace("/"); return; }
 
-      const { data: evs } = await supabase
-        .from("events")
-        .select("id, title, event_date, data, ora, location, max_posti")
-        .order("event_date", { ascending: false });
+        setLoadingProfiles(true);
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, nome, cognome, email_istituzionale, numero_telefono, facolta")
+          .order("cognome", { ascending: true })
+          .order("nome", { ascending: true });
 
-      if (!evs) { setLoadingEvents(false); return; }
+        setAvailableProfiles((profilesData ?? []) as SearchProfileRow[]);
 
-      const counts = await Promise.all(
-        evs.map(async e => {
-          const { count } = await supabase
-            .from("rsvp")
-            .select("id", { count: "exact", head: true })
-            .eq("event_id", e.id)
-            .eq("stato", "confermato");
-          return { id: e.id, count: count ?? 0 };
-        })
-      );
+        const { data: evs } = await supabase
+          .from("events")
+          .select("id, title, event_date, data, ora, location, max_posti")
+          .order("event_date", { ascending: false });
 
-      setEvents(evs.map(e => ({
-        ...e,
-        rsvp_count: counts.find(c => c.id === e.id)?.count ?? 0,
-      })));
-      setLoadingEvents(false);
+        if (!evs) { setLoadingEvents(false); return; }
+
+        const counts = await Promise.all(
+          evs.map(async e => {
+            const { count } = await supabase
+              .from("rsvp")
+              .select("id", { count: "exact", head: true })
+              .eq("event_id", e.id)
+              .eq("stato", "confermato");
+            return { id: e.id, count: count ?? 0 };
+          })
+        );
+
+        setEvents(evs.map(e => ({
+          ...e,
+          rsvp_count: counts.find(c => c.id === e.id)?.count ?? 0,
+        })));
+      } finally {
+        setLoadingEvents(false);
+        setLoadingProfiles(false);
+      }
     }
     load();
   }, [supabase, router]);
 
+  async function refreshEventCount(eventId: string) {
+    const { count } = await supabase
+      .from("rsvp")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId)
+      .eq("stato", "confermato");
+
+    setEvents((current) => current.map((event) => (
+      event.id === eventId ? { ...event, rsvp_count: count ?? 0 } : event
+    )));
+
+    setSelectedEvent((current) => (
+      current && current.id === eventId ? { ...current, rsvp_count: count ?? 0 } : current
+    ));
+  }
+
   async function loadRsvps(event: EventRow) {
     setSelectedEvent(event);
+    setMessage(null);
     setLoadingRsvps(true);
 
     const { data } = await supabase
@@ -128,6 +195,86 @@ export default function AdminRsvpPage() {
 
     setRsvps(normalized);
     setLoadingRsvps(false);
+    await refreshEventCount(event.id);
+  }
+
+  async function addParticipant(profile: SearchProfileRow) {
+    if (!selectedEvent) return;
+    setMessage(null);
+    setSavingProfileId(profile.id);
+
+    const alreadyPresent = rsvps.some(
+      (r) =>
+        r.profile.email_istituzionale.toLowerCase() === profile.email_istituzionale.toLowerCase()
+    );
+
+    if (alreadyPresent) {
+      setMessage({ type: "error", text: "Questo utente è già presente nella lista." });
+      setSavingProfileId(null);
+      return;
+    }
+
+    const { error } = await supabase.from("rsvp").insert({
+      event_id: selectedEvent.id,
+      user_id: profile.id,
+      stato: "confermato",
+    });
+
+    if (error) {
+      setMessage({ type: "error", text: "Non sono riuscito ad aggiungere l'utente." });
+      setSavingProfileId(null);
+      return;
+    }
+
+    setMessage({ type: "success", text: "Utente aggiunto correttamente." });
+    setSearchValue("");
+    setSavingProfileId(null);
+    await loadRsvps(selectedEvent);
+  }
+
+  async function removeParticipant(row: RsvpRow) {
+    if (!selectedEvent) return;
+    setMessage(null);
+    setSavingProfileId(String(row.id));
+
+    const { error: deleteError, data: deletedRows } = await supabase
+      .from("rsvp")
+      .delete()
+      .eq("id", row.id)
+      .eq("event_id", selectedEvent.id)
+      .select("id");
+
+    if (deleteError) {
+      const { error: updateError } = await supabase
+        .from("rsvp")
+        .update({ stato: "cancellato" })
+        .eq("id", row.id)
+        .eq("event_id", selectedEvent.id);
+
+      if (updateError) {
+        setMessage({ type: "error", text: updateError.message });
+        setSavingProfileId(null);
+        return;
+      }
+    }
+
+    if (!deleteError && (!deletedRows || deletedRows.length === 0)) {
+      const { error: updateError } = await supabase
+        .from("rsvp")
+        .update({ stato: "cancellato" })
+        .eq("id", row.id)
+        .eq("event_id", selectedEvent.id);
+
+      if (updateError) {
+        setMessage({ type: "error", text: "Non sono riuscito a rimuovere l'utente." });
+        setSavingProfileId(null);
+        return;
+      }
+    }
+
+    setMessage({ type: "success", text: "Utente rimosso correttamente." });
+    setSavingProfileId(null);
+    await loadRsvps(selectedEvent);
   }
 
   function exportCsv() {
@@ -151,6 +298,38 @@ export default function AdminRsvpPage() {
   const confirmed = rsvps.filter(r => r.stato === "confermato");
   const cancelled = rsvps.filter(r => r.stato === "cancellato");
 
+  const filteredProfiles = useMemo(() => {
+    if (!selectedEvent) return [] as SearchProfileRow[];
+
+    const alreadyAddedEmails = new Set(
+      rsvps.map((r) => r.profile.email_istituzionale.toLowerCase())
+    );
+
+    return availableProfiles
+      .filter((profile) => profile.email_istituzionale)
+      .filter((profile) => !alreadyAddedEmails.has(profile.email_istituzionale.toLowerCase()))
+      .filter((profile) => matchesSearch(profile, searchValue))
+      .slice(0, 8);
+  }, [availableProfiles, rsvps, searchValue, selectedEvent]);
+
+  const actionButtonStyle: CSSProperties = {
+    border: "1px solid rgba(15,47,110,.14)",
+    background: "white",
+    color: "#0f2f6e",
+    borderRadius: "999px",
+    padding: ".55rem 1rem",
+    fontWeight: 700,
+    fontSize: ".8rem",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  };
+
+  const dangerButtonStyle: CSSProperties = {
+    ...actionButtonStyle,
+    border: "1px solid rgba(220,38,38,.16)",
+    color: "#b91c1c",
+  };
+
   return (
     <main style={{ minHeight: "100vh", background: "linear-gradient(180deg,#f7f9fc 0%,#eef3fb 100%)", padding: "8.5rem 1.5rem 4rem" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -171,7 +350,7 @@ export default function AdminRsvpPage() {
           </a>
         </section>
 
-        <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "1.5rem", alignItems: "start" }}>
+        <div className="rsvp-layout" style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "1.5rem", alignItems: "start" }}>
 
           {/* Event list */}
           <div style={{ background: "rgba(255,255,255,.85)", border: "1px solid rgba(15,47,110,.08)", borderRadius: "1.8rem", overflow: "hidden", boxShadow: "0 8px 32px rgba(15,47,110,.07)" }}>
@@ -242,9 +421,96 @@ export default function AdminRsvpPage() {
                     </p>
                   </div>
                   {confirmed.length > 0 && (
-                    <button onClick={exportCsv} style={{ border: "1px solid rgba(15,47,110,.14)", background: "white", color: "#0f2f6e", borderRadius: "999px", padding: ".6rem 1.2rem", fontWeight: 700, fontSize: ".84rem", cursor: "pointer" }}>
+                    <button onClick={exportCsv} style={actionButtonStyle}>
                       Esporta CSV
                     </button>
+                  )}
+                </div>
+
+                <div style={{ padding: "1.2rem 1.8rem", borderBottom: "1px solid rgba(15,47,110,.07)", display: "flex", flexDirection: "column", gap: ".9rem", background: "rgba(237,243,255,.45)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: ".35rem" }}>
+                    <h3 style={{ margin: 0, fontSize: ".98rem", fontWeight: 800, color: "#0f2f6e" }}>Aggiungi utente manualmente</h3>
+                    <p style={{ margin: 0, fontSize: ".84rem", color: "#6b7280" }}>
+                      Cerca per email, nome o cognome e aggiungi l'utente alla lista dei confermati.
+                    </p>
+                  </div>
+
+                  <input
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    placeholder="Cerca per email, nome o cognome"
+                    style={{
+                      width: "100%",
+                      borderRadius: "1rem",
+                      border: "1px solid rgba(15,47,110,.12)",
+                      padding: ".85rem 1rem",
+                      fontSize: ".95rem",
+                      outline: "none",
+                      background: "white",
+                      color: "#0f2f6e",
+                    }}
+                  />
+
+                  {message && (
+                    <div
+                      style={{
+                        borderRadius: "1rem",
+                        padding: ".8rem 1rem",
+                        fontSize: ".84rem",
+                        fontWeight: 600,
+                        background: message.type === "success" ? "rgba(52,211,153,.12)" : "rgba(248,113,113,.12)",
+                        color: message.type === "success" ? "#047857" : "#b91c1c",
+                        border: message.type === "success" ? "1px solid rgba(16,185,129,.18)" : "1px solid rgba(220,38,38,.16)",
+                      }}
+                    >
+                      {message.text}
+                    </div>
+                  )}
+
+                  {loadingProfiles ? (
+                    <p style={{ margin: 0, fontSize: ".84rem", color: "#6b7280" }}>Caricamento utenti...</p>
+                  ) : searchValue.trim() === "" ? (
+                    <p style={{ margin: 0, fontSize: ".84rem", color: "#6b7280" }}>Inizia a scrivere per cercare un utente da aggiungere.</p>
+                  ) : filteredProfiles.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: ".84rem", color: "#6b7280" }}>Nessun utente disponibile trovato.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: ".7rem" }}>
+                      {filteredProfiles.map((profile) => (
+                        <div
+                          key={profile.id}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: "1rem",
+                            padding: ".9rem 1rem",
+                            borderRadius: "1rem",
+                            background: "white",
+                            border: "1px solid rgba(15,47,110,.08)",
+                          }}
+                        >
+                          <div style={{ display: "flex", flexDirection: "column", gap: ".2rem", minWidth: 0 }}>
+                            <span style={{ fontWeight: 700, color: "#0f2f6e" }}>
+                              {profile.nome} {profile.cognome}
+                            </span>
+                            <span style={{ fontSize: ".84rem", color: "#4b5563", overflowWrap: "anywhere" }}>{profile.email_istituzionale}</span>
+                            <span style={{ fontSize: ".78rem", color: "#6b7280", textTransform: "capitalize" }}>{profile.facolta}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => addParticipant(profile)}
+                            disabled={savingProfileId === profile.id}
+                            style={{
+                              ...actionButtonStyle,
+                              opacity: savingProfileId === profile.id ? 0.65 : 1,
+                              cursor: savingProfileId === profile.id ? "wait" : "pointer",
+                            }}
+                          >
+                            {savingProfileId === profile.id ? "Aggiunta..." : "Aggiungi"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 
@@ -254,7 +520,7 @@ export default function AdminRsvpPage() {
                       <div key={i} style={{ height: 52, borderRadius: "1rem", background: "rgba(15,47,110,.06)", animation: "sk 1.4s ease infinite" }} />
                     ))}
                   </div>
-                ) : rsvps.length === 0 ? (
+                ) : confirmed.length === 0 ? (
                   <div style={{ padding: "5rem 2rem", textAlign: "center", color: "#6b7280" }}>
                     <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>📋</div>
                     <p style={{ fontWeight: 600, color: "#0f2f6e" }}>Nessuna iscrizione ancora</p>
@@ -264,7 +530,7 @@ export default function AdminRsvpPage() {
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "#edf3ff" }}>
-                          {["Nome", "Email", "Telefono", "Facoltà", "Iscritto il", "Stato"].map(h => (
+                          {["Nome", "Email", "Telefono", "Facoltà", "Iscritto il", "Stato", "Azioni"].map(h => (
                             <th key={h} style={{ textAlign: "left", padding: ".85rem 1.2rem", fontSize: ".8rem", fontWeight: 800, color: "#123066", whiteSpace: "nowrap", borderBottom: "1px solid rgba(15,47,110,.08)" }}>
                               {h}
                             </th>
@@ -272,7 +538,7 @@ export default function AdminRsvpPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {rsvps.map(r => (
+                        {confirmed.map(r => (
                           <tr key={r.id} style={{ borderBottom: "1px solid rgba(15,47,110,.06)", background: r.stato === "cancellato" ? "rgba(248,113,113,.03)" : "white" }}>
                             <td style={{ padding: ".85rem 1.2rem", fontWeight: 600, color: "#0f2f6e", whiteSpace: "nowrap" }}>
                               {r.profile.nome} {r.profile.cognome}
@@ -291,6 +557,20 @@ export default function AdminRsvpPage() {
                                 {r.stato}
                               </span>
                             </td>
+                            <td style={{ padding: ".85rem 1.2rem" }}>
+                              <button
+                                type="button"
+                                onClick={() => removeParticipant(r)}
+                                disabled={savingProfileId === String(r.id)}
+                                style={{
+                                  ...dangerButtonStyle,
+                                  opacity: savingProfileId === String(r.id) ? 0.65 : 1,
+                                  cursor: savingProfileId === String(r.id) ? "wait" : "pointer",
+                                }}
+                              >
+                                {savingProfileId === String(r.id) ? "Rimozione..." : "Rimuovi"}
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -302,7 +582,14 @@ export default function AdminRsvpPage() {
           </div>
         </div>
       </div>
-      <style>{`@keyframes sk{0%,100%{opacity:.4}50%{opacity:.9}}`}</style>
+      <style>{`
+        @keyframes sk{0%,100%{opacity:.4}50%{opacity:.9}}
+        @media (max-width: 980px) {
+          .rsvp-layout {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }

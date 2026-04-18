@@ -294,7 +294,7 @@ export default function TeamPage() {
                                 }}
                             >
                                 Un gruppo di studenti che lavora ogni giorno per rappresentare,
-                                connettere e creare opportunità per la community UniSR.
+                                connettere e creare opportunità per la community.
                             </p>
                         </div>
                     </div>

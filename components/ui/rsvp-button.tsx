@@ -103,19 +103,24 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
       {maxPosti != null && (
         <div style={{ background: "rgba(255,255,255,.07)", borderRadius: "1.2rem", padding: "1rem 1.2rem", border: "1px solid rgba(255,255,255,.1)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".5rem" }}>
-            <span style={{ fontSize: ".75rem", fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "rgba(255,255,255,.45)" }}>
+            <span style={{ fontSize: ".75rem", fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "rgb(8, 16, 42)" }}>
               Posti disponibili
             </span>
-            <span style={{ fontSize: ".9rem", fontWeight: 700, color: postiRimasti === 0 ? "#f87171" : "#fff" }}>
+            <span style={{
+              fontSize: ".95rem",
+              fontWeight: 800,
+              color: postiRimasti === 0 ? "#dc2626" : "rgb(8, 16, 42)",
+              textShadow: "0 1px 1px rgba(255,255,255,.35)",
+            }}>
               {postiRimasti === 0 ? "Esauriti" : `${postiRimasti} / ${maxPosti}`}
             </span>
           </div>
           {/* Progress bar */}
-          <div style={{ height: 4, background: "rgba(255,255,255,.12)", borderRadius: "999px", overflow: "hidden" }}>
+          <div style={{ height: 6, background: "rgba(8,16,42,.12)", borderRadius: "999px", overflow: "hidden" }}>
             <div style={{
               height: "100%",
               width: `${Math.min(100, (postiOccupati / maxPosti) * 100)}%`,
-              background: postiRimasti === 0 ? "#f87171" : postiRimasti! <= 3 ? "#fbbf24" : "#34d399",
+              background: postiRimasti === 0 ? "#dc2626" : postiRimasti! <= 3 ? "#d97706" : "#16a34a",
               borderRadius: "999px",
               transition: "width .4s",
             }} />
@@ -136,7 +141,18 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
           <button
             onClick={handleCancel}
             disabled={busy}
-            style={{ background: "transparent", border: "1px solid rgba(255,255,255,.15)", color: "rgba(255,255,255,.5)", borderRadius: "999px", padding: ".6rem 1.2rem", fontWeight: 600, fontSize: ".82rem", cursor: busy ? "wait" : "pointer", transition: "all .18s" }}
+            style={{
+              background: busy ? "rgba(127,29,29,.7)" : "#b91c1c",
+              border: "1px solid #991b1b",
+              color: "#fff",
+              borderRadius: "999px",
+              padding: ".6rem 1.2rem",
+              fontWeight: 600,
+              fontSize: ".82rem",
+              cursor: busy ? "wait" : "pointer",
+              transition: "all .18s",
+              boxShadow: "0 4px 14px rgba(185,28,28,.28)",
+            }}
           >
             {busy ? "Cancellazione..." : "Cancella iscrizione"}
           </button>

@@ -185,7 +185,7 @@ export default function EventiPage() {
             <span style={{ color: "#2E4080" }}>incontri.</span>
           </h1>
           <p className="ev-sub" style={{ fontSize: "1rem", color: "#6B7280", maxWidth: 420, lineHeight: 1.75 }}>
-            Eventi, workshop e momenti di comunità pensati per gli studenti UniSR.
+            Eventi, workshop e momenti di comunità pensati per gli studenti della community.
           </p>
           {!loading && events.length > 0 && (
             <div style={{ display: "flex", gap: "2.5rem", marginTop: "2.5rem", flexWrap: "wrap" }}>

@@ -147,7 +147,7 @@ export default function EventoDetailPage() {
 
           {/* Dot pattern (always) */}
           {!cover && (
-            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(rgba(255,255,255,.032) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
+            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(rgba(177, 2, 2, 0.03) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
           )}
 
           {/* ── Inner: vertically centered, max-width aligned ── */}

@@ -311,7 +311,7 @@ export default function AdminConvenzioni() {
                   Gestione convenzioni.
                 </h1>
                 <p style={{ margin: 0, color: "rgba(255,255,255,.8)", lineHeight: 1.6, maxWidth: 500 }}>
-                  Crea, modifica, attiva e disattiva le convenzioni visibili agli studenti UniSR.
+                  Crea, modifica, attiva e disattiva le convenzioni visibili agli studenti della community.
                 </p>
               </div>
               <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap" }}>
