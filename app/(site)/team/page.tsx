@@ -16,21 +16,21 @@ const leadershipMembers: TeamMember[] = [
         lastName: "Errante",
         role: "Presidente",
         contact: "Contatto disponibile su richiesta",
-        // image: "/team/flavio-errante.jpg",
+        image: "/team/Errante.png",
     },
     {
         firstName: "Carlotta",
         lastName: "Minzera",
         role: "Vice-presidente",
         contact: "Contatto disponibile su richiesta",
-        // image: "/team/carlotta-minzera.jpg",
+        image: "/team/Minzera.png",
     },
     {
         firstName: "Enrica",
         lastName: "Piazza",
         role: "Segretaria",
         contact: "Contatto disponibile su richiesta",
-        // image: "/team/enrica-piazza.jpg",
+        image: "/team/Piazza.png",
     },
 ];
 
@@ -40,42 +40,71 @@ const managersMembers: TeamMember[] = [
         lastName: "Romito",
         role: "Responsabile Rappresentanza",
         contact: "Contatto disponibile su richiesta",
-        // image: "/team/mirko-romito.jpg",
+        image: "/team/Romito.png",
     },
     {
         firstName: "Saverio",
         lastName: "Marino",
         role: "Responsabile Collaborazioni e convenzioni",
         contact: "Contatto disponibile su richiesta",
-        // image: "/team/saverio-marino.jpg",
+        image: "/team/Marino.png",
     },
     {
         firstName: "Alberto",
         lastName: "Carluccio",
         role: "Responsabile Regolamenti",
         contact: "Contatto disponibile su richiesta",
-        // image: "/team/alberto-carluccio.jpg",
+        image: "/team/Carluccio.png",
     },
     {
         firstName: "Sabina",
         lastName: "Castronovo",
         role: "Responsabile Network",
         contact: "Contatto disponibile su richiesta",
-        // image: "/team/sabina-castronovo.jpg",
+        image: "/team/Castronovo.png",
     },
     {
         firstName: "Edoardo",
         lastName: "Mongardini",
         role: "Responsabile Comunicazione e Media",
         contact: "Contatto disponibile su richiesta",
-        // image: "/team/edoardo-mongardini.jpg",
+        image: "/team/Mongardini.png",
     },
     {
         firstName: "Eleonora",
         lastName: "Pazzali",
         role: "Responsabile Eventi culturali",
         contact: "Contatto disponibile su richiesta",
-        // image: "/team/eleonora-pazzali.jpg",
+        image: "/team/Pazzali.png",
+    },
+    {
+        firstName: "Edoardo",
+        lastName: "Scopel",
+        role: "Responsabile Tech",
+        contact: "Contatto disponibile su richiesta",
+        //image: "",
+    },
+    {
+        firstName: "Raffaele",
+        lastName: "Riccobene",
+        role: "Responsabile Sport",
+        contact: "Contatto disponibile su richiesta",
+        //image: "",
+    },
+];
+
+const collaboratorsMembers = [
+    {
+        firstName: "Nome",
+        lastName: "Cognome",
+    },
+    {
+        firstName: "Nome",
+        lastName: "Cognome",
+    },
+    {
+        firstName: "Nome",
+        lastName: "Cognome",
     },
 ];
 
@@ -400,6 +429,98 @@ export default function TeamPage() {
                                     member={member}
                                 />
                             ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section style={{ padding: "0 1.5rem 6.5rem" }}>
+                    <div
+                        style={{
+                            width: "100%",
+                            maxWidth: "1180px",
+                            margin: "0 auto",
+                        }}
+                    >
+                        <div style={{ marginBottom: "2.1rem", maxWidth: "760px" }}>
+                            <p
+                                style={{
+                                    margin: "0 0 0.9rem",
+                                    fontSize: "0.74rem",
+                                    fontWeight: 700,
+                                    letterSpacing: "0.18em",
+                                    textTransform: "uppercase",
+                                    color: "var(--ink-soft)",
+                                }}
+                            >
+                                Collaboratori
+                            </p>
+
+                            <h2
+                                style={{
+                                    margin: 0,
+                                    fontSize: "clamp(2.3rem, 5vw, 3.7rem)",
+                                    lineHeight: 0.98,
+                                    letterSpacing: "-0.035em",
+                                    color: "var(--ink)",
+                                }}
+                            >
+                                Le persone che supportano ASTRA
+                            </h2>
+
+                            <p
+                                style={{
+                                    margin: "1rem 0 0",
+                                    fontSize: "0.98rem",
+                                    lineHeight: 1.8,
+                                    color: "var(--mist)",
+                                    maxWidth: "640px",
+                                }}
+                            >
+                                Un gruppo più ampio che contribuisce alle attività, ai progetti e
+                                all&apos;organizzazione delle iniziative durante l&apos;anno.
+                            </p>
+                        </div>
+
+                        <div
+                            style={{
+                                maxWidth: "760px",
+                                background: "var(--white)",
+                                border: "1px solid rgba(8, 16, 42, 0.08)",
+                                borderRadius: "1.75rem",
+                                padding: "1.6rem 1.7rem",
+                                boxShadow: "0 10px 30px rgba(8, 16, 42, 0.04)",
+                            }}
+                        >
+                            <ul
+                                style={{
+                                    margin: 0,
+                                    paddingLeft: "1.2rem",
+                                    display: "grid",
+                                    gap: "0.9rem",
+                                    color: "var(--ink)",
+                                    fontFamily: "DM Sans",
+                                    fontSize: "1rem",
+                                    lineHeight: 1.7,
+                                }}
+                            >
+                                {collaboratorsMembers.map((member, index) => (
+                                    <li
+                                        key={`${member.firstName}-${member.lastName}-${index}`}
+                                        style={{
+                                            paddingLeft: "0.2rem",
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                fontWeight: 600,
+                                                letterSpacing: "-0.01em",
+                                            }}
+                                        >
+                                            {member.firstName} {member.lastName}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     </div>
                 </section>

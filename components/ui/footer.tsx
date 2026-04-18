@@ -60,10 +60,11 @@ export default function Footer() {
             gap: "3rem",
             padding: "5rem 3rem 4rem",
             borderBottom: "1px solid rgba(255,255,255,.07)",
+            alignItems: "center",
           }}
         >
           {/* Brand column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem" }}>
+          <div className="footer-brand" style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
             <AstraLogo size={110} white />
             <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "rgba(255,255,255,.42)", fontWeight: 400, maxWidth: 260 }}>
               L&apos;associazione studentesca dell&apos;Università Vita-Salute
@@ -101,7 +102,7 @@ export default function Footer() {
 
           {/* Nav columns */}
           {footerLinks.map(({ label, links }) => (
-            <div key={label} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div key={label} className="footer-column" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <span style={{
                 fontSize: ".65rem",
                 fontWeight: 700,
@@ -141,16 +142,16 @@ export default function Footer() {
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: "center",
             gap: "1.5rem",
             padding: "1.6rem 3rem",
             flexWrap: "wrap",
           }}
         >
-          <span style={{ fontSize: ".78rem", color: "rgba(255,255,255,.24)", fontWeight: 400 }}>
+          <span style={{ fontSize: ".78rem", color: "rgba(255,255,255,.24)", fontWeight: 400, textAlign: "center", width: "100%" }}>
             © 2025 Astra San Raffaele. Tutti i diritti riservati.
           </span>
-          <div style={{ display: "flex", gap: "1.8rem" }}>
+          <div className="footer-legal-links" style={{ display: "flex", gap: "1.8rem", justifyContent: "center", width: "100%" }}>
             {[["Privacy Policy", "#"], ["Cookie Policy", "#"]].map(([l, h]) => (
               <a
                 key={l}
@@ -180,7 +181,7 @@ export default function Footer() {
           .footer-top {
             grid-template-columns: 1fr 1fr !important;
             padding: 3.5rem 1.5rem 3rem !important;
-            gap: 2.5rem !important;
+            gap: 2.25rem !important;
           }
           .footer-top > div:first-child {
             grid-column: 1 / -1;
@@ -193,8 +194,40 @@ export default function Footer() {
           }
         }
 
-        @media (max-width: 500px) {
-          .footer-top { grid-template-columns: 1fr !important; }
+        @media (max-width: 640px) {
+          .footer-top {
+            grid-template-columns: 1fr !important;
+            padding: 2.75rem 1.1rem 2.2rem !important;
+            gap: 1.9rem !important;
+          }
+          .footer-brand {
+            gap: .75rem !important;
+          }
+          .footer-brand p {
+            max-width: 100% !important;
+            font-size: .88rem !important;
+            line-height: 1.65 !important;
+          }
+          .footer-column {
+            gap: .72rem !important;
+          }
+          .footer-bottom {
+            padding: 1.1rem 1.1rem 1.4rem !important;
+            gap: .9rem !important;
+          }
+          .footer-legal-links {
+            flex-direction: column !important;
+            gap: .55rem !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .footer-top {
+            padding: 2.4rem .95rem 2rem !important;
+          }
+          .footer-bottom {
+            padding: 1rem .95rem 1.3rem !important;
+          }
         }
       `}</style>
     </>

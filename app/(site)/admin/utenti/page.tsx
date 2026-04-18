@@ -310,7 +310,19 @@ export default function AdminUtentiPage() {
     if (!window.confirm(`Eliminare ${target.nome} ${target.cognome}?`)) return;
     setSavingId(id); setError(""); setSuccess("");
     const { error: err } = await supabase.from("profiles").delete().eq("id", id);
-    if (err) { setError("Eliminazione non riuscita."); setSavingId(null); return; }
+    const res = await fetch("/api/admin/delete-user", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ userId: id }),
+});
+
+const json = await res.json();
+
+if (!res.ok) {
+  setError(json.error ?? "Eliminazione non riuscita.");
+  setSavingId(null);
+  return;
+}
     setProfiles(c => c.filter(p => p.id !== id));
     setSelected(c => c.filter(x => x !== id));
     setEdited(c => { const n = { ...c }; delete n[id]; return n; });

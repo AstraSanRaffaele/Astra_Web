@@ -335,7 +335,7 @@ export function AuthShell({
               >
                 {[
                   ["2.9k", "Studenti nella community"],
-                  ["99+", "Iniziative create"],
+                  ["30+", "Iniziative create"],
                   ["3", "Facoltà coinvolte"],
                 ].map(([n, l]) => (
                   <div

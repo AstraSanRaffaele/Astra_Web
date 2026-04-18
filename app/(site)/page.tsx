@@ -40,7 +40,14 @@ const pillars = [
   { num: "03", title: "Opportunità", desc: "Da SOS CASA alle borse di studio: ti aiutiamo a trovare tutto quello che cerchi." },
 ];
 
-const chips = ["ASTRA San Raffaele","ASTRA Bocconi", "ASTRA Cattolica", "ASTRA IULM", "ASTRA Bicocca", "ASTRA UniPR"];
+const chips = [
+  { label: "ASTRA San Raffaele", href: "https://www.instagram.com/astrasanraffaele" },
+  { label: "ASTRA Bocconi", href: "https://www.astrabocconi.com/" },
+  { label: "ASTRA Cattolica", href: "https://www.instagram.com/astracattolica" },
+  { label: "ASTRA IULM", href: "https://www.instagram.com/astraiulm/" },
+  { label: "ASTRA Bicocca", href: "https://www.instagram.com/astrabicocca/" },
+  { label: "ASTRA UniPR", href: "https://www.instagram.com/astraunipr/" },
+];
 const marqueeItems = ["Medicina", "Psicologia", "Filosofia", "Rappresentanza", "Comunità", "Innovazione", "Milano"];
 const stats = [["2.9k", "Followers"], ["30+", "Iniziative"], ["3", "Facoltà"]];
 
@@ -133,8 +140,11 @@ export default function Home() {
           text-align: center;
           background: var(--white);
           transition: background .2s, color .2s, border-color .2s, transform .2s;
-          cursor: default;
+          cursor: pointer;
+          text-decoration: none;
+          display: block;
         }
+
         .chip:hover { background: var(--ink); color: #fff; border-color: var(--ink); transform: translateY(-2px); }
 
         .btn-primary {
@@ -407,11 +417,31 @@ export default function Home() {
             </Reveal>
 
             <Reveal delay={0.15}>
-              <div style={{ position: "relative", aspectRatio: "1 / 1.1" }}>
+              <div
+                style={{
+                  position: "relative",
+                  aspectRatio: "1 / 1.1",
+                  maxWidth: "460px",
+                  width: "100%",
+                  margin: "0 auto",
+                }}
+              >
                 {/* Back card */}
                 <div style={{ position: "absolute", inset: 0, background: "var(--sky-deep)", borderRadius: "2.5rem", transform: "rotate(3deg)" }} />
                 {/* Main card */}
-                <div style={{ position: "absolute", inset: 0, background: "var(--ink)", borderRadius: "2.5rem", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "2.5rem" }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "var(--ink)",
+                    borderRadius: "2.5rem",
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    padding: "2.2rem",
+                  }}
+                >
                   <span className="display" style={{
                     position: "absolute", top: "50%", left: "50%",
                     transform: "translate(-50%,-55%)",
@@ -419,14 +449,24 @@ export default function Home() {
                     color: "rgba(255,255,255,.03)",
                     userSelect: "none", pointerEvents: "none", whiteSpace: "nowrap",
                   }}>A</span>
-                  <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div
+                    style={{
+                      position: "relative",
+                      zIndex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      height: "100%",
+                      gap: "10px",
+                    }}
+                  >
                     {[
                       ["2.9k", "Studenti nella community", true],
                       ["30+", "Iniziative realizzate", false],
                       ["3", "Facoltà rappresentate", false],
                     ].map(([n, l, accent]) => (
                       <div key={String(l)} style={{
-                        padding: "1.4rem 1.6rem",
+                        padding: "1.2rem 1.4rem",
                         borderRadius: "1.4rem",
                         background: accent ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.05)",
                         border: `1px solid ${accent ? "rgba(255,255,255,.18)" : "rgba(255,255,255,.07)"}`,
@@ -490,7 +530,17 @@ export default function Home() {
             </Reveal>
             <Reveal delay={0.12}>
               <div className="chips-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: ".85rem" }}>
-                {chips.map((c) => <div key={c} className="chip">{c}</div>)}
+                {chips.map((chip) => (
+                  <a
+                    key={chip.label}
+                    href={chip.href}
+                    className="chip"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {chip.label}
+                  </a>
+                ))}
               </div>
             </Reveal>
           </div>

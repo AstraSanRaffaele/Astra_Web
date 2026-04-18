@@ -35,19 +35,36 @@ const EMPTY_FORM: ConvForm = {
   categoria: "", link: "#", ordine: "0", attiva: true,
 };
 
-const CATEGORY_OPTIONS = ["Salute", "Sport", "Cultura", "Tech", "Cibo", "Altro"];
+const CATEGORY_OPTIONS = [
+  "Trasporti",
+  "Sport",
+  "Libri_e_Materiale_Didattico",
+  "Tech",
+  "Bar_e_Ristoranti",
+  "Altro",
+];
 
 const categoryColors: Record<string, { bg: string; text: string }> = {
-  salute:  { bg: "rgba(16,107,60,.08)",  text: "#0a6638" },
-  sport:   { bg: "rgba(107,16,16,.08)",  text: "#8b1111" },
-  cultura: { bg: "rgba(107,60,16,.08)",  text: "#7a4010" },
-  tech:    { bg: "rgba(14,31,107,.08)",  text: "#0E1F6B" },
-  cibo:    { bg: "rgba(120,16,107,.08)", text: "#7a0f70" },
-  default: { bg: "rgba(8,16,42,.06)",    text: "#2E4080" },
+  trasporti: { bg: "rgba(16,107,60,.08)", text: "#0a6638" },
+  sport: { bg: "rgba(107,16,16,.08)", text: "#8b1111" },
+  libri_e_materiale_didattico: { bg: "rgba(107,60,16,.08)", text: "#7a4010" },
+  tech: { bg: "rgba(14,31,107,.08)", text: "#0E1F6B" },
+  bar_e_ristoranti: { bg: "rgba(120,16,107,.08)", text: "#7a0f70" },
+  altro: { bg: "rgba(8,16,42,.06)", text: "#2E4080" },
+  default: { bg: "rgba(8,16,42,.06)", text: "#2E4080" },
 };
 
+function normalizeCategoryKey(cat: string) {
+  return cat?.trim().toLowerCase().replace(/[\s-]+/g, "_") as keyof typeof categoryColors;
+}
+
+function formatCategoryLabel(cat: string) {
+  return cat?.replace(/[_-]+/g, " ") ?? "";
+}
+
 function getCatStyle(cat: string) {
-  return categoryColors[cat?.toLowerCase()] ?? categoryColors.default;
+  const key = normalizeCategoryKey(cat);
+  return categoryColors[key] ?? categoryColors.default;
 }
 
 // ── Modal ─────────────────────────────────────────────────────────
@@ -121,7 +138,11 @@ function ConvModal({
                 style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: form.categoria ? "#102a56" : "#9ca3af", borderRadius: "12px", padding: ".8rem 1rem", fontSize: ".95rem", outline: "none", appearance: "none" }}
               >
                 <option value="">Seleziona...</option>
-                {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                {CATEGORY_OPTIONS.map(c => (
+  <option key={c} value={c}>
+    {formatCategoryLabel(c)}
+  </option>
+))}
               </select>
             </div>
             <MField label="Ordine" type="number" value={form.ordine} onChange={v => set("ordine", v)} placeholder="0" />
@@ -435,7 +456,7 @@ export default function AdminConvenzioni() {
                             {c.titolo}
                           </h3>
                           <span style={{ fontSize: ".68rem", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", background: catStyle.bg, color: catStyle.text, padding: ".22rem .65rem", borderRadius: "999px" }}>
-                            {c.categoria}
+                            {formatCategoryLabel(c.categoria)}
                           </span>
                           {!c.attiva && (
                             <span style={{ fontSize: ".62rem", fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: "rgba(15,47,110,.06)", color: "#6b7280", padding: ".2rem .6rem", borderRadius: "999px" }}>

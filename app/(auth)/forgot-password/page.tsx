@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import Footer from "@/components/ui/footer";
 import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
 
 export default function ForgotPasswordPage() {
