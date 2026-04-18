@@ -6,6 +6,10 @@
   "description": "Astra Card",
   "serialNumber": "123456",
 
+  "backgroundColor": "rgb(0, 102, 204)",
+  "foregroundColor": "rgb(255, 255, 255)",
+  "labelColor": "rgb(255, 255, 255)",
+
   "generic": {
     "primaryFields": [],
     "secondaryFields": []
