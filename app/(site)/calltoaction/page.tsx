@@ -156,10 +156,10 @@ export default function CallToActionPage() {
         <>
           Diventa
           <br />
-          <em style={{ fontStyle: "italic", color: "#C2CEFF" }}>volontario</em>.
+          <em style={{ fontStyle: "italic", color: "#C2CEFF" }}>collaboratore</em>.
         </>
       }
-      description="Se fai già parte della community Astra, puoi candidarti come volontario scegliendo l’ambito in cui ti senti più utile."
+      description="Se fai già parte della community Astra, puoi candidarti come collaboratore scegliendo l’ambito in cui ti senti più utile."
       cardTitle={
         <>
           Invia la tua
@@ -263,7 +263,7 @@ export default function CallToActionPage() {
             onChange={(e) => setConsent(e.target.checked)}
             style={{ marginTop: ".2rem" }}
           />
-          Confermo di voler inviare la mia candidatura come volontario per l’ambito selezionato.
+          Confermo di voler inviare la mia candidatura come collaboratore per l’ambito selezionato.
         </label>
 
         <AuthMessage error={error} success={success} />
