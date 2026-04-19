@@ -38,7 +38,10 @@ export default function EventoDetailPage() {
     if (!id) return;
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/login"); return; }
+      if (!user) {
+        router.replace(`/login?next=/eventi/${id}`);
+        return;
+      }
       const { data, error } = await supabase.from("events").select("*").eq("id", id).maybeSingle();
       if (error || !data) setNotFound(true);
       else setEvent(data);
@@ -175,7 +178,7 @@ export default function EventoDetailPage() {
             <div>
               <Link href="/eventi" className="back-pill back-pill-light">
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                  <path d="M11 7H3M6.5 3.5L3 7l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M11 7H3M6.5 3.5L3 7l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 Tutti gli eventi
               </Link>
@@ -211,23 +214,23 @@ export default function EventoDetailPage() {
           <div className="det-meta" style={{ display: "flex", gap: ".65rem", flexWrap: "wrap" }}>
             <div className="meta-chip">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="1.5" y="2.5" width="11" height="10" rx="2" stroke="#6B7280" strokeWidth="1.4"/>
-                <path d="M1.5 5.5h11M4.5 1.5v2M9.5 1.5v2" stroke="#6B7280" strokeWidth="1.4" strokeLinecap="round"/>
+                <rect x="1.5" y="2.5" width="11" height="10" rx="2" stroke="#6B7280" strokeWidth="1.4" />
+                <path d="M1.5 5.5h11M4.5 1.5v2M9.5 1.5v2" stroke="#6B7280" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
               <span>{fmtFull(date)}</span>
             </div>
             <div className="meta-chip">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="5" stroke="#6B7280" strokeWidth="1.4"/>
-                <path d="M7 4.5V7l2 1.5" stroke="#6B7280" strokeWidth="1.4" strokeLinecap="round"/>
+                <circle cx="7" cy="7" r="5" stroke="#6B7280" strokeWidth="1.4" />
+                <path d="M7 4.5V7l2 1.5" stroke="#6B7280" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
               <span>ore {fmtTime(date)}</span>
             </div>
             {event.location && (
               <div className="meta-chip">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 1.5C5.07 1.5 3.5 3.07 3.5 5c0 2.625 3.5 7 3.5 7s3.5-4.375 3.5-7c0-1.93-1.57-3.5-3.5-3.5Z" stroke="#6B7280" strokeWidth="1.4"/>
-                  <circle cx="7" cy="5" r="1.2" fill="#6B7280"/>
+                  <path d="M7 1.5C5.07 1.5 3.5 3.07 3.5 5c0 2.625 3.5 7 3.5 7s3.5-4.375 3.5-7c0-1.93-1.57-3.5-3.5-3.5Z" stroke="#6B7280" strokeWidth="1.4" />
+                  <circle cx="7" cy="5" r="1.2" fill="#6B7280" />
                 </svg>
                 <span>{event.location}</span>
               </div>
@@ -235,7 +238,7 @@ export default function EventoDetailPage() {
             {event.partnership && (
               <div className="meta-chip meta-chip-blue">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M10 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM2 12c0-2.21 2.24-4 5-4s5 1.79 5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  <path d="M10 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM2 12c0-2.21 2.24-4 5-4s5 1.79 5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                 </svg>
                 <span>In partnership con {event.partnership}</span>
               </div>
@@ -264,7 +267,7 @@ export default function EventoDetailPage() {
                 <div style={{ background: "rgba(46,64,128,.05)", border: "1px solid rgba(46,64,128,.12)", borderRadius: "1.5rem", padding: "1.6rem 2rem", display: "flex", alignItems: "center", gap: "1.2rem" }}>
                   <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(46,64,128,.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <svg width="20" height="20" viewBox="0 0 14 14" fill="none">
-                      <path d="M10 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM2 12c0-2.21 2.24-4 5-4s5 1.79 5 4" stroke="#2E4080" strokeWidth="1.4" strokeLinecap="round"/>
+                      <path d="M10 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM2 12c0-2.21 2.24-4 5-4s5 1.79 5 4" stroke="#2E4080" strokeWidth="1.4" strokeLinecap="round" />
                     </svg>
                   </div>
                   <div>
@@ -365,7 +368,7 @@ export default function EventoDetailPage() {
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M11 7H3M6.5 3.5L3 7l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M11 7H3M6.5 3.5L3 7l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 Tutti gli eventi
               </Link>

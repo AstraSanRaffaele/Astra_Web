@@ -1,8 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/ui/navbar";
-import Footer from "@/components/ui/footer";
 import { createClient } from "@/lib/supabase/client";
 
 type Role = "user" | "admin";
@@ -194,7 +192,6 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: "#F8F7F3" }}>
-        <Navbar />
         <div style={{ maxWidth: 860, margin: "0 auto", padding: "10rem 1.5rem 4rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "2rem", padding: "3rem", textAlign: "center", width: "100%", maxWidth: 400 }}>
             <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(8,16,42,.06)", margin: "0 auto 1.2rem", animation: "pulse 1.4s ease infinite" }} />
@@ -208,7 +205,6 @@ export default function ProfilePage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#F8F7F3", fontFamily: "'DM Sans', sans-serif", color: "#08102A" }}>
-      <Navbar />
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "8rem 1.5rem 5rem" }}>
 
@@ -369,64 +365,71 @@ export default function ProfilePage() {
           {/* ── RIGHT: SIDEBAR ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
 
+            {/* Wallet card */}
+            <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "2rem", padding: "2rem", boxShadow: "0 2px 20px rgba(8,16,42,.04)" }}>
+              <p
+                style={{
+                  fontSize: ".65rem",
+                  fontWeight: 700,
+                  letterSpacing: ".2em",
+                  textTransform: "uppercase",
+                  color: "#2E4080",
+                  marginBottom: ".8rem",
+                }}
+              >
+                Tessera digitale
+              </p>
+
+              <h3
+                style={{
+                  fontSize: "1.1rem",
+                  fontWeight: 700,
+                  margin: "0 0 1rem",
+                }}
+              >
+                Astra Card
+              </h3>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: ".7rem" }}>
+                <button
+                  onClick={() => (window.location.href = "/api/wallet/apple")}
+                  style={{
+                    background: "#000",
+                    color: "#fff",
+                    borderRadius: "12px",
+                    padding: ".7rem",
+                    fontWeight: 600,
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  Apple Wallet
+                </button>
+
+                <button
+                  onClick={() => (window.location.href = "/api/wallet/google")}
+                  style={{
+                    background: "#4285F4",
+                    color: "#fff",
+                    borderRadius: "12px",
+                    padding: ".7rem",
+                    textAlign: "center",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  Google Wallet
+                </button>
+              </div>
+            </div>
+
             {/* Account overview */}
             <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "2rem", padding: "2rem", boxShadow: "0 2px 20px rgba(8,16,42,.04)" }}>
               <p style={{ fontSize: ".65rem", fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: "#2E4080", margin: "0 0 .4rem" }}>Panoramica</p>
               <h2 style={{ margin: "0 0 1.5rem", fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-.02em" }}>Account</h2>
-              <div style={{
-                }}>
-                  <p style={{
-                    fontSize: ".65rem",
-                    fontWeight: 700,
-                    letterSpacing: ".2em",
-                    textTransform: "uppercase",
-                    color: "#2E4080",
-                    marginBottom: ".8rem"
-                  }}>
-                    Tessera digitale
-                  </p>
 
-                  <h3 style={{
-                    fontSize: "1.1rem",
-                    fontWeight: 700,
-                    marginBottom: "1rem"
-                  }}>
-                    Astra Card
-                  </h3>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: ".7rem" }}>
-
-                    <button
-                      onClick={() => window.location.href = "/api/wallet/apple"}
-                      style={{
-                        background: "#000",
-                        color: "#fff",
-                        borderRadius: "12px",
-                        padding: ".7rem",
-                        fontWeight: 600
-                      }}
-                    >
-                      Apple Wallet
-                    </button>
-
-                    <button
-                      onClick={() => window.location.href = "/api/wallet/google"}
-                      style={{
-                        background: "#4285F4",
-                        color: "#fff",
-                        borderRadius: "12px",
-                        padding: ".7rem",
-                        textAlign: "center",
-                        fontWeight: 600,
-                        textDecoration: "none",
-                        border: "none",
-                      }}
-                    >
-                       Google Wallet
-                    </button>
-
-                  </div>
-                </div>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 {[
                   ["Ruolo", isAdmin ? "Admin" : "User"],
