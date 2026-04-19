@@ -262,109 +262,7 @@ export default function ProfilePage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: "1.5rem", alignItems: "start" }} className="profile-grid">
 
           {/* ── LEFT: FORM ── */}
-          <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "2rem", padding: "2.5rem", boxShadow: "0 2px 20px rgba(8,16,42,.04)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem", gap: "1rem", flexWrap: "wrap" }}>
-              <div>
-                <p style={{ fontSize: ".65rem", fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: "#2E4080", margin: "0 0 .4rem" }}>Dati personali</p>
-                <h2 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 700, letterSpacing: "-.02em" }}>
-                  {isEditing ? "Modifica profilo" : "Il tuo profilo"}
-                </h2>
-              </div>
-            </div>
-
-            <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-
-              {/* Nome + Cognome */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }} className="form-row">
-                <Field label="Nome" id="nome" value={nome} onChange={setNome} disabled={!isEditing} />
-                <Field label="Cognome" id="cognome" value={cognome} onChange={setCognome} disabled={!isEditing} />
-              </div>
-
-              {/* Email */}
-              <Field label="Email istituzionale" id="email" value={emailIstituzionale} disabled />
-
-              {/* Password reset */}
-              <div>
-                <p style={{ fontSize: ".8rem", fontWeight: 700, color: "#1e293b", margin: "0 0 .6rem" }}>Password</p>
-                <div style={{ background: "rgba(8,16,42,.03)", border: "1px solid rgba(8,16,42,.07)", borderRadius: "1.2rem", padding: "1.2rem 1.4rem", display: "flex", flexDirection: "column", gap: ".75rem" }}>
-                  <button
-                    type="button"
-                    onClick={handlePasswordReset}
-                    disabled={passwordResetLoading || isPasswordResetLocked}
-                    style={{
-                      background: isPasswordResetLocked ? "rgba(8,16,42,.05)" : "#08102A",
-                      color: isPasswordResetLocked ? "#6B7280" : "#fff",
-                      border: "none", borderRadius: "12px",
-                      padding: ".6rem 1.3rem", fontWeight: 600, fontSize: ".86rem",
-                      cursor: isPasswordResetLocked ? "not-allowed" : "pointer",
-                      width: "fit-content", transition: "background .18s",
-                    }}
-                  >
-                    {passwordResetLoading ? "Invio..." : isPasswordResetLocked ? `Riprova tra ${formatCooldownRemaining(remainingPasswordResetMs)}` : "Reimposta password"}
-                  </button>
-                  <p style={{ margin: 0, fontSize: ".82rem", color: "#6B7280", lineHeight: 1.6 }}>
-                    Puoi richiedere una nuova email di reimpostazione solo una volta ogni ora.
-                  </p>
-                </div>
-              </div>
-
-              {/* Telefono */}
-              <Field label="Numero di telefono" id="telefono" value={numeroTelefono} onChange={setNumeroTelefono} disabled={!isEditing} />
-
-              {/* Facoltà + Anno */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }} className="form-row">
-                <SelectField label="Facoltà" id="facolta" value={facolta} onChange={(v) => { setFacolta(v); setCorsoDiLaurea(""); }} disabled={!isEditing} options={[{ value: "", label: "Seleziona facoltà" }, ...facultyOptions]} />
-                <SelectField label="Anno di laurea" id="anno" value={annoLaurea} onChange={setAnnoLaurea} disabled={!isEditing} options={[{ value: "", label: "Seleziona anno" }, ...graduationYearOptions]} />
-              </div>
-
-              {/* Corso */}
-              <SelectField
-                label="Corso di laurea"
-                id="corso"
-                value={corsoDiLaurea}
-                onChange={setCorsoDiLaurea}
-                disabled={!isEditing || !facolta}
-                options={[{ value: "", label: facolta ? "Seleziona corso" : "Seleziona prima la facoltà" }, ...courseOptions]}
-              />
-
-              {/* Data di nascita */}
-              <Field label="Data di nascita" id="dataNascita" value={dataDiNascita} onChange={setDataDiNascita} disabled={!isEditing} type="date" />
-
-              {/* Messages */}
-              {error && <Msg type="error">{error}</Msg>}
-              {success && <Msg type="success">{success}</Msg>}
-              {passwordResetMessage && (
-                <Msg type={passwordResetMessage.includes("Non è stato") || passwordResetMessage.includes("non disponibile") ? "error" : "success"}>
-                  {passwordResetMessage}
-                </Msg>
-              )}
-
-              {/* Actions */}
-              {isEditing && (
-                <div style={{ display: "flex", gap: ".75rem", marginTop: ".25rem", flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={handleCancelEdit}
-                    disabled={saving}
-                    style={{ border: "1px solid rgba(8,16,42,.15)", background: "#fff", color: "#08102A", padding: ".7rem 1.6rem", borderRadius: "12px", fontWeight: 600, fontSize: ".9rem", cursor: "pointer" }}
-                  >
-                    Annulla
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    style={{ background: "#08102A", color: "#fff", border: "none", padding: ".7rem 2rem", borderRadius: "12px", fontWeight: 700, fontSize: ".9rem", cursor: saving ? "wait" : "pointer", opacity: saving ? .7 : 1, boxShadow: "0 4px 16px rgba(8,16,42,.18)" }}
-                  >
-                    {saving ? "Salvataggio..." : "Salva modifiche"}
-                  </button>
-                </div>
-              )}
-            </form>
-          </div>
-
-          {/* ── RIGHT: SIDEBAR ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-
             {/* Wallet card */}
             <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "2rem", padding: "2rem", boxShadow: "0 2px 20px rgba(8,16,42,.04)" }}>
               <p
@@ -424,6 +322,110 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
+
+            <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "2rem", padding: "2.5rem", boxShadow: "0 2px 20px rgba(8,16,42,.04)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem", gap: "1rem", flexWrap: "wrap" }}>
+                <div>
+                  <p style={{ fontSize: ".65rem", fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: "#2E4080", margin: "0 0 .4rem" }}>Dati personali</p>
+                  <h2 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 700, letterSpacing: "-.02em" }}>
+                    {isEditing ? "Modifica profilo" : "Il tuo profilo"}
+                  </h2>
+                </div>
+              </div>
+
+              <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+
+                {/* Nome + Cognome */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }} className="form-row">
+                  <Field label="Nome" id="nome" value={nome} onChange={setNome} disabled={!isEditing} />
+                  <Field label="Cognome" id="cognome" value={cognome} onChange={setCognome} disabled={!isEditing} />
+                </div>
+
+                {/* Email */}
+                <Field label="Email istituzionale" id="email" value={emailIstituzionale} disabled />
+
+                {/* Password reset */}
+                <div>
+                  <p style={{ fontSize: ".8rem", fontWeight: 700, color: "#1e293b", margin: "0 0 .6rem" }}>Password</p>
+                  <div style={{ background: "rgba(8,16,42,.03)", border: "1px solid rgba(8,16,42,.07)", borderRadius: "1.2rem", padding: "1.2rem 1.4rem", display: "flex", flexDirection: "column", gap: ".75rem" }}>
+                    <button
+                      type="button"
+                      onClick={handlePasswordReset}
+                      disabled={passwordResetLoading || isPasswordResetLocked}
+                      style={{
+                        background: isPasswordResetLocked ? "rgba(8,16,42,.05)" : "#08102A",
+                        color: isPasswordResetLocked ? "#6B7280" : "#fff",
+                        border: "none", borderRadius: "12px",
+                        padding: ".6rem 1.3rem", fontWeight: 600, fontSize: ".86rem",
+                        cursor: isPasswordResetLocked ? "not-allowed" : "pointer",
+                        width: "fit-content", transition: "background .18s",
+                      }}
+                    >
+                      {passwordResetLoading ? "Invio..." : isPasswordResetLocked ? `Riprova tra ${formatCooldownRemaining(remainingPasswordResetMs)}` : "Reimposta password"}
+                    </button>
+                    <p style={{ margin: 0, fontSize: ".82rem", color: "#6B7280", lineHeight: 1.6 }}>
+                      Puoi richiedere una nuova email di reimpostazione solo una volta ogni ora.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Telefono */}
+                <Field label="Numero di telefono" id="telefono" value={numeroTelefono} onChange={setNumeroTelefono} disabled={!isEditing} />
+
+                {/* Facoltà + Anno */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }} className="form-row">
+                  <SelectField label="Facoltà" id="facolta" value={facolta} onChange={(v) => { setFacolta(v); setCorsoDiLaurea(""); }} disabled={!isEditing} options={[{ value: "", label: "Seleziona facoltà" }, ...facultyOptions]} />
+                  <SelectField label="Anno di laurea" id="anno" value={annoLaurea} onChange={setAnnoLaurea} disabled={!isEditing} options={[{ value: "", label: "Seleziona anno" }, ...graduationYearOptions]} />
+                </div>
+
+                {/* Corso */}
+                <SelectField
+                  label="Corso di laurea"
+                  id="corso"
+                  value={corsoDiLaurea}
+                  onChange={setCorsoDiLaurea}
+                  disabled={!isEditing || !facolta}
+                  options={[{ value: "", label: facolta ? "Seleziona corso" : "Seleziona prima la facoltà" }, ...courseOptions]}
+                />
+
+                {/* Data di nascita */}
+                <Field label="Data di nascita" id="dataNascita" value={dataDiNascita} onChange={setDataDiNascita} disabled={!isEditing} type="date" />
+
+                {/* Messages */}
+                {error && <Msg type="error">{error}</Msg>}
+                {success && <Msg type="success">{success}</Msg>}
+                {passwordResetMessage && (
+                  <Msg type={passwordResetMessage.includes("Non è stato") || passwordResetMessage.includes("non disponibile") ? "error" : "success"}>
+                    {passwordResetMessage}
+                  </Msg>
+                )}
+
+                {/* Actions */}
+                {isEditing && (
+                  <div style={{ display: "flex", gap: ".75rem", marginTop: ".25rem", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      disabled={saving}
+                      style={{ border: "1px solid rgba(8,16,42,.15)", background: "#fff", color: "#08102A", padding: ".7rem 1.6rem", borderRadius: "12px", fontWeight: 600, fontSize: ".9rem", cursor: "pointer" }}
+                    >
+                      Annulla
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      style={{ background: "#08102A", color: "#fff", border: "none", padding: ".7rem 2rem", borderRadius: "12px", fontWeight: 700, fontSize: ".9rem", cursor: saving ? "wait" : "pointer", opacity: saving ? .7 : 1, boxShadow: "0 4px 16px rgba(8,16,42,.18)" }}
+                    >
+                      {saving ? "Salvataggio..." : "Salva modifiche"}
+                    </button>
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+
+          {/* ── RIGHT: SIDEBAR ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
 
             {/* Account overview */}
             <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "2rem", padding: "2rem", boxShadow: "0 2px 20px rgba(8,16,42,.04)" }}>
@@ -541,27 +543,27 @@ function SelectField({ label, id, value, onChange, disabled, options }: {
         id={id} value={value}
         onChange={e => onChange(e.target.value)}
         disabled={disabled} required
-style={{
-  width: "100%",
-  height: "44px", // ✅ allineato agli input
-  padding: "0 14px",
-  borderRadius: "12px", // 🔥 NON 999px
-  border: "1px solid rgba(8,16,42,.12)",
-  backgroundColor: disabled ? "rgba(8,16,42,.04)" : "#fff",
-  color: value ? "#08102A" : "#6B7280",
-  fontSize: ".9rem",
-  outline: "none",
-  transition: "border-color .18s, box-shadow .18s",
-  cursor: disabled ? "default" : "pointer",
-  appearance: "none",
+        style={{
+          width: "100%",
+          height: "44px", // ✅ allineato agli input
+          padding: "0 14px",
+          borderRadius: "12px", // 🔥 NON 999px
+          border: "1px solid rgba(8,16,42,.12)",
+          backgroundColor: disabled ? "rgba(8,16,42,.04)" : "#fff",
+          color: value ? "#08102A" : "#6B7280",
+          fontSize: ".9rem",
+          outline: "none",
+          transition: "border-color .18s, box-shadow .18s",
+          cursor: disabled ? "default" : "pointer",
+          appearance: "none",
 
-  // freccia
-  backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 12px center",
+          // freccia
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "right 12px center",
 
-  paddingRight: "36px", // solo per select
-}}
+          paddingRight: "36px", // solo per select
+        }}
         onFocus={e => { if (!disabled) { e.target.style.borderColor = "rgba(46,64,128,.5)"; e.target.style.boxShadow = "0 0 0 3px rgba(46,64,128,.1)"; } }}
         onBlur={e => { e.target.style.borderColor = "rgba(8,16,42,.12)"; e.target.style.boxShadow = "none"; }}
       >
