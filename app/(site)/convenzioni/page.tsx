@@ -126,7 +126,7 @@ export default function ConvenzioniPage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        router.replace("/login");
+        router.replace("/login?next=/convenzioni");
         return;
       }
 
@@ -327,12 +327,21 @@ export default function ConvenzioniPage() {
             style={{
               fontSize: "1rem",
               color: "#6B7280",
-              maxWidth: 440,
+              maxWidth: 760,
               lineHeight: 1.75,
               fontWeight: 400,
             }}
           >
-            Tutte le convenzioni attive per studenti ASTRA: servizi, opportunità e sconti dedicati.
+            Scopri tutte le convenzioni attive per gli studenti ASTRA: servizi, opportunità e sconti esclusivi.
+            <br />
+            <span style={{ color: "#08102A", fontWeight: 600 }}>
+              Mostra la tua ASTRA Card
+            </span>{" "}
+            nei locali convenzionati, direttamente dal wallet nella sezione “Il mio profilo”, oppure utilizza i{" "}
+            <span style={{ color: "#2E4080", fontWeight: 700 }}>
+              codici sconto dedicati
+            </span>{" "}
+            per accedere alle offerte online.
           </p>
 
           {!loading && convenzioni.length > 0 && (

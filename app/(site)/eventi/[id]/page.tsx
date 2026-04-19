@@ -119,6 +119,7 @@ export default function EventoDetailPage() {
           .det-grid    { grid-template-columns: 1fr !important; }
           .det-sidebar { position: static !important; }
           .hero-inner  { padding: 0 1.5rem !important; }
+          .meta-chip-blue { display: none !important; }
         }
       `}</style>
 

@@ -95,16 +95,32 @@ const managersMembers: TeamMember[] = [
 
 const collaboratorsMembers = [
     {
-        firstName: "Nome",
-        lastName: "Cognome",
+        firstName: "Francesco",
+        lastName: "Aragona",
     },
     {
-        firstName: "Nome",
-        lastName: "Cognome",
+        firstName: "Marcello",
+        lastName: "Zampogna",
     },
     {
-        firstName: "Nome",
-        lastName: "Cognome",
+        firstName: "Cesare",
+        lastName: "Morales",
+    },
+    {
+        firstName: "Tommaso",
+        lastName: "Weiss",
+    },
+    {
+        firstName: "Paolo",
+        lastName: "Abete",
+    },
+    {
+        firstName: "Giulia",
+        lastName: "Setti",
+    },
+    {
+        firstName: "Simone",
+        lastName: "Manzo",
     },
 ];
 

@@ -67,7 +67,7 @@ export default function Footer() {
           <div className="footer-brand" style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
             <AstraLogo size={110} white />
             <p style={{ fontSize: ".9rem", lineHeight: 1.75, color: "rgba(255,255,255,.42)", fontWeight: 400, maxWidth: 260 }}>
-              L&apos;associazione studentesca dell&apos;Università Vita-Salute
+              La community studentesca dell&apos;Università Vita-Salute
               San Raffaele di Milano.
             </p>
             <a

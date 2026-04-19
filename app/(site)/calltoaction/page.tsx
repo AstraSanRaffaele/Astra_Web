@@ -6,16 +6,21 @@ import { createClient } from "@/lib/supabase/client";
 import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
 
 const VOLUNTEER_AREAS = [
-  "Eventi",
-  "Comunicazione",
-  "Social media",
-  "Raccolta fondi",
-  "Supporto organizzativo",
-  "Accoglienza",
+  "Rappresentanza",
+  "Collaborazioni e convenzioni",
+  "Regolamenti",
+  "Network",
+  "Comunicazione e Media",
+  "Eventi culturali",
+  "Tech",
+  "Sport",
 ] as const;
 
 export default function CallToActionPage() {
   const supabase = useMemo(() => createClient(), []);
+
+  const [userEmail, setUserEmail] = useState("");
+  const [userFullName, setUserFullName] = useState("");
 
   const [area, setArea] = useState("");
   const [availability, setAvailability] = useState("");
@@ -41,6 +46,19 @@ export default function CallToActionPage() {
         return;
       }
 
+      const metadata = session.user.user_metadata ?? {};
+      const fullName = [metadata.nome, metadata.cognome]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+      setUserEmail(session.user.email ?? "");
+      setUserFullName(
+        fullName ||
+          metadata.full_name ||
+          metadata.name ||
+          "Utente ASTRA"
+      );
       setCheckingAuth(false);
     }
 
@@ -77,21 +95,52 @@ export default function CallToActionPage() {
     setLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 700));
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      console.log("Volunteer interest submitted", {
-        area,
-        availability,
-        motivation: motivation.trim(),
+      const email = user?.email ?? userEmail;
+      const metadata = user?.user_metadata ?? {};
+      const fullName =
+        userFullName ||
+        [metadata.nome, metadata.cognome].filter(Boolean).join(" ").trim() ||
+        metadata.full_name ||
+        metadata.name ||
+        "Utente ASTRA";
+
+      const response = await fetch("/api/volunteer-interest", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          area,
+          availability,
+          motivation: motivation.trim(),
+          applicantEmail: email,
+          applicantName: fullName,
+        }),
       });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.error || "Qualcosa è andato storto durante l'invio della candidatura."
+        );
+      }
 
       setSuccess("Richiesta inviata correttamente. Ti contatteremo presto.");
       setArea("");
       setAvailability("");
       setMotivation("");
       setConsent(false);
-    } catch {
-      setError("Qualcosa è andato storto. Riprova tra poco.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Qualcosa è andato storto. Riprova tra poco."
+      );
     } finally {
       setLoading(false);
     }
@@ -244,6 +293,17 @@ export default function CallToActionPage() {
         >
           {loading ? "Invio in corso..." : "Invia candidatura"}
         </button>
+        <p
+          style={{
+            margin: 0,
+            fontSize: ".84rem",
+            lineHeight: 1.45,
+            color: "rgba(8,16,42,.64)",
+          }}
+        >
+          La candidatura verrà inviata usando i dati del tuo account ASTRA
+          {userEmail ? ` (${userEmail})` : ""}.
+        </p>
       </form>
 
       <div

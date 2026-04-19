@@ -32,9 +32,35 @@ const FACULTY_OPTIONS = [
 ];
 
 const DEGREES: Record<string, string[]> = {
-  medicina: ["Medicina e Chirurgia", "Infermieristica", "Infermieristica pediatrica", "Ostetricia", "Fisioterapia", "Igiene dentale", "Tecniche di radiologia medica, per immagini e radioterapia"],
-  psicologia: ["Psicologia"],
-  filosofia: ["Filosofia"],
+  medicina: [
+    "Cdl magistrale a ciclo unico in Medicina e Chirurgia",
+    "International Medical Doctor Program",
+    "Cdl triennale in Ricerca biotecnologica in medicina",
+    "Cdl triennale in Fisioterapia",
+    "Cdl triennale in Igiene dentale",
+    "Cdl magistrale in Odontoiatria e protesi dentaria",
+    "Cdl magistrale in Biotechnology for Innovative Therapeutics",
+    "Cdl magistrale in Scienze riabilitative delle professioni sanitarie",
+    "Cdl triennale in Ostetricia",
+    "Cdl magistrale in Health Informatics",
+    "Cdl Magistrale in Scienze infermieristiche ed ostetriche",
+    "Cdl triennale in Infermieristica",
+    "CdL triennale in Osteopatia",
+    "CdL triennale in Tecniche di Radiologia Medica per Immagini e Radioterapia",
+  ],
+  psicologia: [
+    "Cdl triennale in Scienze e tecniche psicologiche",
+    "Cdl triennale in Scienze politiche e strategie globali",
+    "Cdl magistrale in Psicologia",
+    "Cdl magistrale in Cognitive psychology in health communication",
+    "Cdl magistrale in Geopolitica, economia e strategie globali",
+  ],
+  filosofia: [
+    "Cdl triennale in Filosofia",
+    "Cdl magistrale in Filosofia del mondo contemporaneo",
+    "Cdl magistrale in Teoria e storia delle arti e dell’immagine",
+    "Cdl magistrale in Politics, Philosophy and Public Affairs",
+  ],
 };
 
 const SORT_COLS: Array<{ label: string; key: SortKey }> = [

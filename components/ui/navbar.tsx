@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -72,6 +72,7 @@ export default function Navbar() {
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
   const hasResolvedInitialAuthRef = useRef(false);
   const hasAppliedCachedAuthRef = useRef(false);
+  const isSigningOutRef = useRef(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -92,33 +93,38 @@ export default function Navbar() {
   const toggleMenu = () => setMenuOpen((prev) => !prev);
   const closeMenu = () => setMenuOpen(false);
 
-const handleLogout = async () => {
-  try {
-    closeMenu();
+  const handleLogout = useCallback(async () => {
+    if (isSigningOutRef.current) return;
+    isSigningOutRef.current = true;
 
-    await supabase.auth.signOut(); // ✅ niente scope
+    try {
+      closeMenu();
 
-    // reset stato locale
-    setIsLoggedIn(false);
-    setProfileName("");
-    setIsAdmin(false);
-    setAuthReady(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
 
-    hasResolvedInitialAuthRef.current = false;
-    hasAppliedCachedAuthRef.current = false;
+      setIsLoggedIn(false);
+      setProfileName("");
+      setIsAdmin(false);
+      setAuthReady(true);
 
-    if (typeof window !== "undefined") {
-      window.sessionStorage.removeItem("navbar-auth-cache");
+      hasResolvedInitialAuthRef.current = true;
+      hasAppliedCachedAuthRef.current = true;
+
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem("navbar-auth-cache");
+        window.location.replace("/");
+        return;
+      }
+
+      router.replace("/");
+      router.refresh();
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      isSigningOutRef.current = false;
     }
-
-    // 🔥 importante: hard refresh UI
-    router.push("/");
-    router.refresh();
-
-  } catch (err) {
-    console.error("Logout error:", err);
-  }
-};
+  }, [router, supabase]);
 
   useEffect(() => {
     const update = () => {
@@ -139,7 +145,10 @@ const handleLogout = async () => {
   useEffect(() => {
     if (hasAppliedCachedAuthRef.current) return;
     const c = readNavbarAuthCache();
-    if (!c) { hasAppliedCachedAuthRef.current = true; return; }
+    if (!c) {
+      hasAppliedCachedAuthRef.current = true;
+      return;
+    }
     setAuthReady(c.authReady);
     setIsLoggedIn(c.isLoggedIn);
     setProfileName(c.profileName);
@@ -149,7 +158,10 @@ const handleLogout = async () => {
 
   useEffect(() => {
     if (typeof window === "undefined" || !authReady) return;
-    window.sessionStorage.setItem("navbar-auth-cache", JSON.stringify({ authReady, isLoggedIn, profileName, isAdmin }));
+    window.sessionStorage.setItem(
+      "navbar-auth-cache",
+      JSON.stringify({ authReady, isLoggedIn, profileName, isAdmin })
+    );
   }, [authReady, isLoggedIn, profileName, isAdmin]);
 
   useEffect(() => {
@@ -158,23 +170,38 @@ const handleLogout = async () => {
 
     const loadUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (!mounted) return;
         const user = session?.user;
         if (!user) {
-          setIsLoggedIn(false); setProfileName(""); setIsAdmin(false); setAuthReady(true);
+          setIsLoggedIn(false);
+          setProfileName("");
+          setIsAdmin(false);
+          setAuthReady(true);
           return;
         }
-        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
         if (!mounted) return;
-        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome].filter(Boolean).join(" ").trim();
+        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
         setIsLoggedIn(true);
         setIsAdmin(profile?.role === "admin");
         setProfileName(fullName || user.email || "Profilo");
         setAuthReady(true);
       } catch {
         if (!mounted) return;
-        setIsLoggedIn(false); setProfileName(""); setIsAdmin(false); setAuthReady(true);
+        setIsLoggedIn(false);
+        setProfileName("");
+        setIsAdmin(false);
+        setAuthReady(true);
       } finally {
         if (mounted) hasResolvedInitialAuthRef.current = true;
       }
@@ -182,38 +209,69 @@ const handleLogout = async () => {
 
     loadUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted || !hasResolvedInitialAuthRef.current) return;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
       if (event === "INITIAL_SESSION") return;
+      if (!hasResolvedInitialAuthRef.current && event !== "SIGNED_OUT") return;
       const user = session?.user;
       try {
         if (!user) {
-          setIsLoggedIn(false); setProfileName(""); setIsAdmin(false); setAuthReady(true);
-          if (typeof window !== "undefined") window.sessionStorage.removeItem("navbar-auth-cache");
+          setIsLoggedIn(false);
+          setProfileName("");
+          setIsAdmin(false);
+          setAuthReady(true);
+          if (typeof window !== "undefined") {
+            window.sessionStorage.removeItem("navbar-auth-cache");
+          }
           return;
         }
-        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
         if (!mounted) return;
-        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome].filter(Boolean).join(" ").trim();
+        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
         setIsLoggedIn(true);
         setIsAdmin(profile?.role === "admin");
         setProfileName(fullName || user.email || "Profilo");
         setAuthReady(true);
       } catch {
         if (!mounted) return;
-        setIsLoggedIn(false); setProfileName(""); setIsAdmin(false); setAuthReady(true);
+        setIsLoggedIn(false);
+        setProfileName("");
+        setIsAdmin(false);
+        setAuthReady(true);
       }
     });
 
-    return () => { mounted = false; subscription.unsubscribe(); };
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [supabase]);
 
-  useEffect(() => { closeMenu(); }, [pathname]);
-  useEffect(() => { if (!isMobileViewport) closeMenu(); }, [isMobileViewport]);
-  useEffect(() => { closeMenu(); }, [isLoggedIn]);
+  useEffect(() => {
+    closeMenu();
+  }, [pathname]);
 
   useEffect(() => {
-    const onResize = () => { if (window.innerWidth > 900) closeMenu(); };
+    if (!isMobileViewport) closeMenu();
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    closeMenu();
+  }, [isLoggedIn, pathname]);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 900) closeMenu();
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -222,14 +280,18 @@ const handleLogout = async () => {
     const onPointer = (e: PointerEvent) => {
       if (!menuOpen) return;
       const t = e.target as Node;
-      if (!mobileMenuRef.current?.contains(t) && !mobileActionsRef.current?.contains(t)) closeMenu();
+      if (!mobileMenuRef.current?.contains(t) && !mobileActionsRef.current?.contains(t)) {
+        closeMenu();
+      }
     };
     document.addEventListener("pointerdown", onPointer);
     return () => document.removeEventListener("pointerdown", onPointer);
   }, [menuOpen]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeMenu(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeMenu();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -260,12 +322,13 @@ const handleLogout = async () => {
           transition: "background .3s, border-color .3s, box-shadow .3s",
         }}
       >
-        {/* ── Logo ── */}
-        <a href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}>
+        <a
+          href="/"
+          style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}
+        >
           <AstraLogo size={96} />
         </a>
 
-        {/* ── Desktop nav — pill group centrato ── */}
         <ul
           className="navbar-desktop-links"
           style={{
@@ -310,7 +373,6 @@ const handleLogout = async () => {
           })}
         </ul>
 
-        {/* ── Desktop auth ── */}
         <div
           className="navbar-desktop-links"
           style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}
@@ -322,20 +384,19 @@ const handleLogout = async () => {
             </>
           ) : !isLoggedIn ? (
             <>
-              <a
-                href="/login"
-                className="btn-ghost"
-              >
+              <a href="/login" className="btn-ghost">
                 Login
               </a>
-              <a
-                href="#join"
-                className="btn-outline"
-                
-              >
+              <a href="#join" className="btn-outline">
                 Unisciti
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <path d="M2.5 6.5H10.5M7 3.5L10.5 6.5L7 9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path
+                    d="M2.5 6.5H10.5M7 3.5L10.5 6.5L7 9.5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </a>
             </>
@@ -377,17 +438,46 @@ const handleLogout = async () => {
                   transition: "background .18s, border-color .18s, box-shadow .18s",
                 }}
               >
-                <span style={{
-                  width: 32, height: 32, borderRadius: "50%",
-                  background: "var(--blue)",
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  color: "#fff", fontWeight: 800, fontSize: ".75rem", flexShrink: 0,
-                }}>
+                <span
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "var(--blue)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontWeight: 800,
+                    fontSize: ".75rem",
+                    flexShrink: 0,
+                  }}
+                >
                   {getInitials(profileName || "Profilo") || "P"}
                 </span>
                 <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
-                  <span style={{ fontSize: ".6rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em" }}>Profilo</span>
-                  <span style={{ fontSize: ".82rem", color: "var(--text)", fontWeight: 700, maxWidth: 120, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <span
+                    style={{
+                      fontSize: ".6rem",
+                      color: "var(--muted)",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: ".08em",
+                    }}
+                  >
+                    Profilo
+                  </span>
+                  <span
+                    style={{
+                      fontSize: ".82rem",
+                      color: "var(--text)",
+                      fontWeight: 700,
+                      maxWidth: 120,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
                     {profileName || "Profilo"}
                   </span>
                 </span>
@@ -414,7 +504,13 @@ const handleLogout = async () => {
                 }}
               >
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <path d="M5 2H2.5A.5.5 0 0 0 2 2.5v8a.5.5 0 0 0 .5.5H5M8.5 9.5L11 6.5 8.5 3.5M11 6.5H5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path
+                    d="M5 2H2.5A.5.5 0 0 0 2 2.5v8a.5.5 0 0 0 .5.5H5M8.5 9.5L11 6.5 8.5 3.5M11 6.5H5"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 Esci
               </button>
@@ -422,7 +518,6 @@ const handleLogout = async () => {
           )}
         </div>
 
-        {/* ── Mobile actions ── */}
         <div
           ref={mobileActionsRef}
           className="navbar-mobile-actions"
@@ -434,10 +529,17 @@ const handleLogout = async () => {
             <Link
               href="/login"
               style={{
-                textDecoration: "none", color: "#fff", background: "var(--blue)",
-                borderRadius: "999px", padding: ".52rem 1.1rem", fontWeight: 700,
-                fontSize: ".84rem", lineHeight: 1, display: "inline-flex",
-                alignItems: "center", whiteSpace: "nowrap",
+                textDecoration: "none",
+                color: "#fff",
+                background: "var(--blue)",
+                borderRadius: "999px",
+                padding: ".52rem 1.1rem",
+                fontWeight: 700,
+                fontSize: ".84rem",
+                lineHeight: 1,
+                display: "inline-flex",
+                alignItems: "center",
+                whiteSpace: "nowrap",
                 boxShadow: "0 2px 12px rgba(14,31,107,.22)",
               }}
             >
@@ -448,15 +550,29 @@ const handleLogout = async () => {
               type="button"
               onClick={handleLogout}
               style={{
-                color: "var(--muted)", background: "transparent",
-                border: "1px solid rgba(14,31,107,.14)", borderRadius: "999px",
-                padding: "1rem 1.5rem", fontWeight: 600, fontSize: ".82rem",
-                lineHeight: 1, display: "inline-flex", alignItems: "center",
-                gap: 5, cursor: "pointer", whiteSpace: "nowrap",
+                color: "var(--muted)",
+                background: "transparent",
+                border: "1px solid rgba(14,31,107,.14)",
+                borderRadius: "999px",
+                padding: "1rem 1.5rem",
+                fontWeight: 600,
+                fontSize: ".82rem",
+                lineHeight: 1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                <path d="M5 2H2.5A.5.5 0 0 0 2 2.5v8a.5.5 0 0 0 .5.5H5M8.5 9.5L11 6.5 8.5 3.5M11 6.5H5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                <path
+                  d="M5 2H2.5A.5.5 0 0 0 2 2.5v8a.5.5 0 0 0 .5.5H5M8.5 9.5L11 6.5 8.5 3.5M11 6.5H5"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
               Esci
             </button>
@@ -472,30 +588,40 @@ const handleLogout = async () => {
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             style={{
-              width: 42, height: 42,
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 42,
+              height: 42,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
               cursor: "pointer",
               border: "1px solid rgba(14,31,107,.15)",
               background: menuOpen ? "var(--blue)" : "#fff",
               borderRadius: "999px",
-              padding: 0, flexShrink: 0,
+              padding: 0,
+              flexShrink: 0,
               touchAction: "manipulation",
               WebkitTapHighlightColor: "transparent",
               transition: "background .2s, border-color .2s",
             }}
           >
-            <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true"
-              style={{ transition: "transform .2s" }}>
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 17 17"
+              fill="none"
+              aria-hidden="true"
+              style={{ transition: "transform .2s" }}
+            >
               {!menuOpen ? (
                 <>
-                  <path d="M3 4H14" stroke="#0E1F6B" strokeWidth="1.6" strokeLinecap="round"/>
-                  <path d="M3 8.5H14" stroke="#0E1F6B" strokeWidth="1.6" strokeLinecap="round"/>
-                  <path d="M3 13H14" stroke="#0E1F6B" strokeWidth="1.6" strokeLinecap="round"/>
+                  <path d="M3 4H14" stroke="#0E1F6B" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M3 8.5H14" stroke="#0E1F6B" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M3 13H14" stroke="#0E1F6B" strokeWidth="1.6" strokeLinecap="round" />
                 </>
               ) : (
                 <>
-                  <path d="M4 4L13 13" stroke="#fff" strokeWidth="1.6" strokeLinecap="round"/>
-                  <path d="M13 4L4 13" stroke="#fff" strokeWidth="1.6" strokeLinecap="round"/>
+                  <path d="M4 4L13 13" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M13 4L4 13" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
                 </>
               )}
             </svg>
@@ -503,13 +629,16 @@ const handleLogout = async () => {
         </div>
       </nav>
 
-      {/* ── Mobile menu — full sheet ── */}
       {menuOpen && isMobileViewport && (
         <>
           <div
             onClick={closeMenu}
             style={{
-              position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
               background: "rgba(10,15,44,.32)",
               zIndex: 118,
               backdropFilter: "blur(6px)",
@@ -531,7 +660,6 @@ const handleLogout = async () => {
               boxShadow: "0 20px 60px rgba(10,15,44,.18), 0 0 0 1px rgba(14,31,107,.08)",
             }}
           >
-            {/* Nav links */}
             <div style={{ padding: "10px 10px 6px" }}>
               {navLinks.map(([label, href]) => {
                 const active = isLinkActive(pathname, href);
@@ -556,21 +684,40 @@ const handleLogout = async () => {
                     }}
                   >
                     {label}
-                    {active
-                      ? <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--blue)", flexShrink: 0 }} />
-                      : <svg width="14" height="14" viewBox="0 0 12 12" fill="none" style={{ color: "rgba(14,31,107,.2)", flexShrink: 0 }}>
-                          <path d="M4 2.5L8 6L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    }
+                    {active ? (
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: "var(--blue)",
+                          flexShrink: 0,
+                        }}
+                      />
+                    ) : (
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        style={{ color: "rgba(14,31,107,.2)", flexShrink: 0 }}
+                      >
+                        <path
+                          d="M4 2.5L8 6L4 9.5"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
                   </a>
                 );
               })}
             </div>
 
-            {/* Divider */}
             <div style={{ height: 1, background: "rgba(14,31,107,.06)", margin: "0 10px" }} />
 
-            {/* Auth section */}
             <div style={{ padding: "8px 10px 10px" }}>
               {!authReady ? (
                 <span className="nb-skeleton" style={{ display: "block", height: 60, borderRadius: "18px" }} />
@@ -579,23 +726,40 @@ const handleLogout = async () => {
                   href="/#join"
                   onClick={closeMenu}
                   style={{
-                    textDecoration: "none", color: "#fff",
-                    background: "var(--blue)", fontWeight: 700,
-                    fontSize: "1rem", padding: "1.1rem 1.3rem",
-                    borderRadius: "18px", display: "flex",
-                    alignItems: "center", justifyContent: "space-between",
+                    textDecoration: "none",
+                    color: "#fff",
+                    background: "var(--blue)",
+                    fontWeight: 700,
+                    fontSize: "1rem",
+                    padding: "1.1rem 1.3rem",
+                    borderRadius: "18px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                     boxShadow: "0 4px 16px rgba(14,31,107,.22)",
                   }}
                 >
                   <span>Unisciti ad Astra</span>
-                  <span style={{
-                    width: 36, height: 36, borderRadius: "50%",
-                    background: "rgba(255,255,255,.18)",
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0,
-                  }}>
+                  <span
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      background: "rgba(255,255,255,.18)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
                     <svg width="16" height="16" viewBox="0 0 13 13" fill="none">
-                      <path d="M2.5 6.5H10.5M7 3.5L10.5 6.5L7 9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path
+                        d="M2.5 6.5H10.5M7 3.5L10.5 6.5L7 9.5"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </span>
                 </a>
@@ -606,15 +770,23 @@ const handleLogout = async () => {
                       href="/admin"
                       onClick={closeMenu}
                       style={{
-                        textDecoration: "none", color: "var(--blue-mid)",
-                        fontWeight: 700, fontSize: ".95rem",
-                        padding: ".9rem 1.2rem", borderRadius: "18px",
-                        background: "var(--blue-light)", display: "flex",
-                        alignItems: "center", gap: 10,
+                        textDecoration: "none",
+                        color: "var(--blue-mid)",
+                        fontWeight: 700,
+                        fontSize: ".95rem",
+                        padding: ".9rem 1.2rem",
+                        borderRadius: "18px",
+                        background: "var(--blue-light)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
                       }}
                     >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM8 4.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm0 8a5.5 5.5 0 0 1-3.8-1.5C4.4 9.9 6 9.3 8 9.3s3.6.6 3.8 1.7A5.5 5.5 0 0 1 8 12.5Z" fill="currentColor"/>
+                        <path
+                          d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM8 4.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm0 8a5.5 5.5 0 0 1-3.8-1.5C4.4 9.9 6 9.3 8 9.3s3.6.6 3.8 1.7A5.5 5.5 0 0 1 8 12.5Z"
+                          fill="currentColor"
+                        />
                       </svg>
                       Amministrazione
                     </Link>
@@ -624,32 +796,82 @@ const handleLogout = async () => {
                     onClick={closeMenu}
                     className="mobile-profile-row"
                     style={{
-                      textDecoration: "none", color: "var(--text)",
-                      display: "flex", alignItems: "center", gap: 14,
-                      padding: ".9rem 1.2rem", borderRadius: "18px",
+                      textDecoration: "none",
+                      color: "var(--text)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                      padding: ".9rem 1.2rem",
+                      borderRadius: "18px",
                       background: "var(--blue-light)",
                       border: "1px solid rgba(14,31,107,.08)",
                       transition: "background .15s",
                     }}
                   >
-                    <span style={{
-                      width: 46, height: 46, borderRadius: "50%",
-                      background: "var(--blue)", flexShrink: 0,
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      color: "#fff", fontWeight: 800, fontSize: ".9rem",
-                    }}>
+                    <span
+                      style={{
+                        width: 46,
+                        height: 46,
+                        borderRadius: "50%",
+                        background: "var(--blue)",
+                        flexShrink: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
+                        fontWeight: 800,
+                        fontSize: ".9rem",
+                      }}
+                    >
                       {getInitials(profileName || "Profilo") || "P"}
                     </span>
-                    <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.3, flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: ".7rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em" }}>
+                    <span
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        lineHeight: 1.3,
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: ".7rem",
+                          color: "var(--muted)",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: ".07em",
+                        }}
+                      >
                         Il tuo profilo
                       </span>
-                      <span style={{ fontSize: ".95rem", color: "var(--text)", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span
+                        style={{
+                          fontSize: ".95rem",
+                          color: "var(--text)",
+                          fontWeight: 700,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {profileName || "Profilo"}
                       </span>
                     </span>
-                    <svg width="16" height="16" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, color: "rgba(14,31,107,.3)" }}>
-                      <path d="M4 2.5L8 6L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      style={{ flexShrink: 0, color: "rgba(14,31,107,.3)" }}
+                    >
+                      <path
+                        d="M4 2.5L8 6L4 9.5"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </Link>
                 </div>
@@ -705,11 +927,11 @@ const handleLogout = async () => {
           gap: 8px;
           transition: background .2s, transform .2s, box-shadow .2s;
           letter-spacing: -.01em;
-          }
+        }
 
         .btn-primary:hover { background: var(--ink-mid); transform: translateY(-2px); box-shadow: 0 10px 32px rgba(8,16,42,.26); }
 
-         .btn-outline {
+        .btn-outline {
           border: 1.5px solid rgba(8,16,42,.2);
           color: var(--ink);
           padding: .9rem 2.4rem;

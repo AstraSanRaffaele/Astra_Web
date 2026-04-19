@@ -15,23 +15,54 @@ const facultyOptions = [
 
 const degreeOptionsMap: Record<string, { value: string; label: string }[]> = {
   medicina: [
-    { value: "medicina_e_chirurgia", label: "Medicina e Chirurgia" },
+    { value: "medicina_e_chirurgia", label: "Cdl magistrale a ciclo unico in Medicina e Chirurgia" },
     { value: "international_medical_doctor_program", label: "International Medical Doctor Program" },
-    { value: "ricerca_biotecnologica_in_medicina", label: "Ricerca biotecnologica in medicina" },
-    { value: "fisioterapia", label: "Fisioterapia" },
-    { value: "igiene_dentale", label: "Igiene dentale" },
-    { value: "odontoiatria_e_protesi_dentaria", label: "Odontoiatria e protesi dentaria" },
-    { value: "biotechnology_for_innovative_therapeutics", label: "Biotechnology for Innovative Therapeutics" },
-    { value: "scienze_riabilitative_delle_professioni_sanitarie", label: "Scienze riabilitative delle professioni sanitarie" },
-    { value: "ostetricia", label: "Ostetricia" },
-    { value: "health_informatics", label: "Health Informatics" },
+    { value: "ricerca_biotecnologica_in_medicina", label: "Cdl triennale in Ricerca biotecnologica in medicina" },
+    { value: "fisioterapia", label: "Cdl triennale in Fisioterapia" },
+    { value: "igiene_dentale", label: "Cdl triennale in Igiene dentale" },
+    { value: "odontoiatria_e_protesi_dentaria", label: "Cdl magistrale in Odontoiatria e protesi dentaria" },
+    { value: "biotechnology_for_innovative_therapeutics", label: "Cdl magistrale in Biotechnology for Innovative Therapeutics" },
+    {
+      value: "scienze_riabilitative_delle_professioni_sanitarie",
+      label: "Cdl magistrale in Scienze riabilitative delle professioni sanitarie",
+    },
+    { value: "ostetricia", label: "Cdl triennale in Ostetricia" },
+    { value: "health_informatics", label: "Cdl magistrale in Health Informatics" },
+    {
+      value: "scienze_infermieristiche_ed_ostetriche",
+      label: "Cdl Magistrale in Scienze infermieristiche ed ostetriche",
+    },
+    { value: "infermieristica", label: "Cdl triennale in Infermieristica" },
+    { value: "osteopatia", label: "CdL triennale in Osteopatia" },
+    {
+      value: "tecniche_di_radiologia_medica_per_immagini_e_radioterapia",
+      label: "CdL triennale in Tecniche di Radiologia Medica per Immagini e Radioterapia",
+    },
   ],
-  psicologia: [{ value: "psicologia", label: "Psicologia" }],
+  psicologia: [
+    { value: "scienze_e_tecniche_psicologiche", label: "Cdl triennale in Scienze e tecniche psicologiche" },
+    { value: "scienze_politiche_e_strategie_globali", label: "Cdl triennale in Scienze politiche e strategie globali" },
+    { value: "psicologia", label: "Cdl magistrale in Psicologia" },
+    {
+      value: "cognitive_psychology_in_health_communication",
+      label: "Cdl magistrale in Cognitive psychology in health communication",
+    },
+    {
+      value: "geopolitica_economia_e_strategie_globali",
+      label: "Cdl magistrale in Geopolitica, economia e strategie globali",
+    },
+  ],
   filosofia: [
-    { value: "filosofia_triennale", label: "Filosofia" },
-    { value: "filosofia_del_mondo_contemporaneo", label: "Filosofia del mondo contemporaneo" },
-    { value: "teoria_e_storia_delle_arti_e_dell_immagine", label: "Teoria e storia delle arti e dell’immagine" },
-    { value: "politics_philosophy_and_public_affairs", label: "Politics, Philosophy and Public Affairs" },
+    { value: "filosofia", label: "Cdl triennale in Filosofia" },
+    { value: "filosofia_del_mondo_contemporaneo", label: "Cdl magistrale in Filosofia del mondo contemporaneo" },
+    {
+      value: "teoria_e_storia_delle_arti_e_dell_immagine",
+      label: "Cdl magistrale in Teoria e storia delle arti e dell’immagine",
+    },
+    {
+      value: "politics_philosophy_and_public_affairs",
+      label: "Cdl magistrale in Politics, Philosophy and Public Affairs",
+    },
   ],
 };
 
