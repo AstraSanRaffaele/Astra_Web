@@ -1,17 +1,21 @@
 {
   "formatVersion": 1,
   "passTypeIdentifier": "pass.com.cards.astra",
-  "teamIdentifier": "XXXXXXXXXX",
+  "teamIdentifier": "4ZZKR3BX3H",
   "organizationName": "Astra",
   "description": "Astra Card",
-  "serialNumber": "123456",
+  "serialNumber": "1234567",
 
-  "backgroundColor": "rgb(0, 102, 204)",
-  "foregroundColor": "rgb(255, 255, 255)",
-  "labelColor": "rgb(255, 255, 255)",
+  "backgroundColor": "rgb(10, 20, 120)",
+  "foregroundColor": "rgb(255,255,255)",
+  "labelColor": "rgb(200,200,200)",
+
+  "logoText": "ASTRA",
 
   "generic": {
+    "headerFields": [],
     "primaryFields": [],
-    "secondaryFields": []
+    "secondaryFields": [],
+    "auxiliaryFields": []
   }
 }

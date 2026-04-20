@@ -111,6 +111,7 @@ export default function ProfilePage() {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) { router.replace("/login"); return; }
 
+
       const { data, error: profileError } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
       if (profileError) { setError(profileError.message || "Impossibile caricare il profilo."); setLoading(false); return; }
       if (!data) { setError("Profilo non trovato. Contatta un amministratore."); setLoading(false); return; }

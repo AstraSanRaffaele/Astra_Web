@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { PKPass } from "passkit-generator";
 import path from "path";
 
+export const runtime = "nodejs";
+
 function formatCert(cert: string) {
   return Buffer.from(cert.replace(/\\n/g, "\n"));
 }
@@ -38,24 +40,52 @@ export async function GET() {
         wwdr: formatCert(process.env.APPLE_WWDR!),
         signerCert: formatCert(process.env.APPLE_CERT!),
         signerKey: formatCert(process.env.APPLE_KEY!),
-        signerKeyPassphrase: "dummy", // 👈 AGGIUNGI QUESTO
+      },
+
+      overrides: {
+        serialNumber: `${profile.id}-${Date.now()}`,
       },
     });
 
-    // ✅ QUESTO è il modo GIUSTO per la tua versione
+    pass.setRelevantDate(new Date());
+    // ── HEADER ───────────────────
+    pass.headerFields.push({
+      key: "serial",
+      label: "N. SERIALE",
+      value: profile.id.slice(0, 6).toUpperCase(),
+    });
+
+    // ── NOME GRANDE ─────────────
     pass.primaryFields.push({
       key: "name",
-      label: "Nome",
-      value: `${profile.nome} ${profile.cognome}`,
+      label: "NOME",
+      value: `${profile.nome.toUpperCase()} ${profile.cognome.toUpperCase()}`,
     });
 
-    pass.secondaryFields.push({
-      key: "faculty",
-      label: "Facoltà",
-      value: profile.facolta,
-    });
+    pass.secondaryFields.push(
+      {
+        key: "phone",
+        label: "TELEFONO",
+        value: profile.numero_telefono || "-",
+      },
+      {
+        key: "email",
+        label: "EMAIL",
+        value: profile.email_istituzionale || "-",
+      },
+      {
+        key: "faculty",
+        label: "FACOLTÀ",
+        value: profile.facolta?.toUpperCase(),
+      },
+      {
+        key: "role",
+        label: "RUOLO",
+        value: profile.ruolo_tessera?.toUpperCase(),
+      }
+    );
 
-    // ── QR ───────────────────────
+    // ── QR ──────────────────────
     pass.setBarcodes({
       message: profile.id,
       format: "PKBarcodeFormatQR",
@@ -65,7 +95,8 @@ export async function GET() {
     // ── OUTPUT ───────────────────
     const buffer = pass.getAsBuffer();
 
-    return new NextResponse(new Uint8Array(buffer), {
+    return new Response(new Uint8Array(buffer), {
+      status: 200,
       headers: {
         "Content-Type": "application/vnd.apple.pkpass",
         "Content-Disposition": "attachment; filename=astra.pkpass",
