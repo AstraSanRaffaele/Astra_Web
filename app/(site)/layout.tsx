@@ -3,6 +3,11 @@ import { Analytics } from "@vercel/analytics/next"
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 
+export const metadata = {
+  title: "ASTRA San Raffaele",
+  description: "Community ASTRA San Raffaele: eventi universitari, convenzioni, opportunità e servizi per studenti.",
+};
+
 export default function SiteLayout({
   children,
 }: {
