@@ -96,7 +96,7 @@ export async function GET() {
         // ── HERO IMAGE (fa la differenza visiva) ──
         heroImage: {
           sourceUri: {
-            uri: "https://tuodominio.it/wallet/hero.png", // metti un gradient blu
+            uri: "https://www.astrasanraffaele.it/_next/image?url=%2Flogo.png&w=256&q=75", // metti un gradient blu
           },
         },
 
