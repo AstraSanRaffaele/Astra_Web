@@ -200,80 +200,114 @@ export default function EventiPage() {
         </section>
 
         {/* ══ NEXT EVENT — rich card ══ */}
-        {!loading && next && (
-          <section className="ev-section" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 3rem" }}>
-            <Link href={`/eventi/${next.id}`} className="next-card">
-              {/* Locandina / cover */}
-              {getCover(next) ? (
-                <div className="next-img" style={{ width: 220, flexShrink: 0, position: "relative", overflow: "hidden" }}>
-                  <img src={getCover(next)} alt={next.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(8,16,42,.6) 100%)" }} />
-                </div>
-              ) : null}
+        {!loading && next && (() => {
+          const nextDate = getEventDate(next);
+          const nextIscrizioniEsterne = Boolean(next.iscrizioni_esterne);
+          const nextIscrizioniAperte = Boolean(next.iscrizioni_aperte);
 
-              {/* Content */}
-              <div style={{ flex: 1, minWidth: 0, padding: "2rem 2.5rem", display: "flex", alignItems: "center", gap: "2rem", position: "relative" }}>
-                {/* Dot pattern */}
-                <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, background: "radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px)", backgroundSize: "18px 18px", pointerEvents: "none" }} />
-
-                {/* Date block */}
-                <div className="next-date-block" style={{ textAlign: "center", flexShrink: 0 }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "3.5rem", fontWeight: 700, lineHeight: 1, letterSpacing: "-.04em", color: "#fff" }}>
-                    {fmtDay(getEventDate(next))}
+          return (
+            <section className="ev-section" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 3rem" }}>
+              <Link href={`/eventi/${next.id}`} className="next-card">
+                {/* Locandina / cover */}
+                {getCover(next) ? (
+                  <div className="next-img" style={{ width: 220, flexShrink: 0, position: "relative", overflow: "hidden" }}>
+                    <img src={getCover(next)} alt={next.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(8,16,42,.6) 100%)" }} />
                   </div>
-                  <div style={{ fontSize: ".7rem", fontWeight: 700, letterSpacing: ".15em", textTransform: "uppercase", color: "rgba(255,255,255,.45)", marginTop: ".2rem" }}>
-                    {fmtMonth(getEventDate(next))}
+                ) : null}
+
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 0, padding: "2rem 2.5rem", display: "flex", alignItems: "center", gap: "2rem", position: "relative" }}>
+                  {/* Dot pattern */}
+                  <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, background: "radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px)", backgroundSize: "18px 18px", pointerEvents: "none" }} />
+
+                  {/* Date block */}
+                  <div className="next-date-block" style={{ textAlign: "center", flexShrink: 0 }}>
+                    <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "3.5rem", fontWeight: 700, lineHeight: 1, letterSpacing: "-.04em", color: "#fff" }}>
+                      {fmtDay(nextDate)}
+                    </div>
+                    <div style={{ fontSize: ".7rem", fontWeight: 700, letterSpacing: ".15em", textTransform: "uppercase", color: "rgba(255,255,255,.45)", marginTop: ".2rem" }}>
+                      {fmtMonth(nextDate)}
+                    </div>
                   </div>
-                </div>
 
-                <div className="next-divider" style={{ width: 1, height: 60, background: "rgba(255,255,255,.1)", flexShrink: 0 }} />
+                  <div className="next-divider" style={{ width: 1, height: 60, background: "rgba(255,255,255,.1)", flexShrink: 0 }} />
 
-                <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
-                  <p style={{ fontSize: ".62rem", fontWeight: 700, letterSpacing: ".18em", textTransform: "uppercase", color: "rgba(255,255,255,.35)", marginBottom: ".5rem" }}>
-                    Prossimo evento
-                  </p>
-                  <h2 style={{ fontSize: "clamp(1.1rem,2.5vw,1.4rem)", fontWeight: 700, color: "#fff", letterSpacing: "-.01em", lineHeight: 1.2, marginBottom: ".6rem" }}>
-                    {next.title}
-                  </h2>
-                  <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
-                    <p style={{ fontSize: ".84rem", color: "rgba(255,255,255,.5)", display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
-                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
-                        <rect x="1" y="2" width="11" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
-                        <path d="M1 5h11M4.5 1v2M8.5 1v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                  <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap", marginBottom: ".5rem" }}>
+                      <p style={{ fontSize: ".62rem", fontWeight: 700, letterSpacing: ".18em", textTransform: "uppercase", color: "rgba(255,255,255,.35)", margin: 0 }}>
+                        Prossimo evento
+                      </p>
+                      <span
+                        style={{
+                          fontSize: ".6rem",
+                          fontWeight: 700,
+                          letterSpacing: ".08em",
+                          textTransform: "uppercase",
+                          padding: ".22rem .58rem",
+                          borderRadius: "999px",
+                          background: nextIscrizioniEsterne
+                            ? "rgba(96,165,250,.18)"
+                            : nextIscrizioniAperte
+                            ? "rgba(74,222,128,.16)"
+                            : "rgba(248,113,113,.14)",
+                          color: nextIscrizioniEsterne
+                            ? "#bfdbfe"
+                            : nextIscrizioniAperte
+                            ? "#bbf7d0"
+                            : "#fecaca",
+                        }}
+                      >
+                        {nextIscrizioniEsterne
+                          ? "Iscrizioni esterne"
+                          : nextIscrizioniAperte
+                          ? "Iscrizioni aperte"
+                          : "Iscrizioni chiuse"}
+                      </span>
+                    </div>
+                    <h2 style={{ fontSize: "clamp(1.1rem,2.5vw,1.4rem)", fontWeight: 700, color: "#fff", letterSpacing: "-.01em", lineHeight: 1.2, marginBottom: ".6rem" }}>
+                      {next.title}
+                    </h2>
+                    <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
+                      <p style={{ fontSize: ".84rem", color: "rgba(255,255,255,.5)", display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
+                          <rect x="1" y="2" width="11" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+                          <path d="M1 5h11M4.5 1v2M8.5 1v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                        {fmtWeekday(nextDate)} {fmtFull(nextDate)} • {fmtTime(nextDate)}
+                      </p>
+                      {next.location && (
+                        <p style={{ fontSize: ".84rem", color: "rgba(255,255,255,.5)", display: "flex", alignItems: "center", gap: ".5rem" }}>
+                          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
+                            <path d="M6.5 1.5C4.84 1.5 3.5 2.84 3.5 4.5c0 2.42 3 6.5 3 6.5s3-4.08 3-6.5c0-1.66-1.34-3-3-3Z" stroke="currentColor" strokeWidth="1.3"/>
+                            <circle cx="6.5" cy="4.5" r="1.1" fill="currentColor"/>
+                          </svg>
+                          {next.location}
+                        </p>
+                      )}
+                      {next.partnership && (
+                        <p style={{ fontSize: ".84rem", color: "rgba(255,255,255,.4)", display: "flex", alignItems: "center", gap: ".5rem" }}>
+                          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
+                            <path d="M9 4.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0ZM2 11c0-2 1.79-3.5 4.5-3.5S11 9 11 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                          </svg>
+                          In partnership con {next.partnership}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ flexShrink: 0, zIndex: 1 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.16)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8h10M9 4l4 4-4 4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                      {fmtWeekday(getEventDate(next))} {fmtFull(getEventDate(next))} • {fmtTime(getEventDate(next))}
-                    </p>
-                    {next.location && (
-                      <p style={{ fontSize: ".84rem", color: "rgba(255,255,255,.5)", display: "flex", alignItems: "center", gap: ".5rem" }}>
-                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
-                          <path d="M6.5 1.5C4.84 1.5 3.5 2.84 3.5 4.5c0 2.42 3 6.5 3 6.5s3-4.08 3-6.5c0-1.66-1.34-3-3-3Z" stroke="currentColor" strokeWidth="1.3"/>
-                          <circle cx="6.5" cy="4.5" r="1.1" fill="currentColor"/>
-                        </svg>
-                        {next.location}
-                      </p>
-                    )}
-                    {next.partnership && (
-                      <p style={{ fontSize: ".84rem", color: "rgba(255,255,255,.4)", display: "flex", alignItems: "center", gap: ".5rem" }}>
-                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
-                          <path d="M9 4.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0ZM2 11c0-2 1.79-3.5 4.5-3.5S11 9 11 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                        </svg>
-                        In partnership con {next.partnership}
-                      </p>
-                    )}
+                    </div>
                   </div>
                 </div>
-
-                <div style={{ flexShrink: 0, zIndex: 1 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.16)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M3 8h10M9 4l4 4-4 4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          </section>
-        )}
+              </Link>
+            </section>
+          );
+        })()}
 
         {/* ══ FILTER + VIEW TOGGLE + LIST/GRID ══ */}
         <section className="ev-section" style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 3rem 6rem" }}>
@@ -314,6 +348,8 @@ export default function EventiPage() {
                 const date = getEventDate(e);
                 const past = isPast(date);
                 const cover = getCover(e);
+                const iscrizioniEsterne = Boolean(e.iscrizioni_esterne);
+                const iscrizioniAperte = Boolean(e.iscrizioni_aperte);
                 return (
                   <Link key={e.id} href={`/eventi/${e.id}`} className={`ev-row${past ? " past" : ""}`}>
                     {/* Date box */}
@@ -333,6 +369,15 @@ export default function EventiPage() {
                           {e.title}
                         </h2>
                         {past && <Chip>Passato</Chip>}
+                        {!past && (
+                          <Chip color={iscrizioniEsterne ? "blue" : "gray"}>
+                            {iscrizioniEsterne
+                              ? "Iscrizioni esterne"
+                              : iscrizioniAperte
+                              ? "Iscrizioni aperte"
+                              : "Iscrizioni chiuse"}
+                          </Chip>
+                        )}
                         {e.partnership && <Chip color="blue">{e.partnership}</Chip>}
                       </div>
                       <p style={{ margin: 0, fontSize: ".83rem", color: "#6B7280", display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
@@ -370,6 +415,8 @@ export default function EventiPage() {
                 const date = getEventDate(e);
                 const past = isPast(date);
                 const cover = getCover(e);
+                const iscrizioniEsterne = Boolean(e.iscrizioni_esterne);
+                const iscrizioniAperte = Boolean(e.iscrizioni_aperte);
                 return (
                   <Link key={e.id} href={`/eventi/${e.id}`} className={`ev-card${past ? " past" : ""}`}>
                     {/* Cover */}
@@ -388,11 +435,18 @@ export default function EventiPage() {
                         <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.4rem", fontWeight: 700, color: "#fff", lineHeight: 1 }}>{fmtDay(date)}</span>
                         <span style={{ fontSize: ".55rem", fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "rgba(255,255,255,.6)" }}>{fmtMonth(date)}</span>
                       </div>
-                      {past && (
-                        <div style={{ position: "absolute", top: "1rem", right: "1rem" }}>
-                          <Chip>Passato</Chip>
-                        </div>
-                      )}
+                      <div style={{ position: "absolute", top: "1rem", right: "1rem", display: "flex", flexDirection: "column", gap: ".45rem", alignItems: "flex-end" }}>
+                        {past && <Chip>Passato</Chip>}
+                        {!past && (
+                          <Chip color={iscrizioniEsterne ? "blue" : "gray"}>
+                            {iscrizioniEsterne
+                              ? "Iscrizioni esterne"
+                              : iscrizioniAperte
+                              ? "Iscrizioni aperte"
+                              : "Iscrizioni chiuse"}
+                          </Chip>
+                        )}
+                      </div>
                       {/* Gradient */}
                       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(8,16,42,.5) 0%, transparent 50%)" }} />
                     </div>
@@ -461,10 +515,17 @@ export default function EventiPage() {
 function Chip({ children, color = "gray" }: { children: React.ReactNode; color?: "gray" | "blue" }) {
   return (
     <span style={{
-      fontSize: ".62rem", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase",
+      fontSize: ".62rem",
+      fontWeight: 700,
+      letterSpacing: ".06em",
+      textTransform: "uppercase",
       background: color === "blue" ? "rgba(46,64,128,.08)" : "rgba(8,16,42,.06)",
       color: color === "blue" ? "#2E4080" : "#6B7280",
-      padding: ".22rem .65rem", borderRadius: "999px", whiteSpace: "nowrap",
+      padding: ".22rem .65rem",
+      borderRadius: "999px",
+      whiteSpace: "nowrap",
+      border: color === "blue" ? "1px solid rgba(46,64,128,.12)" : "1px solid rgba(8,16,42,.08)",
+      backdropFilter: "blur(6px)",
     }}>
       {children}
     </span>
