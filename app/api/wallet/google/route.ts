@@ -32,45 +32,84 @@ export async function GET() {
   const issuerId = process.env.GOOGLE_CLASS_ID!.split(".")[0];
 
   const payload = {
-    iss: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    aud: "google",
-    typ: "savetowallet",
-    payload: {
-  genericObjects: [
-    {
-      id: `${issuerId}.${profile.id}-${Date.now()}`,
-      classId: process.env.GOOGLE_CLASS_ID,
-      state: "ACTIVE",
+  iss: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  aud: "google",
+  typ: "savetowallet",
+  payload: {
+    genericObjects: [
+      {
+        id: `${issuerId}.${profile.id}-${Date.now()}`,
+        classId: process.env.GOOGLE_CLASS_ID,
+        state: "ACTIVE",
 
-      cardTitle: {
-        defaultValue: {
-          language: "it",
-          value: "Astra Card",
+        // ── HEADER PRINCIPALE ──
+        cardTitle: {
+          defaultValue: {
+            language: "it",
+            value: "ASTRA",
+          },
+        },
+
+        header: {
+          defaultValue: {
+            language: "it",
+            value: `${profile.nome.toUpperCase()} ${profile.cognome.toUpperCase()}`,
+          },
+        },
+
+        subheader: {
+          defaultValue: {
+            language: "it",
+            value: profile.facolta?.toUpperCase(),
+          },
+        },
+
+        // ── INFO VISIBILI (tipo secondaryFields Apple) ──
+        textModulesData: [
+          {
+            id: "phone",
+            header: "TELEFONO",
+            body: profile.numero_telefono || "-",
+          },
+          {
+            id: "email",
+            header: "EMAIL",
+            body: profile.email_istituzionale || "-",
+          },
+          {
+            id: "role",
+            header: "RUOLO",
+            body: profile.ruolo_tessera?.toUpperCase() || "SOCIO",
+          },
+        ],
+
+        // ── BARCODE ──
+        barcode: {
+          type: "QR_CODE",
+          value: profile.id,
+          alternateText: "ASTRA ID",
+        },
+
+        // ── COLORI (UGUALI AD APPLE) ──
+        hexBackgroundColor: "#0a1478",
+
+        // ── HERO IMAGE (fa la differenza visiva) ──
+        heroImage: {
+          sourceUri: {
+            uri: "https://tuodominio.it/wallet/hero.png", // metti un gradient blu
+          },
+        },
+
+        // ── LOGO ──
+        logo: {
+          sourceUri: {
+            uri: "https://www.astrasanraffaele.it/_next/image?url=%2Flogo.png&w=256&q=75",
+          },
         },
       },
-
-      header: {
-        defaultValue: {
-          language: "it",
-          value: `${profile.nome} ${profile.cognome}`,
-        },
-      },
-
-      subheader: {
-        defaultValue: {
-          language: "it",
-          value: profile.facolta,
-        },
-      },
-
-      barcode: {
-        type: "QR_CODE",
-        value: profile.id,
-      },
-    },
-  ],
-}
-  };
+    ],
+  },
+};
 
   const token = jwt.sign(
     payload,

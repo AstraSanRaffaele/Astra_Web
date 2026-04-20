@@ -109,6 +109,26 @@ function EventModal({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
+  const supabase = createClient();
+
+  async function uploadImage(file: File) {
+    const fileName = `${Date.now()}-${file.name}`;
+
+    const { error } = await supabase.storage
+      .from("events")
+      .upload(fileName, file);
+
+    if (error) {
+      throw new Error("Errore upload immagine");
+    }
+
+    const { data } = supabase.storage
+      .from("events")
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  }
+
   const set = (k: keyof EventForm, v: string | boolean) =>
     setForm((f) => ({ ...f, [k]: v }));
 
@@ -424,32 +444,63 @@ function EventModal({
             />
           </div>
 
-          <MField
-            label="URL immagine di copertina"
-            value={form.cover_image}
-            onChange={(v) => set("cover_image", v)}
-            placeholder="https://..."
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
+            <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>
+              Immagine evento
+            </label>
 
-          {form.cover_image && (
-            <div
-              style={{
-                borderRadius: "1rem",
-                overflow: "hidden",
-                aspectRatio: "16/6",
-                background: "#e8edfb",
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                setSaving(true);
+
+                try {
+                  const url = await uploadImage(file);
+                  set("cover_image", url);
+                } catch (err) {
+                  console.error(err);
+                  setErr("Errore upload immagine");
+                } finally {
+                  setSaving(false);
+                  e.target.value = ""; // 🔥 QUESTO È IL FIX
+                }
               }}
-            >
-              <img
-                src={form.cover_image}
-                alt="preview"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
+              style={{
+                border: "1px solid rgba(15,47,110,.12)",
+                borderRadius: "12px",
+                padding: ".6rem",
+                background: "#fff",
+                cursor: "pointer",
+              }}
+            />
+
+            {form.cover_image && (
+              <div
+                style={{
+                  borderRadius: "1rem",
+                  overflow: "hidden",
+                  height: "50vh",
+
+                  background: "#e8edfb",
                 }}
-              />
-            </div>
-          )}
+              >
+                <img
+                  src={form.cover_image}
+                  alt="preview"
+                  style={{ 
+                    width: "100%", 
+                    height: "100%", 
+                    objectFit: "cover",
+                    objectPosition: "center"
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
           {err && (
             <div

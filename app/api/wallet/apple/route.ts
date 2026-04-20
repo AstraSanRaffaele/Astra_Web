@@ -85,6 +85,24 @@ export async function GET() {
       }
     );
 
+    pass.backFields.push(
+  {
+    key: "faculty",
+    label: "FACOLTÀ",
+    value: profile.facolta,
+  },
+  {
+    key: "course",
+    label: "CORSO DI LAUREA",
+    value: profile.corso_di_laurea,
+  },
+  {
+    key: "role",
+    label: "RUOLO",
+    value: profile.ruolo_tessera,
+  }
+);
+
     // ── QR ──────────────────────
     pass.setBarcodes({
       message: profile.id,
