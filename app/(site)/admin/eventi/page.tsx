@@ -17,6 +17,8 @@ type Event = {
   partnership: string | null;
   max_posti: number | null;
   iscrizioni_aperte: boolean | null;
+  iscrizioni_esterne: boolean | null;
+  link_iscrizioni_esterne: string | null;
 };
 
 type EventForm = {
@@ -29,6 +31,8 @@ type EventForm = {
   partnership: string;
   max_posti: string;
   iscrizioni_aperte: boolean;
+  iscrizioni_esterne: boolean;
+  link_iscrizioni_esterne: string;
 };
 
 const EMPTY_FORM: EventForm = {
@@ -41,6 +45,8 @@ const EMPTY_FORM: EventForm = {
   partnership: "",
   max_posti: "",
   iscrizioni_aperte: false,
+  iscrizioni_esterne: false,
+  link_iscrizioni_esterne: "",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -93,6 +99,8 @@ function EventModal({
         partnership: initial?.partnership ?? "",
         max_posti: initial.max_posti != null ? String(initial.max_posti) : "",
         iscrizioni_aperte: Boolean(initial.iscrizioni_aperte),
+        iscrizioni_esterne: Boolean(initial.iscrizioni_esterne),
+        link_iscrizioni_esterne: initial.link_iscrizioni_esterne ?? "",
       };
     }
     return EMPTY_FORM;
@@ -112,6 +120,10 @@ function EventModal({
     }
     if (!form.event_date) {
       setErr("La data è obbligatoria.");
+      return;
+    }
+    if (form.iscrizioni_esterne && !form.link_iscrizioni_esterne.trim()) {
+      setErr("Inserisci il link per le iscrizioni esterne.");
       return;
     }
 
@@ -268,29 +280,122 @@ function EventModal({
             placeholder="es. Red Bull, Nike"
           />
 
-          <label
+          <div
             style={{
               display: "flex",
-              alignItems: "center",
-              gap: ".7rem",
-              padding: ".9rem 1rem",
-              borderRadius: "12px",
+              flexDirection: "column",
+              gap: ".8rem",
+              padding: "1rem",
+              borderRadius: "16px",
               border: "1px solid rgba(15,47,110,.12)",
               background: "white",
-              color: "#102a56",
-              fontSize: ".95rem",
-              fontWeight: 600,
-              cursor: "pointer",
             }}
           >
-            <input
-              type="checkbox"
-              checked={form.iscrizioni_aperte}
-              onChange={(e) => set("iscrizioni_aperte", e.target.checked)}
-              style={{ width: 16, height: 16, cursor: "pointer" }}
-            />
-            <span>Iscrizioni aperte</span>
-          </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: ".25rem" }}>
+              <span
+                style={{
+                  fontSize: ".82rem",
+                  fontWeight: 800,
+                  color: "#17315f",
+                  letterSpacing: ".02em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Gestione iscrizioni
+              </span>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: ".9rem",
+                  color: "#6b7280",
+                  lineHeight: 1.5,
+                }}
+              >
+                Scegli se non usare iscrizioni, usare l’RSVP interno ASTRA oppure un link esterno.
+              </p>
+            </div>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: ".7rem",
+                color: "#102a56",
+                fontSize: ".95rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form.iscrizioni_aperte}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setForm((prev) => ({
+                    ...prev,
+                    iscrizioni_aperte: checked,
+                    iscrizioni_esterne: checked ? false : prev.iscrizioni_esterne,
+                    link_iscrizioni_esterne: checked ? "" : prev.link_iscrizioni_esterne,
+                  }));
+                }}
+                style={{ width: 16, height: 16, cursor: "pointer" }}
+              />
+              <span>Usa iscrizioni interne ASTRA (RSVP)</span>
+            </label>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: ".7rem",
+                color: "#102a56",
+                fontSize: ".95rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form.iscrizioni_esterne}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setForm((prev) => ({
+                    ...prev,
+                    iscrizioni_esterne: checked,
+                    iscrizioni_aperte: checked ? false : prev.iscrizioni_aperte,
+                  }));
+                }}
+                style={{ width: 16, height: 16, cursor: "pointer" }}
+              />
+              <span>Usa iscrizioni esterne tramite link</span>
+            </label>
+
+            {form.iscrizioni_esterne && (
+              <MField
+                label="Link piattaforma esterna *"
+                value={form.link_iscrizioni_esterne}
+                onChange={(v) => set("link_iscrizioni_esterne", v)}
+                placeholder="https://..."
+              />
+            )}
+
+            <div
+              style={{
+                fontSize: ".82rem",
+                color: "#6b7280",
+                lineHeight: 1.5,
+                padding: ".75rem .9rem",
+                borderRadius: "12px",
+                background: "rgba(15,47,110,.04)",
+              }}
+            >
+              {!form.iscrizioni_aperte && !form.iscrizioni_esterne
+                ? "Nessuna iscrizione attiva: l'evento sarà solo informativo."
+                : form.iscrizioni_esterne
+                  ? "Le iscrizioni verranno gestite fuori da ASTRA usando il link inserito qui sopra."
+                  : "Le iscrizioni verranno gestite internamente su ASTRA con lista RSVP."}
+            </div>
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
             <label
@@ -402,8 +507,8 @@ function EventModal({
               {saving
                 ? "Salvataggio..."
                 : mode === "create"
-                ? "Crea evento"
-                : "Salva modifiche"}
+                  ? "Crea evento"
+                  : "Salva modifiche"}
             </button>
           </div>
         </form>
@@ -529,14 +634,22 @@ export default function AdminEventi() {
       throw new Error("Il numero massimo di posti deve essere almeno 1.");
     }
 
+    const externalLink = form.link_iscrizioni_esterne.trim();
+
+    if (form.iscrizioni_esterne && !externalLink) {
+      throw new Error("Inserisci un link valido per le iscrizioni esterne.");
+    }
+
     const payload = {
       title: form.title.trim(),
       description: form.description.trim() || null,
       location: form.location.trim() || null,
       cover_image: form.cover_image.trim() || null,
       partnership: form.partnership.trim() || null,
-      max_posti: parsedMaxSeats,
-      iscrizioni_aperte: form.iscrizioni_aperte,
+      max_posti: form.iscrizioni_esterne ? null : parsedMaxSeats,
+      iscrizioni_aperte: form.iscrizioni_esterne ? false : form.iscrizioni_aperte,
+      iscrizioni_esterne: form.iscrizioni_esterne,
+      link_iscrizioni_esterne: form.iscrizioni_esterne ? externalLink : null,
       event_date: isoDate,
     };
 
@@ -1066,17 +1179,25 @@ export default function AdminEventi() {
                                 fontWeight: 700,
                                 letterSpacing: ".08em",
                                 textTransform: "uppercase",
-                                background: e.iscrizioni_aperte
-                                  ? "rgba(12,122,77,.10)"
-                                  : "rgba(190,39,39,.08)",
-                                color: e.iscrizioni_aperte ? "#0b6b46" : "#8b1d1d",
+                                background: e.iscrizioni_esterne
+                                  ? "rgba(24,71,163,.10)"
+                                  : e.iscrizioni_aperte
+                                    ? "rgba(12,122,77,.10)"
+                                    : "rgba(190,39,39,.08)",
+                                color: e.iscrizioni_esterne
+                                  ? "#1847a3"
+                                  : e.iscrizioni_aperte
+                                    ? "#0b6b46"
+                                    : "#8b1d1d",
                                 padding: ".2rem .6rem",
                                 borderRadius: "999px",
                               }}
                             >
-                              {e.iscrizioni_aperte
-                                ? "Iscrizioni aperte"
-                                : "Iscrizioni chiuse"}
+                              {e.iscrizioni_esterne
+                                ? "Iscrizioni esterne"
+                                : e.iscrizioni_aperte
+                                  ? "Iscrizioni aperte"
+                                  : "Iscrizioni chiuse"}
                             </span>
                           )}
                         </div>
@@ -1111,7 +1232,7 @@ export default function AdminEventi() {
                               </span>
                             </>
                           )}
-                          {e.max_posti != null && (
+                          {!e.iscrizioni_esterne && e.max_posti != null && (
                             <>
                               <span style={{ opacity: 0.4 }}>·</span>
                               <span style={{ fontWeight: 600, color: "#2E4080" }}>
@@ -1120,6 +1241,23 @@ export default function AdminEventi() {
                             </>
                           )}
                         </p>
+
+                        {e.iscrizioni_esterne && e.link_iscrizioni_esterne && (
+                          <p
+                            style={{
+                              margin: ".35rem 0 0",
+                              fontSize: ".82rem",
+                              color: "#1847a3",
+                              fontWeight: 700,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              maxWidth: 500,
+                            }}
+                          >
+                            Link esterno: {e.link_iscrizioni_esterne}
+                          </p>
+                        )}
 
                         {e.partnership && (
                           <p
