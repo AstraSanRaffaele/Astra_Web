@@ -85,6 +85,8 @@ export default function EventoDetailPage() {
   const past = isPast(date);
   const cover = getCover(event);
   const iscrizioniAperte = Boolean(event.iscrizioni_aperte);
+  const iscrizioniEsterne = Boolean(event.iscrizioni_esterne);
+  const linkIscrizioniEsterne = event.link_iscrizioni_esterne?.trim() || "";
 
   return (
     <>
@@ -306,11 +308,54 @@ export default function EventoDetailPage() {
                       </div>
                     </>
                   )}
+                  {!past && iscrizioniEsterne && (
+                    <>
+                      <div style={{ marginTop: "1rem", height: 1, background: "rgba(255,255,255,.08)" }} />
+                      <div
+                        style={{
+                          marginTop: "1rem",
+                          fontSize: ".72rem",
+                          fontWeight: 700,
+                          letterSpacing: ".14em",
+                          textTransform: "uppercase",
+                          color: "rgba(255,255,255,.42)",
+                        }}
+                      >
+                        Iscrizioni esterne
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
               {!past ? (
-                iscrizioniAperte ? (
+                iscrizioniEsterne && linkIscrizioniEsterne ? (
+                  <a
+                    href={linkIscrizioniEsterne}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: ".6rem",
+                      width: "100%",
+                      background: "#08102A",
+                      color: "#fff",
+                      textDecoration: "none",
+                      borderRadius: "999px",
+                      padding: ".95rem 1.4rem",
+                      fontSize: ".92rem",
+                      fontWeight: 700,
+                      boxShadow: "0 8px 24px rgba(8,16,42,.14)",
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
+                      <path d="M8.5 2h3.5v3.5M6 8l6-6M12 8.5V11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Iscriviti sulla piattaforma esterna
+                  </a>
+                ) : iscrizioniAperte ? (
                   <RsvpButton eventId={event.id} maxPosti={event.max_posti} />
                 ) : (
                   <div
@@ -342,7 +387,7 @@ export default function EventoDetailPage() {
                         color: "#374151",
                       }}
                     >
-                      Le iscrizioni a questo evento non sono ancora aperte.
+                      Le iscrizioni a questo evento non sono disponibili al momento.
                     </p>
                   </div>
                 )
