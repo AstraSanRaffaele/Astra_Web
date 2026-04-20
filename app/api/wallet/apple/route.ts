@@ -41,6 +41,10 @@ export async function GET() {
         signerCert: formatCert(process.env.APPLE_CERT!),
         signerKey: formatCert(process.env.APPLE_KEY!),
       },
+
+      overrides: {
+        serialNumber: `${profile.id}-${Date.now()}`,
+      },
     });
 
     pass.setRelevantDate(new Date());
@@ -117,12 +121,12 @@ export async function GET() {
       },
     });
 
-  } catch (err: any) {
-  console.error("PASS ERROR:", err);
+  } catch (err) {
+    console.error(err);
 
-  return NextResponse.json(
-    { error: err?.message || String(err) },
-    { status: 500 }
-  );
-}
+    return NextResponse.json(
+      { error: "Errore generazione pass" },
+      { status: 500 }
+    );
+  }
 }
