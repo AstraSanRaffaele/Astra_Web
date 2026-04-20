@@ -58,17 +58,17 @@ export default function EventiPage() {
   const [view, setView] = useState<"list" | "grid">("list");
 
   useEffect(() => {
-  async function load() {
-    const { data } = await supabase
-      .from("events")
-      .select("*")
-      .order("event_date", { ascending: true });
+    async function load() {
+      const { data } = await supabase
+        .from("events")
+        .select("*")
+        .order("event_date", { ascending: true });
 
-    setEvents(data || []);
-    setLoading(false);
-  }
-  load();
-}, [supabase]);
+      setEvents(data || []);
+      setLoading(false);
+    }
+    load();
+  }, [supabase]);
 
   const upcoming = useMemo(() => events.filter(e => !isPast(getEventDate(e))), [events]);
   const next = upcoming[0];
@@ -208,7 +208,6 @@ export default function EventiPage() {
           return (
             <section className="ev-section" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 3rem" }}>
               <Link href={`/eventi/${next.id}`} className="next-card">
-                {/* Locandina / cover */}
                 {getCover(next) ? (
                   <div className="next-img" style={{ width: 220, flexShrink: 0, position: "relative", overflow: "hidden" }}>
                     <img src={getCover(next)} alt={next.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -216,12 +215,9 @@ export default function EventiPage() {
                   </div>
                 ) : null}
 
-                {/* Content */}
                 <div style={{ flex: 1, minWidth: 0, padding: "2rem 2.5rem", display: "flex", alignItems: "center", gap: "2rem", position: "relative" }}>
-                  {/* Dot pattern */}
                   <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, background: "radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px)", backgroundSize: "18px 18px", pointerEvents: "none" }} />
 
-                  {/* Date block */}
                   <div className="next-date-block" style={{ textAlign: "center", flexShrink: 0 }}>
                     <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "3.5rem", fontWeight: 700, lineHeight: 1, letterSpacing: "-.04em", color: "#fff" }}>
                       {fmtDay(nextDate)}
@@ -319,7 +315,7 @@ export default function EventiPage() {
                 </button>
               ))}
             </div>
-            {/* View toggle */}
+
             <div style={{ display: "flex", gap: ".4rem" }}>
               <button className={`view-btn${view === "list" ? " active" : ""}`} onClick={() => setView("list")} title="Vista lista">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -350,9 +346,9 @@ export default function EventiPage() {
                 const cover = getCover(e);
                 const iscrizioniEsterne = Boolean(e.iscrizioni_esterne);
                 const iscrizioniAperte = Boolean(e.iscrizioni_aperte);
+
                 return (
                   <Link key={e.id} href={`/eventi/${e.id}`} className={`ev-row${past ? " past" : ""}`}>
-                    {/* Date box */}
                     <div className="ev-date-box" style={{ width: 52, flexShrink: 0, textAlign: "center", background: past ? "rgba(8,16,42,.04)" : "#E8EDFB", borderRadius: "1rem", padding: ".6rem .4rem" }}>
                       <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.6rem", fontWeight: 700, lineHeight: 1, color: past ? "#6B7280" : "#08102A", letterSpacing: "-.03em" }}>
                         {fmtDay(date)}
@@ -362,31 +358,37 @@ export default function EventiPage() {
                       </div>
                     </div>
 
-                    {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: ".6rem", flexWrap: "wrap", marginBottom: ".3rem" }}>
-                        <h2 style={{ fontSize: "1rem", fontWeight: 700, letterSpacing: "-.01em", color: "#08102A", lineHeight: 1.2, margin: 0 }}>
-                          {e.title}
-                        </h2>
-                        {past && <Chip>Passato</Chip>}
-                        {!past && (
-                          <Chip color={iscrizioniEsterne ? "blue" : "gray"}>
-                            {iscrizioniEsterne
-                              ? "Iscrizioni esterne"
-                              : iscrizioniAperte
-                              ? "Iscrizioni aperte"
-                              : "Iscrizioni chiuse"}
-                          </Chip>
+                      <div style={{ marginBottom: ".3rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: ".6rem", flexWrap: "wrap" }}>
+                          <h2 style={{ fontSize: "1rem", fontWeight: 700, letterSpacing: "-.01em", color: "#08102A", lineHeight: 1.2, margin: 0 }}>
+                            {e.title}
+                          </h2>
+                          {past && <Chip>Passato</Chip>}
+                          {!past && (
+                            <Chip color={iscrizioniEsterne ? "blue" : "gray"}>
+                              {iscrizioniEsterne
+                                ? "Iscrizioni esterne"
+                                : iscrizioniAperte
+                                ? "Iscrizioni aperte"
+                                : "Iscrizioni chiuse"}
+                            </Chip>
+                          )}
+                        </div>
+
+                        {e.partnership && (
+                          <div style={{ marginTop: ".42rem" }}>
+                            <Chip color="blue">{e.partnership}</Chip>
+                          </div>
                         )}
-                        {e.partnership && <Chip color="blue">{e.partnership}</Chip>}
                       </div>
+
                       <p style={{ margin: 0, fontSize: ".83rem", color: "#6B7280", display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
                         <span>{fmtWeekday(date)} • {fmtTime(date)}</span>
                         {e.location && <><span style={{ opacity: .4 }}>·</span><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{e.location}</span></>}
                       </p>
                     </div>
 
-                    {/* Cover thumb */}
                     {cover && (
                       <div style={{ width: 60, height: 60, borderRadius: "1rem", overflow: "hidden", flexShrink: 0, background: "#E8EDFB" }}>
                         <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -417,9 +419,9 @@ export default function EventiPage() {
                 const cover = getCover(e);
                 const iscrizioniEsterne = Boolean(e.iscrizioni_esterne);
                 const iscrizioniAperte = Boolean(e.iscrizioni_aperte);
+
                 return (
                   <Link key={e.id} href={`/eventi/${e.id}`} className={`ev-card${past ? " past" : ""}`}>
-                    {/* Cover */}
                     <div style={{ position: "relative", height: 180, background: cover ? "transparent" : "#08102A", flexShrink: 0, overflow: "hidden" }}>
                       {cover ? (
                         <img src={cover} alt={e.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -430,11 +432,12 @@ export default function EventiPage() {
                           </div>
                         </div>
                       )}
-                      {/* Date overlay */}
+
                       <div style={{ position: "absolute", top: "1rem", left: "1rem", background: "rgba(8,16,42,.75)", backdropFilter: "blur(8px)", borderRadius: ".75rem", padding: ".4rem .7rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
                         <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.4rem", fontWeight: 700, color: "#fff", lineHeight: 1 }}>{fmtDay(date)}</span>
                         <span style={{ fontSize: ".55rem", fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "rgba(255,255,255,.6)" }}>{fmtMonth(date)}</span>
                       </div>
+
                       <div style={{ position: "absolute", top: "1rem", right: "1rem", display: "flex", flexDirection: "column", gap: ".45rem", alignItems: "flex-end" }}>
                         {past && <Chip>Passato</Chip>}
                         {!past && (
@@ -447,15 +450,21 @@ export default function EventiPage() {
                           </Chip>
                         )}
                       </div>
-                      {/* Gradient */}
+
                       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(8,16,42,.5) 0%, transparent 50%)" }} />
                     </div>
 
-                    {/* Body */}
                     <div style={{ padding: "1.2rem 1.4rem", display: "flex", flexDirection: "column", gap: ".5rem", flex: 1 }}>
-                      <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, letterSpacing: "-.01em", color: "#08102A", lineHeight: 1.3 }}>
-                        {e.title}
-                      </h3>
+                      <div style={{ display: "flex", flexDirection: "column", gap: ".42rem" }}>
+                        <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, letterSpacing: "-.01em", color: "#08102A", lineHeight: 1.3 }}>
+                          {e.title}
+                        </h3>
+                        {e.partnership && (
+                          <div>
+                            <Chip color="blue">{e.partnership}</Chip>
+                          </div>
+                        )}
+                      </div>
 
                       <div style={{ display: "flex", flexDirection: "column", gap: ".3rem" }}>
                         <p style={{ margin: 0, fontSize: ".82rem", color: "#6B7280", display: "flex", alignItems: "center", gap: ".4rem" }}>
@@ -474,14 +483,6 @@ export default function EventiPage() {
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.location}</span>
                           </p>
                         )}
-                        {e.partnership && (
-                          <p style={{ margin: 0, fontSize: ".82rem", color: "#2E4080", display: "flex", alignItems: "center", gap: ".4rem", fontWeight: 600 }}>
-                            <svg width="12" height="12" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
-                              <path d="M9 4.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0ZM2 11c0-2 1.79-3.5 4.5-3.5S11 9 11 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                            </svg>
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.partnership}</span>
-                          </p>
-                        )}
                       </div>
 
                       {e.description && (
@@ -490,7 +491,6 @@ export default function EventiPage() {
                         </p>
                       )}
 
-                      {/* Footer */}
                       <div style={{ marginTop: "auto", paddingTop: ".8rem", borderTop: "1px solid rgba(8,16,42,.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <span style={{ fontSize: ".75rem", fontWeight: 700, color: "#2E4080" }}>Scopri di più</span>
                         <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(8,16,42,.05)", display: "flex", alignItems: "center", justifyContent: "center" }}>
