@@ -118,10 +118,6 @@ const collaboratorsMembers = [
         firstName: "Giulia",
         lastName: "Setti",
     },
-    {
-        firstName: "Simone",
-        lastName: "Manzo",
-    },
 ];
 
 function getInitials(firstName: string, lastName: string) {

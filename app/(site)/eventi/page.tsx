@@ -55,7 +55,7 @@ export default function EventiPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"prossimi" | "tutti" | "passati">("prossimi");
-  const [view, setView] = useState<"list" | "grid">("list");
+  const [view, setView] = useState<"list" | "grid">("grid");
 
   useEffect(() => {
     async function load() {
@@ -162,13 +162,67 @@ export default function EventiPage() {
         }
         .next-card:hover { transform: translateY(-3px); box-shadow: 0 14px 44px rgba(8,16,42,.24); }
 
-        @media (max-width: 760px) {
+        .next-card-inner {
+          flex: 1;
+          min-width: 0;
+          width: 100%;
+          padding: 2rem 2.5rem;
+          display: flex;
+          align-items: center;
+          gap: 2rem;
+          position: relative;
+        }
+        .next-date-block {
+          text-align: center;
+          flex-shrink: 0;
+        }
+        .next-main {
+          flex: 1;
+          min-width: 0;
+          position: relative;
+          z-index: 1;
+        }
+        .next-arrow-wrap {
+          flex-shrink: 0;
+          z-index: 1;
+        }
+
+                @media (max-width: 760px) {
           .ev-section { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
           .ev-hero    { padding: 8rem 1.25rem 2.5rem !important; }
           .ev-row     { gap: 1rem; padding: 1.1rem 1.25rem; }
           .ev-date-box { display: none !important; }
-          .next-card  { flex-direction: column; min-height: auto; }
-          .next-img   { height: 160px !important; width: 100% !important; }
+          .next-card  { min-height: auto; border-radius: 1.5rem; }
+          .next-card-inner {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem 1.15rem;
+          }
+          .next-date-block {
+            display: flex;
+            align-items: center;
+            gap: .7rem;
+            text-align: left;
+          }
+          .next-divider {
+            display: none !important;
+          }
+          .next-main h2 {
+            font-size: 1.08rem !important;
+            line-height: 1.28 !important;
+            margin-bottom: .7rem !important;
+          }
+          .next-main p {
+            font-size: .8rem !important;
+            line-height: 1.45 !important;
+          }
+          .next-arrow-wrap {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            margin-top: .2rem;
+          }
           .ev-grid    { grid-template-columns: 1fr !important; }
         }
       `}</style>
@@ -208,14 +262,8 @@ export default function EventiPage() {
           return (
             <section className="ev-section" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 3rem" }}>
               <Link href={`/eventi/${next.id}`} className="next-card">
-                {getCover(next) ? (
-                  <div className="next-img" style={{ width: 220, flexShrink: 0, position: "relative", overflow: "hidden" }}>
-                    <img src={getCover(next)} alt={next.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(8,16,42,.6) 100%)" }} />
-                  </div>
-                ) : null}
 
-                <div style={{ flex: 1, minWidth: 0, padding: "2rem 2.5rem", display: "flex", alignItems: "center", gap: "2rem", position: "relative" }}>
+                <div className="next-card-inner">
                   <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, background: "radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px)", backgroundSize: "18px 18px", pointerEvents: "none" }} />
 
                   <div className="next-date-block" style={{ textAlign: "center", flexShrink: 0 }}>
@@ -229,7 +277,7 @@ export default function EventiPage() {
 
                   <div className="next-divider" style={{ width: 1, height: 60, background: "rgba(255,255,255,.1)", flexShrink: 0 }} />
 
-                  <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
+                  <div className="next-main">
                     <div style={{ display: "flex", alignItems: "center", gap: ".5rem", flexWrap: "wrap", marginBottom: ".5rem" }}>
                       <p style={{ fontSize: ".62rem", fontWeight: 700, letterSpacing: ".18em", textTransform: "uppercase", color: "rgba(255,255,255,.35)", margin: 0 }}>
                         Prossimo evento
@@ -292,7 +340,7 @@ export default function EventiPage() {
                     </div>
                   </div>
 
-                  <div style={{ flexShrink: 0, zIndex: 1 }}>
+                  <div className="next-arrow-wrap">
                     <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.16)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <path d="M3 8h10M9 4l4 4-4 4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
