@@ -1,3 +1,4 @@
+// The contents of this file have been replaced as requested.
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -15,12 +16,32 @@ function getEventDate(e: any): Date {
   return new Date(e.event_date);
 }
 
-function fmtFull(d: Date) { return d.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }); }
-function fmtTime(d: Date) { return d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }); }
-function fmtDay(d: Date) { return d.toLocaleDateString("it-IT", { day: "2-digit" }); }
-function fmtMonth(d: Date) { return d.toLocaleDateString("it-IT", { month: "long" }); }
-function fmtYear(d: Date) { return d.toLocaleDateString("it-IT", { year: "numeric" }); }
-function isPast(d: Date) { return d < new Date(); }
+function fmtFull(d: Date) {
+  return d.toLocaleDateString("it-IT", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+function fmtTime(d: Date) {
+  return d.toLocaleTimeString("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+function fmtDay(d: Date) {
+  return d.toLocaleDateString("it-IT", { day: "2-digit" });
+}
+function fmtMonth(d: Date) {
+  return d.toLocaleDateString("it-IT", { month: "long" });
+}
+function fmtYear(d: Date) {
+  return d.toLocaleDateString("it-IT", { year: "numeric" });
+}
+function isPast(d: Date) {
+  return d < new Date();
+}
 
 const getCover = (e: any) => e.locandina || e.cover_image || null;
 
@@ -35,71 +56,103 @@ export default function EventoDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-useEffect(() => {
-  if (!id) return;
+  useEffect(() => {
+    if (!id) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  async function load() {
-    setLoading(true);
-    setNotFound(false);
-    setCheckingAuth(true);
+    async function load() {
+      setLoading(true);
+      setNotFound(false);
+      setCheckingAuth(true);
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
+      let shouldRedirectToLogin = false;
 
-      if (cancelled) return;
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!user) {
+        if (cancelled) return;
+
+        if (!user) {
+          shouldRedirectToLogin = true;
+          router.replace(`/login?next=${encodeURIComponent(`/eventi/${id}`)}`);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("events")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        if (error || !data) {
+          setNotFound(true);
+          setEvent(null);
+          return;
+        }
+
+        setEvent(data);
+      } catch {
+        if (cancelled) return;
+        shouldRedirectToLogin = true;
         router.replace(`/login?next=${encodeURIComponent(`/eventi/${id}`)}`);
         return;
-      }
-
-      setCheckingAuth(false);
-
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-
-      if (cancelled) return;
-
-      if (error || !data) {
-        setNotFound(true);
-        setEvent(null);
-        return;
-      }
-
-      setEvent(data);
-    } catch {
-      if (cancelled) return;
-      router.replace(`/login?next=${encodeURIComponent(`/eventi/${id}`)}`);
-    } finally {
-      if (!cancelled) {
-        setCheckingAuth(false);
-        setLoading(false);
+      } finally {
+        if (!cancelled && !shouldRedirectToLogin) {
+          setCheckingAuth(false);
+          setLoading(false);
+        }
       }
     }
-  }
 
-  load();
+    load();
 
-  return () => {
-    cancelled = true;
-  };
-}, [id, supabase, router]);
+    return () => {
+      cancelled = true;
+    };
+  }, [id, supabase, router]);
 
   // ── Loading ──
   if (loading || checkingAuth) {
     return (
       <div style={{ minHeight: "100vh", background: "#F8F7F3" }}>
         <style>{`@keyframes sk { 0%,100%{opacity:.4} 50%{opacity:.9} }`}</style>
-        <div style={{ maxWidth: 900, margin: "0 auto", padding: "10rem 1.5rem 4rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          <div style={{ height: 320, borderRadius: "2rem", background: "rgba(8,16,42,.07)", animation: "sk 1.4s ease infinite" }} />
-          {[["60%", 40], ["40%", 24], ["80%", 14], ["70%", 14]].map(([w, h], i) => (
-            <div key={i} style={{ width: w as string, height: h as number, borderRadius: "999px", background: "rgba(8,16,42,.06)", animation: "sk 1.4s ease infinite" }} />
-          ))}
+        <div
+          style={{
+            maxWidth: 900,
+            margin: "0 auto",
+            padding: "10rem 1.5rem 4rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1.5rem",
+          }}
+        >
+          <div
+            style={{
+              height: 320,
+              borderRadius: "2rem",
+              background: "rgba(8,16,42,.07)",
+              animation: "sk 1.4s ease infinite",
+            }}
+          />
+          {[["60%", 40], ["40%", 24], ["80%", 14], ["70%", 14]].map(
+            ([w, h], i) => (
+              <div
+                key={i}
+                style={{
+                  width: w as string,
+                  height: h as number,
+                  borderRadius: "999px",
+                  background: "rgba(8,16,42,.06)",
+                  animation: "sk 1.4s ease infinite",
+                }}
+              />
+            )
+          )}
         </div>
       </div>
     );
@@ -108,12 +161,46 @@ useEffect(() => {
   // ── Not found ──
   if (notFound || !event) {
     return (
-      <div style={{ minHeight: "100vh", background: "#F8F7F3", fontFamily: "'DM Sans', sans-serif" }}>
-        <div style={{ maxWidth: 600, margin: "0 auto", padding: "10rem 1.5rem 4rem", textAlign: "center" }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#F8F7F3",
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 600,
+            margin: "0 auto",
+            padding: "10rem 1.5rem 4rem",
+            textAlign: "center",
+          }}
+        >
           <p style={{ fontSize: "3rem", marginBottom: "1.5rem" }}>📭</p>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: ".75rem" }}>Evento non trovato</h1>
-          <p style={{ color: "#6B7280", marginBottom: "2rem" }}>L&apos;evento che stai cercando non esiste o è stato rimosso.</p>
-          <Link href="/eventi" style={{ background: "#08102A", color: "#fff", padding: ".75rem 2rem", borderRadius: "999px", textDecoration: "none", fontWeight: 600, fontSize: ".9rem" }}>
+          <h1
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: 700,
+              marginBottom: ".75rem",
+            }}
+          >
+            Evento non trovato
+          </h1>
+          <p style={{ color: "#6B7280", marginBottom: "2rem" }}>
+            L&apos;evento che stai cercando non esiste o è stato rimosso.
+          </p>
+          <Link
+            href="/eventi"
+            style={{
+              background: "#08102A",
+              color: "#fff",
+              padding: ".75rem 2rem",
+              borderRadius: "999px",
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: ".9rem",
+            }}
+          >
             Torna agli eventi
           </Link>
         </div>
@@ -168,36 +255,63 @@ useEffect(() => {
         }
       `}</style>
 
-      <div style={{ minHeight: "100vh", background: "#F8F7F3", fontFamily: "'DM Sans', sans-serif", color: "#08102A" }}>
-
-        {/* ══ HERO ══ */}
-        <div style={{
-          position: "relative",
-          width: "100%",
-          minHeight: "clamp(280px, 42vw, 460px)",
-          background: "#08102A",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        }}>
-          {/* Background image (if any) */}
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#F8F7F3",
+          fontFamily: "'DM Sans', sans-serif",
+          color: "#08102A",
+        }}
+      >
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            minHeight: "clamp(280px, 42vw, 460px)",
+            background: "#08102A",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           {cover && (
             <>
               <img
                 src={cover}
                 alt={event.title}
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: .65 }}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                  opacity: 0.65,
+                }}
               />
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(8,16,42,.35) 0%, rgba(8,16,42,.75) 100%)" }} />
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(to bottom, rgba(8,16,42,.35) 0%, rgba(8,16,42,.75) 100%)",
+                }}
+              />
             </>
           )}
 
-          {/* Dot pattern (always) */}
           {!cover && (
-            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(rgba(177, 2, 2, 0.03) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "radial-gradient(rgba(177, 2, 2, 0.03) 1px, transparent 1px)",
+                backgroundSize: "22px 22px",
+              }}
+            />
           )}
 
-          {/* ── Inner: vertically centered, max-width aligned ── */}
           <div
             className="hero-inner"
             style={{
@@ -212,66 +326,118 @@ useEffect(() => {
               flexDirection: "column",
               justifyContent: "center",
               gap: "1.4rem",
-              paddingTop: "6rem",   /* accounts for fixed navbar */
+              paddingTop: "6rem",
               paddingBottom: "3rem",
             }}
           >
-            {/* Back button — top of content block */}
             <div>
               <Link href="/eventi" className="back-pill back-pill-light">
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                  <path d="M11 7H3M6.5 3.5L3 7l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M11 7H3M6.5 3.5L3 7l3.5 3.5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 Tutti gli eventi
               </Link>
             </div>
 
-            {/* Past badge */}
             {past && (
               <div>
-                <span style={{ fontSize: ".62rem", fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", background: "rgba(255,255,255,.14)", color: "rgba(255,255,255,.8)", padding: ".3rem .9rem", borderRadius: "999px" }}>
+                <span
+                  style={{
+                    fontSize: ".62rem",
+                    fontWeight: 700,
+                    letterSpacing: ".1em",
+                    textTransform: "uppercase",
+                    background: "rgba(255,255,255,.14)",
+                    color: "rgba(255,255,255,.8)",
+                    padding: ".3rem .9rem",
+                    borderRadius: "999px",
+                  }}
+                >
                   Evento passato
                 </span>
               </div>
             )}
 
-            {/* Title */}
-            <h1 style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: "clamp(2.4rem, 5.5vw, 4.2rem)",
-              fontWeight: 700,
-              lineHeight: 1.04,
-              letterSpacing: "-.025em",
-              color: "#fff",
-              maxWidth: 780,
-              textShadow: cover ? "0 2px 24px rgba(0,0,0,.25)" : "none",
-            }}>
+            <h1
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: "clamp(2.4rem, 5.5vw, 4.2rem)",
+                fontWeight: 700,
+                lineHeight: 1.04,
+                letterSpacing: "-.025em",
+                color: "#fff",
+                maxWidth: 780,
+                textShadow: cover ? "0 2px 24px rgba(0,0,0,.25)" : "none",
+              }}
+            >
               {event.title}
             </h1>
           </div>
         </div>
 
-        {/* ══ META CHIPS ══ */}
-        <section style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 3rem 1rem" }}>
-          <div className="det-meta" style={{ display: "flex", gap: ".65rem", flexWrap: "wrap" }}>
+        <section
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            padding: "2rem 3rem 1rem",
+          }}
+        >
+          <div
+            className="det-meta"
+            style={{ display: "flex", gap: ".65rem", flexWrap: "wrap" }}
+          >
             <div className="meta-chip">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="1.5" y="2.5" width="11" height="10" rx="2" stroke="#6B7280" strokeWidth="1.4" />
-                <path d="M1.5 5.5h11M4.5 1.5v2M9.5 1.5v2" stroke="#6B7280" strokeWidth="1.4" strokeLinecap="round" />
+                <rect
+                  x="1.5"
+                  y="2.5"
+                  width="11"
+                  height="10"
+                  rx="2"
+                  stroke="#6B7280"
+                  strokeWidth="1.4"
+                />
+                <path
+                  d="M1.5 5.5h11M4.5 1.5v2M9.5 1.5v2"
+                  stroke="#6B7280"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
               </svg>
               <span>{fmtFull(date)}</span>
             </div>
             <div className="meta-chip">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="5" stroke="#6B7280" strokeWidth="1.4" />
-                <path d="M7 4.5V7l2 1.5" stroke="#6B7280" strokeWidth="1.4" strokeLinecap="round" />
+                <circle
+                  cx="7"
+                  cy="7"
+                  r="5"
+                  stroke="#6B7280"
+                  strokeWidth="1.4"
+                />
+                <path
+                  d="M7 4.5V7l2 1.5"
+                  stroke="#6B7280"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
               </svg>
               <span>ore {fmtTime(date)}</span>
             </div>
             {event.location && (
               <div className="meta-chip">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 1.5C5.07 1.5 3.5 3.07 3.5 5c0 2.625 3.5 7 3.5 7s3.5-4.375 3.5-7c0-1.93-1.57-3.5-3.5-3.5Z" stroke="#6B7280" strokeWidth="1.4" />
+                  <path
+                    d="M7 1.5C5.07 1.5 3.5 3.07 3.5 5c0 2.625 3.5 7 3.5 7s3.5-4.375 3.5-7c0-1.93-1.57-3.5-3.5-3.5Z"
+                    stroke="#6B7280"
+                    strokeWidth="1.4"
+                  />
                   <circle cx="7" cy="5" r="1.2" fill="#6B7280" />
                 </svg>
                 <span>{event.location}</span>
@@ -280,7 +446,12 @@ useEffect(() => {
             {event.partnership && (
               <div className="meta-chip meta-chip-blue">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M10 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM2 12c0-2.21 2.24-4 5-4s5 1.79 5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  <path
+                    d="M10 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM2 12c0-2.21 2.24-4 5-4s5 1.79 5 4"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
                 </svg>
                 <span>In partnership con {event.partnership}</span>
               </div>
@@ -288,69 +459,232 @@ useEffect(() => {
           </div>
         </section>
 
-        {/* ══ CONTENT ══ */}
-        <section className="det-content" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 3rem 6rem" }}>
-          <div className="det-grid" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "2.5rem", alignItems: "start" }}>
-
-            {/* Main column */}
-            <div className="det-body" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+        <section
+          className="det-content"
+          style={{ maxWidth: 1100, margin: "0 auto", padding: "0 3rem 6rem" }}
+        >
+          <div
+            className="det-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 300px",
+              gap: "2.5rem",
+              alignItems: "start",
+            }}
+          >
+            <div
+              className="det-body"
+              style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
+            >
               {event.description && (
-                <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.07)", borderRadius: "2rem", padding: "2.5rem", boxShadow: "0 2px 12px rgba(8,16,42,.04)" }}>
-                  <p style={{ fontSize: ".65rem", fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: "#2E4080", marginBottom: "1.2rem" }}>
+                <div
+                  style={{
+                    background: "#fff",
+                    border: "1px solid rgba(8,16,42,.07)",
+                    borderRadius: "2rem",
+                    padding: "2.5rem",
+                    boxShadow: "0 2px 12px rgba(8,16,42,.04)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: ".65rem",
+                      fontWeight: 700,
+                      letterSpacing: ".2em",
+                      textTransform: "uppercase",
+                      color: "#2E4080",
+                      marginBottom: "1.2rem",
+                    }}
+                  >
                     Descrizione
                   </p>
-                  <p style={{ fontSize: "1.05rem", lineHeight: 1.85, color: "#374151", fontWeight: 400, whiteSpace: "pre-wrap" }}>
+                  <p
+                    style={{
+                      fontSize: "1.05rem",
+                      lineHeight: 1.85,
+                      color: "#374151",
+                      fontWeight: 400,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
                     {event.description}
                   </p>
                 </div>
               )}
 
               {event.partnership && (
-                <div style={{ background: "rgba(46,64,128,.05)", border: "1px solid rgba(46,64,128,.12)", borderRadius: "1.5rem", padding: "1.6rem 2rem", display: "flex", alignItems: "center", gap: "1.2rem" }}>
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(46,64,128,.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div
+                  style={{
+                    background: "rgba(46,64,128,.05)",
+                    border: "1px solid rgba(46,64,128,.12)",
+                    borderRadius: "1.5rem",
+                    padding: "1.6rem 2rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1.2rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: "50%",
+                      background: "rgba(46,64,128,.12)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
                     <svg width="20" height="20" viewBox="0 0 14 14" fill="none">
-                      <path d="M10 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM2 12c0-2.21 2.24-4 5-4s5 1.79 5 4" stroke="#2E4080" strokeWidth="1.4" strokeLinecap="round" />
+                      <path
+                        d="M10 5.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM2 12c0-2.21 2.24-4 5-4s5 1.79 5 4"
+                        stroke="#2E4080"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                      />
                     </svg>
                   </div>
                   <div>
-                    <p style={{ fontSize: ".65rem", fontWeight: 700, letterSpacing: ".18em", textTransform: "uppercase", color: "#2E4080", marginBottom: ".3rem" }}>Partnership</p>
-                    <p style={{ fontSize: "1rem", fontWeight: 700, color: "#08102A" }}>{event.partnership}</p>
+                    <p
+                      style={{
+                        fontSize: ".65rem",
+                        fontWeight: 700,
+                        letterSpacing: ".18em",
+                        textTransform: "uppercase",
+                        color: "#2E4080",
+                        marginBottom: ".3rem",
+                      }}
+                    >
+                      Partnership
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "1rem",
+                        fontWeight: 700,
+                        color: "#08102A",
+                      }}
+                    >
+                      {event.partnership}
+                    </p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Sidebar */}
-            <div className="det-sidebar" style={{ display: "flex", flexDirection: "column", gap: "1.25rem", position: "sticky", top: "90px" }}>
-              <div style={{ background: "#08102A", borderRadius: "2rem", padding: "2rem", color: "#fff", textAlign: "center", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", inset: 0, background: "radial-gradient(rgba(255,255,255,.04) 1px, transparent 1px)", backgroundSize: "16px 16px" }} />
+            <div
+              className="det-sidebar"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1.25rem",
+                position: "sticky",
+                top: "90px",
+              }}
+            >
+              <div
+                style={{
+                  background: "#08102A",
+                  borderRadius: "2rem",
+                  padding: "2rem",
+                  color: "#fff",
+                  textAlign: "center",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "radial-gradient(rgba(255,255,255,.04) 1px, transparent 1px)",
+                    backgroundSize: "16px 16px",
+                  }}
+                />
                 <div style={{ position: "relative", zIndex: 1 }}>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "4.5rem", fontWeight: 700, lineHeight: 1, letterSpacing: "-.05em" }}>
+                  <div
+                    style={{
+                      fontFamily: "'Cormorant Garamond', serif",
+                      fontSize: "4.5rem",
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      letterSpacing: "-.05em",
+                    }}
+                  >
                     {fmtDay(date)}
                   </div>
-                  <div style={{ fontSize: ".75rem", fontWeight: 700, letterSpacing: ".15em", textTransform: "uppercase", color: "rgba(255,255,255,.4)", marginTop: ".3rem" }}>
+                  <div
+                    style={{
+                      fontSize: ".75rem",
+                      fontWeight: 700,
+                      letterSpacing: ".15em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,.4)",
+                      marginTop: ".3rem",
+                    }}
+                  >
                     {fmtMonth(date)} {fmtYear(date)}
                   </div>
-                  <div style={{ marginTop: "1.2rem", height: 1, background: "rgba(255,255,255,.1)" }} />
-                  <div style={{ marginTop: "1.2rem", fontSize: ".9rem", color: "rgba(255,255,255,.6)", fontWeight: 500 }}>
+                  <div
+                    style={{
+                      marginTop: "1.2rem",
+                      height: 1,
+                      background: "rgba(255,255,255,.1)",
+                    }}
+                  />
+                  <div
+                    style={{
+                      marginTop: "1.2rem",
+                      fontSize: ".9rem",
+                      color: "rgba(255,255,255,.6)",
+                      fontWeight: 500,
+                    }}
+                  >
                     ore {fmtTime(date)}
                   </div>
                   {event.location && (
-                    <div style={{ marginTop: ".6rem", fontSize: ".84rem", color: "rgba(255,255,255,.38)", lineHeight: 1.5 }}>
+                    <div
+                      style={{
+                        marginTop: ".6rem",
+                        fontSize: ".84rem",
+                        color: "rgba(255,255,255,.38)",
+                        lineHeight: 1.5,
+                      }}
+                    >
                       {event.location}
                     </div>
                   )}
                   {event.partnership && (
                     <>
-                      <div style={{ marginTop: "1rem", height: 1, background: "rgba(255,255,255,.08)" }} />
-                      <div style={{ marginTop: "1rem", fontSize: ".78rem", color: "rgba(255,255,255,.35)", lineHeight: 1.5 }}>
+                      <div
+                        style={{
+                          marginTop: "1rem",
+                          height: 1,
+                          background: "rgba(255,255,255,.08)",
+                        }}
+                      />
+                      <div
+                        style={{
+                          marginTop: "1rem",
+                          fontSize: ".78rem",
+                          color: "rgba(255,255,255,.35)",
+                          lineHeight: 1.5,
+                        }}
+                      >
                         Con {event.partnership}
                       </div>
                     </>
                   )}
                   {!past && iscrizioniEsterne && (
                     <>
-                      <div style={{ marginTop: "1rem", height: 1, background: "rgba(255,255,255,.08)" }} />
+                      <div
+                        style={{
+                          marginTop: "1rem",
+                          height: 1,
+                          background: "rgba(255,255,255,.08)",
+                        }}
+                      />
                       <div
                         style={{
                           marginTop: "1rem",
@@ -391,7 +725,13 @@ useEffect(() => {
                     }}
                   >
                     <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
-                      <path d="M8.5 2h3.5v3.5M6 8l6-6M12 8.5V11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path
+                        d="M8.5 2h3.5v3.5M6 8l6-6M12 8.5V11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h2.5"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                     Iscriviti sulla piattaforma esterna
                   </a>
@@ -427,18 +767,44 @@ useEffect(() => {
                         color: "#374151",
                       }}
                     >
-                      Le iscrizioni a questo evento non sono disponibili al momento.
+                      Le iscrizioni a questo evento non sono disponibili al
+                      momento.
                     </p>
                   </div>
                 )
               ) : null}
 
               {event.locandina && (
-                <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.07)", borderRadius: "1.75rem", overflow: "hidden", boxShadow: "0 2px 12px rgba(8,16,42,.04)" }}>
-                  <p style={{ fontSize: ".65rem", fontWeight: 700, letterSpacing: ".18em", textTransform: "uppercase", color: "#2E4080", padding: "1.2rem 1.4rem .75rem" }}>
+                <div
+                  style={{
+                    background: "#fff",
+                    border: "1px solid rgba(8,16,42,.07)",
+                    borderRadius: "1.75rem",
+                    overflow: "hidden",
+                    boxShadow: "0 2px 12px rgba(8,16,42,.04)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: ".65rem",
+                      fontWeight: 700,
+                      letterSpacing: ".18em",
+                      textTransform: "uppercase",
+                      color: "#2E4080",
+                      padding: "1.2rem 1.4rem .75rem",
+                    }}
+                  >
                     Locandina
                   </p>
-                  <img src={event.locandina} alt="Locandina" style={{ width: "100%", display: "block", objectFit: "cover" }} />
+                  <img
+                    src={event.locandina}
+                    alt="Locandina"
+                    style={{
+                      width: "100%",
+                      display: "block",
+                      objectFit: "cover",
+                    }}
+                  />
                 </div>
               )}
 
@@ -446,14 +812,28 @@ useEffect(() => {
                 href="/eventi"
                 className="back-btn"
                 style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: ".5rem",
-                  background: "#fff", border: "1px solid rgba(8,16,42,.1)", borderRadius: "999px",
-                  padding: ".75rem 1.5rem", textDecoration: "none", color: "#08102A",
-                  fontWeight: 600, fontSize: ".88rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: ".5rem",
+                  background: "#fff",
+                  border: "1px solid rgba(8,16,42,.1)",
+                  borderRadius: "999px",
+                  padding: ".75rem 1.5rem",
+                  textDecoration: "none",
+                  color: "#08102A",
+                  fontWeight: 600,
+                  fontSize: ".88rem",
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M11 7H3M6.5 3.5L3 7l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M11 7H3M6.5 3.5L3 7l3.5 3.5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 Tutti gli eventi
               </Link>
