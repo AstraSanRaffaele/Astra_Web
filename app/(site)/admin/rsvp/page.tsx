@@ -233,49 +233,29 @@ export default function AdminRsvpPage() {
   }
 
   async function removeParticipant(row: RsvpRow) {
-    if (!selectedEvent) return;
-    setMessage(null);
-    setSavingProfileId(String(row.id));
+  if (!selectedEvent) return;
+  setMessage(null);
+  setSavingProfileId(String(row.id));
 
-    const { error: deleteError, data: deletedRows } = await supabase
-      .from("rsvp")
-      .delete()
-      .eq("id", row.id)
-      .eq("event_id", selectedEvent.id)
-      .select("id");
+  const { error } = await supabase
+    .from("rsvp")
+    .delete()
+    .eq("id", row.id)
+    .eq("event_id", selectedEvent.id);
 
-    if (deleteError) {
-      const { error: updateError } = await supabase
-        .from("rsvp")
-        .update({ stato: "cancellato" })
-        .eq("id", row.id)
-        .eq("event_id", selectedEvent.id);
-
-      if (updateError) {
-        setMessage({ type: "error", text: updateError.message });
-        setSavingProfileId(null);
-        return;
-      }
-    }
-
-    if (!deleteError && (!deletedRows || deletedRows.length === 0)) {
-      const { error: updateError } = await supabase
-        .from("rsvp")
-        .update({ stato: "cancellato" })
-        .eq("id", row.id)
-        .eq("event_id", selectedEvent.id);
-
-      if (updateError) {
-        setMessage({ type: "error", text: "Non sono riuscito a rimuovere l'utente." });
-        setSavingProfileId(null);
-        return;
-      }
-    }
-
-    setMessage({ type: "success", text: "Utente rimosso correttamente." });
+  if (error) {
+    setMessage({
+      type: "error",
+      text: error.message || "Non sono riuscito a rimuovere l'utente.",
+    });
     setSavingProfileId(null);
-    await loadRsvps(selectedEvent);
+    return;
   }
+
+  setMessage({ type: "success", text: "Utente rimosso correttamente." });
+  setSavingProfileId(null);
+  await loadRsvps(selectedEvent);
+}
 
   function exportCsv() {
     if (!selectedEvent || !rsvps.length) return;
