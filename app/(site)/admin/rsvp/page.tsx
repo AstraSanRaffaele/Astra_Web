@@ -187,7 +187,7 @@ export default function AdminRsvpPage() {
 
   async function loadRsvps(event: EventRow) {
     setSelectedEvent(event);
-    setMessage(null);
+    setMessage((current) => (current?.type === "success" ? current : null));
     setLoadingRsvps(true);
 
     try {
@@ -215,6 +215,11 @@ export default function AdminRsvpPage() {
     } finally {
       setLoadingRsvps(false);
     }
+  }
+
+  async function reloadSelectedEvent() {
+    if (!selectedEvent) return;
+    await loadRsvps(selectedEvent);
   }
 
   async function addParticipant(profile: SearchProfileRow) {
@@ -245,15 +250,18 @@ export default function AdminRsvpPage() {
         return;
       }
 
-      setMessage({ type: "success", text: "Utente aggiunto correttamente." });
       setSearchValue("");
-      await loadRsvps(selectedEvent);
-    } catch {
-      setMessage({ type: "error", text: "Si è verificato un errore durante l'aggiunta dell'utente." });
-    } finally {
       setSavingProfileId(null);
       setIsSubmitting(false);
+      setMessage({ type: "success", text: "Utente aggiunto correttamente." });
+      await reloadSelectedEvent();
+      return;
+    } catch {
+      setMessage({ type: "error", text: "Si è verificato un errore durante l'aggiunta dell'utente." });
     }
+
+    setSavingProfileId(null);
+    setIsSubmitting(false);
   }
 
   async function removeParticipant(row: RsvpRow) {
@@ -277,14 +285,17 @@ export default function AdminRsvpPage() {
         return;
       }
 
-      setMessage({ type: "success", text: "Utente rimosso correttamente." });
-      await loadRsvps(selectedEvent);
-    } catch {
-      setMessage({ type: "error", text: "Si è verificato un errore durante la rimozione dell'utente." });
-    } finally {
       setSavingProfileId(null);
       setIsSubmitting(false);
+      setMessage({ type: "success", text: "Utente rimosso correttamente." });
+      await reloadSelectedEvent();
+      return;
+    } catch {
+      setMessage({ type: "error", text: "Si è verificato un errore durante la rimozione dell'utente." });
     }
+
+    setSavingProfileId(null);
+    setIsSubmitting(false);
   }
 
   function exportCsv() {
@@ -306,7 +317,7 @@ export default function AdminRsvpPage() {
   }
 
   const confirmed = rsvps.filter(r => r.stato === "confermato");
-  const cancelled = rsvps.filter(r => r.stato === "cancellato");
+  const cancelled: RsvpRow[] = [];
 
   const filteredProfiles = useMemo(() => {
     if (!selectedEvent) return [] as SearchProfileRow[];
@@ -383,7 +394,9 @@ export default function AdminRsvpPage() {
                 return (
                   <button
                     key={e.id}
-                    onClick={() => loadRsvps(e)}
+                    onClick={() => {
+                      void loadRsvps(e);
+                    }}
                     style={{
                       width: "100%", textAlign: "left", border: "none", cursor: "pointer",
                       padding: "1rem 1.4rem",
@@ -508,7 +521,9 @@ export default function AdminRsvpPage() {
                           </div>
                           <button
                             type="button"
-                            onClick={() => addParticipant(profile)}
+                            onClick={() => {
+                              void addParticipant(profile);
+                            }}
                             disabled={isSubmitting || savingProfileId === profile.id}
                             style={{
                               ...actionButtonStyle,
@@ -570,7 +585,9 @@ export default function AdminRsvpPage() {
                             <td style={{ padding: ".85rem 1.2rem" }}>
                               <button
                                 type="button"
-                                onClick={() => removeParticipant(r)}
+                                onClick={() => {
+                                  void removeParticipant(r);
+                                }}
                                 disabled={isSubmitting || savingProfileId === String(r.id)}
                                 style={{
                                   ...dangerButtonStyle,
