@@ -66,6 +66,18 @@ export async function POST(req: Request) {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+    const { error: deleteRsvpError } = await supabaseAdmin
+      .from("rsvps")
+      .delete()
+      .eq("user_id", userId);
+
+    if (deleteRsvpError) {
+      return NextResponse.json(
+        { error: deleteRsvpError.message || "Errore eliminazione RSVP." },
+        { status: 500 }
+      );
+    }
+
     const { error: deleteAuthError } =
       await supabaseAdmin.auth.admin.deleteUser(userId);
 
