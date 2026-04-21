@@ -2,6 +2,47 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
+function getAccessTokenFromCookies(
+  cookieStore: Awaited<ReturnType<typeof cookies>>
+) {
+  const allCookies = cookieStore.getAll();
+
+  const directToken =
+    cookieStore.get("sb-access-token")?.value ||
+    cookieStore.get("supabase-auth-token")?.value;
+
+  if (directToken) return directToken;
+
+  const possibleCookie = allCookies.find(
+    (cookie) =>
+      cookie.name.includes("auth-token") ||
+      cookie.name.endsWith("-access-token")
+  );
+
+  if (!possibleCookie?.value) return null;
+
+  try {
+    const parsed = JSON.parse(possibleCookie.value);
+
+    if (Array.isArray(parsed)) {
+      return parsed[0] ?? null;
+    }
+
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "access_token" in parsed
+    ) {
+      const accessToken = (parsed as { access_token?: string }).access_token;
+      return accessToken ?? null;
+    }
+  } catch {
+    return possibleCookie.value;
+  }
+
+  return null;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -24,10 +65,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const accessToken = cookieStore.get("sb-access-token")?.value;
+    const accessToken = getAccessTokenFromCookies(cookieStore);
 
     if (!accessToken) {
-      return NextResponse.json({ error: "Non autenticato." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Sessione admin non trovata nei cookie." },
+        { status: 401 }
+      );
     }
 
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
@@ -44,7 +88,12 @@ export async function POST(req: Request) {
     } = await supabaseUser.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: "Utente non autenticato." }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: userError?.message || "Utente non autenticato.",
+        },
+        { status: 401 }
+      );
     }
 
     const { data: adminProfile, error: adminError } = await supabaseUser
