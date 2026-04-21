@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import RsvpButton from "@/components/ui/rsvp-button";
@@ -27,28 +27,54 @@ const getCover = (e: any) => e.locandina || e.cover_image || null;
 export default function EventoDetailPage() {
   const supabase = useMemo(() => createClient(), []);
   const params = useParams();
-  const router = useRouter();
   const id = params?.id as string;
 
   const [event, setEvent] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  useEffect(() => {
-    if (!id) return;
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace(`/login?next=/eventi/${id}`);
+useEffect(() => {
+  if (!id) return;
+
+  let cancelled = false;
+
+  async function load() {
+    setLoading(true);
+    setNotFound(false);
+
+    try {
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (error || !data) {
+        setNotFound(true);
+        setEvent(null);
         return;
       }
-      const { data, error } = await supabase.from("events").select("*").eq("id", id).maybeSingle();
-      if (error || !data) setNotFound(true);
-      else setEvent(data);
-      setLoading(false);
+
+      setEvent(data);
+    } catch {
+      if (cancelled) return;
+      setNotFound(true);
+      setEvent(null);
+    } finally {
+      if (!cancelled) {
+        setLoading(false);
+      }
     }
-    load();
-  }, [id, supabase, router]);
+  }
+
+  load();
+
+  return () => {
+    cancelled = true;
+  };
+}, [id, supabase]);
 
   // ── Loading ──
   if (loading) {
