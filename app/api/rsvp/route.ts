@@ -41,13 +41,21 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Upsert — se aveva cancellato, riconferma
+  // Crea iscrizione se non esiste già
+  const { data: existingRsvp } = await supabase
+    .from("rsvp")
+    .select("id")
+    .eq("event_id", event_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existingRsvp) {
+    return NextResponse.json({ ok: true, stato: "confermato" });
+  }
+
   const { error } = await supabase
     .from("rsvp")
-    .upsert(
-      { event_id, user_id: user.id, stato: "confermato" },
-      { onConflict: "event_id,user_id" }
-    );
+    .insert({ event_id, user_id: user.id, stato: "confermato" });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -66,11 +74,11 @@ export async function DELETE(req: NextRequest) {
 
   const { error } = await supabase
     .from("rsvp")
-    .update({ stato: "cancellato" })
+    .delete()
     .eq("event_id", event_id)
     .eq("user_id", user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, stato: "cancellato" });
+  return NextResponse.json({ ok: true, stato: "none" });
 }
