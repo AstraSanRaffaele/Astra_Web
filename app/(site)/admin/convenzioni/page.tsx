@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -74,7 +74,7 @@ function ConvModal({
   mode: "create" | "edit";
   initial?: Convenzione;
   onClose: () => void;
-  onSave: (f: ConvForm) => Promise<void>;
+  onSave: (f: ConvForm) => Promise<{ ok: boolean; message?: string }>;
 }) {
   const [form, setForm] = useState<ConvForm>(() =>
     mode === "edit" && initial
@@ -83,23 +83,84 @@ function ConvModal({
   );
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const set = (k: keyof ConvForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.titolo.trim()) { setErr("Il titolo è obbligatorio."); return; }
-    if (!form.partner.trim()) { setErr("Il partner è obbligatorio."); return; }
-    if (!form.categoria) { setErr("Seleziona una categoria."); return; }
-    setSaving(true); setErr("");
-    await onSave(form);
-    setSaving(false);
+    if (saving) return;
+
+    const titolo = form.titolo.trim();
+    const partner = form.partner.trim();
+    const categoria = form.categoria.trim();
+    const link = form.link.trim();
+    const ordine = form.ordine.trim();
+
+    if (!titolo) {
+      setErr("Il titolo è obbligatorio.");
+      return;
+    }
+
+    if (!partner) {
+      setErr("Il partner è obbligatorio.");
+      return;
+    }
+
+    if (!categoria) {
+      setErr("Seleziona una categoria.");
+      return;
+    }
+
+    if (link && link !== "#") {
+      try {
+        const parsed = new URL(link);
+        if (!["http:", "https:"].includes(parsed.protocol)) {
+          setErr("Il link deve iniziare con http:// o https://.");
+          return;
+        }
+      } catch {
+        setErr("Inserisci un link valido.");
+        return;
+      }
+    }
+
+    if (ordine && Number.isNaN(Number(ordine))) {
+      setErr("L'ordine deve essere un numero valido.");
+      return;
+    }
+
+    setSaving(true);
+    setErr("");
+
+    timeoutRef.current = setTimeout(() => {
+      setSaving(false);
+      setErr("Il salvataggio sta impiegando troppo tempo. Riprova.");
+    }, 15000);
+
+    try {
+      const result = await onSave(form);
+      if (!result.ok) {
+        setErr(result.message || "Salvataggio non riuscito. Controlla i dati e riprova.");
+      }
+    } catch (error) {
+      console.error("Errore salvataggio convenzione:", error);
+      setErr("Si è verificato un errore durante il salvataggio.");
+    } finally {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setSaving(false);
+    }
   }
 
   return (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(10,20,50,.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
-      onClick={onClose}
+      onClick={() => {
+        if (!saving) onClose();
+      }}
     >
       <div
         style={{ background: "#fff", borderRadius: "2rem", padding: "2.5rem", width: "100%", maxWidth: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(10,20,50,.22)" }}
@@ -115,7 +176,7 @@ function ConvModal({
               {mode === "create" ? "Compila i campi per aggiungere una convenzione." : "Modifica i dettagli della convenzione."}
             </p>
           </div>
-          <button onClick={onClose} style={{ background: "rgba(15,47,110,.06)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", fontSize: "1rem", color: "#6b7280" }}>✕</button>
+          <button onClick={onClose} disabled={saving} style={{ background: "rgba(15,47,110,.06)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: saving ? "not-allowed" : "pointer", fontSize: "1rem", color: "#6b7280", opacity: saving ? .6 : 1 }}>✕</button>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
@@ -188,7 +249,7 @@ function ConvModal({
           )}
 
           <div style={{ display: "flex", gap: ".75rem", justifyContent: "flex-end", marginTop: ".5rem" }}>
-            <button type="button" onClick={onClose} style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: "#0f2f6e", borderRadius: "999px", padding: ".7rem 1.5rem", fontWeight: 700, cursor: "pointer" }}>
+            <button type="button" onClick={onClose} disabled={saving} style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: "#0f2f6e", borderRadius: "999px", padding: ".7rem 1.5rem", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? .7 : 1 }}>
               Annulla
             </button>
             <button type="submit" disabled={saving} style={{ border: "none", background: saving ? "#8ca4d7" : "#1847a3", color: "white", borderRadius: "999px", padding: ".7rem 2rem", fontWeight: 700, cursor: saving ? "wait" : "pointer", fontSize: ".95rem" }}>
@@ -232,6 +293,7 @@ export default function AdminConvenzioni() {
   const [success, setSuccess] = useState("");
   const [filter, setFilter] = useState<"tutte" | "attive" | "disattive">("tutte");
   const [search, setSearch] = useState("");
+  const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -245,52 +307,165 @@ export default function AdminConvenzioni() {
   }, [supabase, router]);
 
   async function fetchConvenzioni() {
+    if (isFetching) return;
+
+    setIsFetching(true);
     setLoading(true);
-    const { data } = await supabase.from("convenzioni").select("*").order("ordine", { ascending: true });
-    setConvenzioni((data ?? []) as Convenzione[]);
-    setLoading(false);
+    setError("");
+
+    try {
+      const { data, error: err } = await supabase
+        .from("convenzioni")
+        .select("*")
+        .order("ordine", { ascending: true });
+
+      if (err) {
+        setError(`Caricamento convenzioni non riuscito: ${err.message}`);
+        return;
+      }
+
+      setConvenzioni((data ?? []) as Convenzione[]);
+    } catch (error) {
+      console.error("Errore fetch convenzioni:", error);
+      setError("Si è verificato un errore durante il caricamento delle convenzioni.");
+    } finally {
+      setLoading(false);
+      setIsFetching(false);
+    }
   }
 
-  async function handleSave(form: ConvForm, editingId?: number) {
+  async function handleSave(form: ConvForm, editingId?: number): Promise<{ ok: boolean; message?: string }> {
+    setError("");
+    setSuccess("");
+
+    const titolo = form.titolo.trim();
+    const partner = form.partner.trim();
+    const categoria = form.categoria.trim();
+    const linkValue = form.link.trim();
+    const ordineValue = form.ordine.trim();
+
+    if (!titolo) return { ok: false, message: "Il titolo è obbligatorio." };
+    if (!partner) return { ok: false, message: "Il partner è obbligatorio." };
+    if (!categoria) return { ok: false, message: "Seleziona una categoria." };
+
+    if (linkValue && linkValue !== "#") {
+      try {
+        const parsed = new URL(linkValue);
+        if (!["http:", "https:"].includes(parsed.protocol)) {
+          return { ok: false, message: "Il link deve iniziare con http:// o https://." };
+        }
+      } catch {
+        return { ok: false, message: "Inserisci un link valido." };
+      }
+    }
+
+    if (ordineValue && Number.isNaN(Number(ordineValue))) {
+      return { ok: false, message: "L'ordine deve essere un numero valido." };
+    }
+
     const payload = {
-      titolo: form.titolo.trim(),
-      partner: form.partner.trim(),
+      titolo,
+      partner,
       descrizione: form.descrizione.trim(),
       vantaggio: form.vantaggio.trim(),
-      categoria: form.categoria,
-      link: form.link.trim() || "#",
-      ordine: Number(form.ordine) || 0,
+      categoria,
+      link: linkValue || "#",
+      ordine: Number(ordineValue || "0"),
       attiva: form.attiva,
     };
 
-    if (editingId !== undefined) {
-      const { error: err } = await supabase.from("convenzioni").update(payload).eq("id", editingId);
-      if (err) { setError("Salvataggio non riuscito."); return; }
-      setConvenzioni(c => c.map(x => x.id === editingId ? { ...x, ...payload, updated_at: new Date().toISOString() } : x));
-      setSuccess("Convenzione aggiornata.");
-    } else {
-      const { data, error: err } = await supabase.from("convenzioni").insert(payload).select("*").single();
-      if (err || !data) { setError("Creazione non riuscita: " + err?.message); return; }
-      setConvenzioni(c => [...c, data as Convenzione].sort((a, b) => a.ordine - b.ordine));
-      setSuccess("Convenzione creata.");
+    try {
+      if (editingId !== undefined) {
+        const { error: err } = await supabase
+          .from("convenzioni")
+          .update(payload)
+          .eq("id", editingId)
+          .select("id")
+          .single();
+
+        if (err) {
+          const message = `Salvataggio non riuscito: ${err.message}`;
+          setError(message);
+          return { ok: false, message };
+        }
+
+        await fetchConvenzioni();
+        setSuccess("Convenzione aggiornata.");
+      } else {
+        const { error: err } = await supabase
+          .from("convenzioni")
+          .insert(payload)
+          .select("id")
+          .single();
+
+        if (err) {
+          const message = `Creazione non riuscita: ${err.message}`;
+          setError(message);
+          return { ok: false, message };
+        }
+
+        await fetchConvenzioni();
+        setSuccess("Convenzione creata.");
+      }
+
+      setModal(null);
+      return { ok: true };
+    } catch (error) {
+      console.error("Errore handleSave convenzioni:", error);
+      const message = "Si è verificato un errore imprevisto durante il salvataggio.";
+      setError(message);
+      return { ok: false, message };
     }
-    setModal(null);
   }
 
   async function handleDelete(id: number, titolo: string) {
     if (!window.confirm(`Eliminare "${titolo}"?`)) return;
+
     setDeletingId(id);
-    const { error: err } = await supabase.from("convenzioni").delete().eq("id", id);
-    if (err) { setError("Eliminazione non riuscita."); setDeletingId(null); return; }
-    setConvenzioni(c => c.filter(x => x.id !== id));
-    setSuccess("Convenzione eliminata.");
-    setDeletingId(null);
+    setError("");
+    setSuccess("");
+
+    try {
+      const { error: err } = await supabase.from("convenzioni").delete().eq("id", id);
+
+      if (err) {
+        setError(`Eliminazione non riuscita: ${err.message}`);
+        return;
+      }
+
+      await fetchConvenzioni();
+      setSuccess("Convenzione eliminata.");
+    } catch (error) {
+      console.error("Errore eliminazione convenzione:", error);
+      setError("Si è verificato un errore durante l'eliminazione.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function toggleAttiva(conv: Convenzione) {
-    const { error: err } = await supabase.from("convenzioni").update({ attiva: !conv.attiva }).eq("id", conv.id);
-    if (err) { setError("Aggiornamento stato non riuscito."); return; }
-    setConvenzioni(c => c.map(x => x.id === conv.id ? { ...x, attiva: !conv.attiva } : x));
+    setError("");
+    setSuccess("");
+
+    try {
+      const { error: err } = await supabase
+        .from("convenzioni")
+        .update({ attiva: !conv.attiva })
+        .eq("id", conv.id)
+        .select("id")
+        .single();
+
+      if (err) {
+        setError(`Aggiornamento stato non riuscito: ${err.message}`);
+        return;
+      }
+
+      await fetchConvenzioni();
+      setSuccess(`Convenzione ${!conv.attiva ? "attivata" : "disattivata"}.`);
+    } catch (error) {
+      console.error("Errore toggle convenzione:", error);
+      setError("Si è verificato un errore durante l'aggiornamento dello stato.");
+    }
   }
 
   const filtered = useMemo(() => {
