@@ -350,12 +350,16 @@ export function AuthShell({
                     }}
                   >
                     <span style={{ fontWeight: 800, color: "#fff" }}>* </span>
-                    Ai sensi del Regolamento UE 2016/679 (GDPR), ti informiamo che i dati
-                    personali raccolti in questo modulo saranno trattati dal team ASTRA San
-                    Raffaele esclusivamente per le seguenti finalità: inserimento nel Libro
-                    Soci, gestione del rapporto associativo, invio di comunicazioni relative
-                    alle attività e adempimento degli obblighi di legge. I dati non verranno
-                    ceduti a terzi. Puoi richiedere in qualsiasi momento la cancellazione o
+                    Ai sensi del Regolamento UE 2016/679 (GDPR), ti informiamo
+                    che i dati personali raccolti vengono gestiti come indicato
+                    nelle policy (
+                    <Link
+                      href="/privacy"
+                      style={{ color: "#fff", textDecoration: "underline" }}
+                    >
+                      LINK pagina policy
+                    </Link>
+                    ). Puoi richiedere in qualsiasi momento la cancellazione o
                     la modifica dei tuoi dati scrivendo a info@astrasanraffaele.it.
                   </p>
                 </div>

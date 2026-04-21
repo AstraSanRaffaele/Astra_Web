@@ -152,7 +152,7 @@ export default function Footer() {
             © 2025 Astra San Raffaele. Tutti i diritti riservati.
           </span>
           <div className="footer-legal-links" style={{ display: "flex", gap: "1.8rem", justifyContent: "center", width: "100%" }}>
-            {[["Privacy Policy", "#"], ["Cookie Policy", "#"]].map(([l, h]) => (
+            {[["Privacy Policy", "/privacy"], ["Cookie Policy", "/cookie"]].map(([l, h]) => (
               <a
                 key={l}
                 href={h}
