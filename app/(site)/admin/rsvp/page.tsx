@@ -113,6 +113,7 @@ export default function AdminRsvpPage() {
   const [loadingRsvps, setLoadingRsvps] = useState(false);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [savingProfileId, setSavingProfileId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
@@ -163,19 +164,25 @@ export default function AdminRsvpPage() {
   }, [supabase, router]);
 
   async function refreshEventCount(eventId: string) {
-    const { count } = await supabase
-      .from("rsvp")
-      .select("id", { count: "exact", head: true })
-      .eq("event_id", eventId)
-      .eq("stato", "confermato");
+    try {
+      const { count, error } = await supabase
+        .from("rsvp")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId)
+        .eq("stato", "confermato");
 
-    setEvents((current) => current.map((event) => (
-      event.id === eventId ? { ...event, rsvp_count: count ?? 0 } : event
-    )));
+      if (error) return;
 
-    setSelectedEvent((current) => (
-      current && current.id === eventId ? { ...current, rsvp_count: count ?? 0 } : current
-    ));
+      setEvents((current) => current.map((event) => (
+        event.id === eventId ? { ...event, rsvp_count: count ?? 0 } : event
+      )));
+
+      setSelectedEvent((current) => (
+        current && current.id === eventId ? { ...current, rsvp_count: count ?? 0 } : current
+      ));
+    } catch {
+      // evita blocchi della UI se il refresh conteggio fallisce
+    }
   }
 
   async function loadRsvps(event: EventRow) {
@@ -183,79 +190,102 @@ export default function AdminRsvpPage() {
     setMessage(null);
     setLoadingRsvps(true);
 
-    const { data } = await supabase
-      .from("rsvp")
-      .select("id, stato, created_at, profiles(nome, cognome, email_istituzionale, numero_telefono, facolta)")
-      .eq("event_id", event.id)
-      .order("created_at", { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from("rsvp")
+        .select("id, stato, created_at, profiles(nome, cognome, email_istituzionale, numero_telefono, facolta)")
+        .eq("event_id", event.id)
+        .order("created_at", { ascending: true });
 
-    const normalized = ((data ?? []) as unknown as RsvpRaw[])
-      .map(normalizeRsvp)
-      .filter((r): r is RsvpRow => r !== null);
+      if (error) {
+        setMessage({ type: "error", text: error.message || "Non sono riuscito a caricare gli iscritti." });
+        setRsvps([]);
+        return;
+      }
 
-    setRsvps(normalized);
-    setLoadingRsvps(false);
-    await refreshEventCount(event.id);
+      const normalized = ((data ?? []) as unknown as RsvpRaw[])
+        .map(normalizeRsvp)
+        .filter((r): r is RsvpRow => r !== null);
+
+      setRsvps(normalized);
+      await refreshEventCount(event.id);
+    } catch {
+      setMessage({ type: "error", text: "Si è verificato un errore durante il caricamento degli iscritti." });
+      setRsvps([]);
+    } finally {
+      setLoadingRsvps(false);
+    }
   }
 
   async function addParticipant(profile: SearchProfileRow) {
-    if (!selectedEvent) return;
+    if (!selectedEvent || isSubmitting) return;
     setMessage(null);
     setSavingProfileId(profile.id);
+    setIsSubmitting(true);
 
-    const alreadyPresent = rsvps.some(
-      (r) =>
-        r.profile.email_istituzionale.toLowerCase() === profile.email_istituzionale.toLowerCase()
-    );
+    try {
+      const alreadyPresent = rsvps.some(
+        (r) =>
+          r.profile.email_istituzionale.toLowerCase() === profile.email_istituzionale.toLowerCase()
+      );
 
-    if (alreadyPresent) {
-      setMessage({ type: "error", text: "Questo utente è già presente nella lista." });
+      if (alreadyPresent) {
+        setMessage({ type: "error", text: "Questo utente è già presente nella lista." });
+        return;
+      }
+
+      const { error } = await supabase.from("rsvp").insert({
+        event_id: selectedEvent.id,
+        user_id: profile.id,
+        stato: "confermato",
+      });
+
+      if (error) {
+        setMessage({ type: "error", text: error.message || "Non sono riuscito ad aggiungere l'utente." });
+        return;
+      }
+
+      setMessage({ type: "success", text: "Utente aggiunto correttamente." });
+      setSearchValue("");
+      await loadRsvps(selectedEvent);
+    } catch {
+      setMessage({ type: "error", text: "Si è verificato un errore durante l'aggiunta dell'utente." });
+    } finally {
       setSavingProfileId(null);
-      return;
+      setIsSubmitting(false);
     }
-
-    const { error } = await supabase.from("rsvp").insert({
-      event_id: selectedEvent.id,
-      user_id: profile.id,
-      stato: "confermato",
-    });
-
-    if (error) {
-      setMessage({ type: "error", text: "Non sono riuscito ad aggiungere l'utente." });
-      setSavingProfileId(null);
-      return;
-    }
-
-    setMessage({ type: "success", text: "Utente aggiunto correttamente." });
-    setSearchValue("");
-    setSavingProfileId(null);
-    await loadRsvps(selectedEvent);
   }
 
   async function removeParticipant(row: RsvpRow) {
-  if (!selectedEvent) return;
-  setMessage(null);
-  setSavingProfileId(String(row.id));
+    if (!selectedEvent || isSubmitting) return;
+    setMessage(null);
+    setSavingProfileId(String(row.id));
+    setIsSubmitting(true);
 
-  const { error } = await supabase
-    .from("rsvp")
-    .delete()
-    .eq("id", row.id)
-    .eq("event_id", selectedEvent.id);
+    try {
+      const { error } = await supabase
+        .from("rsvp")
+        .delete()
+        .eq("id", row.id)
+        .eq("event_id", selectedEvent.id);
 
-  if (error) {
-    setMessage({
-      type: "error",
-      text: error.message || "Non sono riuscito a rimuovere l'utente.",
-    });
-    setSavingProfileId(null);
-    return;
+      if (error) {
+        setMessage({
+          type: "error",
+          text: error.message || "Non sono riuscito a rimuovere l'utente.",
+        });
+        return;
+      }
+
+      setMessage({ type: "success", text: "Utente rimosso correttamente." });
+      await loadRsvps(selectedEvent);
+    } catch {
+      setMessage({ type: "error", text: "Si è verificato un errore durante la rimozione dell'utente." });
+    } finally {
+      setSavingProfileId(null);
+      setIsSubmitting(false);
+    }
   }
-
-  setMessage({ type: "success", text: "Utente rimosso correttamente." });
-  setSavingProfileId(null);
-  await loadRsvps(selectedEvent);
-}
 
   function exportCsv() {
     if (!selectedEvent || !rsvps.length) return;
@@ -479,14 +509,14 @@ export default function AdminRsvpPage() {
                           <button
                             type="button"
                             onClick={() => addParticipant(profile)}
-                            disabled={savingProfileId === profile.id}
+                            disabled={isSubmitting || savingProfileId === profile.id}
                             style={{
                               ...actionButtonStyle,
-                              opacity: savingProfileId === profile.id ? 0.65 : 1,
-                              cursor: savingProfileId === profile.id ? "wait" : "pointer",
+                              opacity: isSubmitting && savingProfileId === profile.id ? 0.65 : 1,
+                              cursor: isSubmitting && savingProfileId === profile.id ? "wait" : "pointer",
                             }}
                           >
-                            {savingProfileId === profile.id ? "Aggiunta..." : "Aggiungi"}
+                            {isSubmitting && savingProfileId === profile.id ? "Aggiunta..." : "Aggiungi"}
                           </button>
                         </div>
                       ))}
@@ -541,14 +571,14 @@ export default function AdminRsvpPage() {
                               <button
                                 type="button"
                                 onClick={() => removeParticipant(r)}
-                                disabled={savingProfileId === String(r.id)}
+                                disabled={isSubmitting || savingProfileId === String(r.id)}
                                 style={{
                                   ...dangerButtonStyle,
-                                  opacity: savingProfileId === String(r.id) ? 0.65 : 1,
-                                  cursor: savingProfileId === String(r.id) ? "wait" : "pointer",
+                                  opacity: isSubmitting && savingProfileId === String(r.id) ? 0.65 : 1,
+                                  cursor: isSubmitting && savingProfileId === String(r.id) ? "wait" : "pointer",
                                 }}
                               >
-                                {savingProfileId === String(r.id) ? "Rimozione..." : "Rimuovi"}
+                                {isSubmitting && savingProfileId === String(r.id) ? "Rimozione..." : "Rimuovi"}
                               </button>
                             </td>
                           </tr>
