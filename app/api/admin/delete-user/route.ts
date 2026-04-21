@@ -2,16 +2,55 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
+function isProbablyJwt(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.split(".").length === 3 &&
+    value.length > 20
+  );
+}
+
+function extractJwtFromUnknown(value: unknown): string | null {
+  if (isProbablyJwt(value)) return value;
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const jwt = extractJwtFromUnknown(item);
+      if (jwt) return jwt;
+    }
+  }
+
+  if (value && typeof value === "object") {
+    for (const nestedValue of Object.values(value)) {
+      const jwt = extractJwtFromUnknown(nestedValue);
+      if (jwt) return jwt;
+    }
+  }
+
+  return null;
+}
+
 function getAccessTokenFromCookies(
   cookieStore: Awaited<ReturnType<typeof cookies>>
 ) {
   const allCookies = cookieStore.getAll();
 
-  const directToken =
-    cookieStore.get("sb-access-token")?.value ||
-    cookieStore.get("supabase-auth-token")?.value;
+  const directTokenCandidates = [
+    cookieStore.get("sb-access-token")?.value,
+    cookieStore.get("supabase-auth-token")?.value,
+  ];
 
-  if (directToken) return directToken;
+  for (const candidate of directTokenCandidates) {
+    if (!candidate) continue;
+
+    try {
+      const parsed = JSON.parse(candidate);
+      const parsedJwt = extractJwtFromUnknown(parsed);
+      if (parsedJwt) return parsedJwt;
+    } catch {
+      if (isProbablyJwt(candidate)) return candidate;
+    }
+  }
 
   const possibleCookie = allCookies.find(
     (cookie) =>
@@ -23,24 +62,10 @@ function getAccessTokenFromCookies(
 
   try {
     const parsed = JSON.parse(possibleCookie.value);
-
-    if (Array.isArray(parsed)) {
-      return parsed[0] ?? null;
-    }
-
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      "access_token" in parsed
-    ) {
-      const accessToken = (parsed as { access_token?: string }).access_token;
-      return accessToken ?? null;
-    }
+    return extractJwtFromUnknown(parsed);
   } catch {
-    return possibleCookie.value;
+    return isProbablyJwt(possibleCookie.value) ? possibleCookie.value : null;
   }
-
-  return null;
 }
 
 export async function POST(req: Request) {
@@ -69,7 +94,7 @@ export async function POST(req: Request) {
 
     if (!accessToken) {
       return NextResponse.json(
-        { error: "Sessione admin non trovata nei cookie." },
+        { error: "Token admin valido non trovato nei cookie." },
         { status: 401 }
       );
     }
@@ -91,6 +116,10 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error: userError?.message || "Utente non autenticato.",
+          debug: {
+            hasAccessToken: !!accessToken,
+            tokenPreview: `${accessToken.slice(0, 12)}...`,
+          },
         },
         { status: 401 }
       );
