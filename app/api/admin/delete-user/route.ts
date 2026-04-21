@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const userId = String(body?.userId ?? "");
+    const userId = String(body?.userId ?? "").trim();
 
     if (!userId) {
       return NextResponse.json({ error: "userId mancante." }, { status: 400 });
@@ -74,6 +74,22 @@ export async function POST(req: Request) {
     if (deleteRsvpError) {
       return NextResponse.json(
         { error: deleteRsvpError.message || "Errore eliminazione RSVP." },
+        { status: 500 }
+      );
+    }
+
+    const { error: deleteProfileError } = await supabaseAdmin
+      .from("profiles")
+      .delete()
+      .eq("id", userId);
+
+    if (deleteProfileError) {
+      return NextResponse.json(
+        {
+          error:
+            deleteProfileError.message ||
+            "Errore eliminazione profilo collegato.",
+        },
         { status: 500 }
       );
     }
