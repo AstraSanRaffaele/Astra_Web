@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import RsvpButton from "@/components/ui/rsvp-button";
@@ -28,10 +28,12 @@ export default function EventoDetailPage() {
   const supabase = useMemo(() => createClient(), []);
   const params = useParams();
   const id = params?.id as string;
+  const router = useRouter();
 
   const [event, setEvent] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
 useEffect(() => {
   if (!id) return;
@@ -41,8 +43,20 @@ useEffect(() => {
   async function load() {
     setLoading(true);
     setNotFound(false);
+    setCheckingAuth(true);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (cancelled) return;
+
+      if (!user) {
+        router.replace(`/login?next=${encodeURIComponent(`/eventi/${id}`)}`);
+        return;
+      }
+
+      setCheckingAuth(false);
+
       const { data, error } = await supabase
         .from("events")
         .select("*")
@@ -60,10 +74,10 @@ useEffect(() => {
       setEvent(data);
     } catch {
       if (cancelled) return;
-      setNotFound(true);
-      setEvent(null);
+      router.replace(`/login?next=${encodeURIComponent(`/eventi/${id}`)}`);
     } finally {
       if (!cancelled) {
+        setCheckingAuth(false);
         setLoading(false);
       }
     }
@@ -74,10 +88,10 @@ useEffect(() => {
   return () => {
     cancelled = true;
   };
-}, [id, supabase]);
+}, [id, supabase, router]);
 
   // ── Loading ──
-  if (loading) {
+  if (loading || checkingAuth) {
     return (
       <div style={{ minHeight: "100vh", background: "#F8F7F3" }}>
         <style>{`@keyframes sk { 0%,100%{opacity:.4} 50%{opacity:.9} }`}</style>
