@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type RsvpStatus = "loading" | "none" | "confermato" | "cancellato" | "posti_esauriti";
+type RsvpStatus = "loading" | "none" | "confermato" | "posti_esauriti";
 
 type Props = {
   eventId: string;
@@ -25,7 +25,7 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
       // Current user's RSVP
       const { data: myRsvp } = await supabase
         .from("rsvp")
-        .select("stato")
+        .select("id")
         .eq("event_id", eventId)
         .eq("user_id", user.id)
         .maybeSingle();
@@ -39,7 +39,7 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
 
       setPostiOccupati(count ?? 0);
 
-      if (myRsvp?.stato === "confermato") {
+      if (myRsvp) {
         setStatus("confermato");
       } else if (maxPosti !== null && maxPosti !== undefined && (count ?? 0) >= maxPosti) {
         setStatus("posti_esauriti");
@@ -51,40 +51,62 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
   }, [eventId, maxPosti, supabase]);
 
   async function handleConfirm() {
-    setBusy(true); setMsg("");
-    const res = await fetch("/api/rsvp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_id: eventId }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setMsg(json.error ?? "Errore durante l'iscrizione.");
-    } else {
+    setBusy(true);
+    setMsg("");
+
+    try {
+      const res = await fetch("/api/rsvp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setMsg(json.error ?? "Errore durante l'iscrizione.");
+        return;
+      }
+
       setStatus("confermato");
-      setPostiOccupati(c => c + 1);
+      setPostiOccupati((c) => c + 1);
       setMsg("Iscrizione confermata!");
+    } catch {
+      setMsg("Errore durante l'iscrizione.");
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function handleCancel() {
     if (!window.confirm("Vuoi cancellare la tua iscrizione a questo evento?")) return;
-    setBusy(true); setMsg("");
-    const res = await fetch("/api/rsvp", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_id: eventId }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setMsg(json.error ?? "Errore durante la cancellazione.");
-    } else {
-      setStatus(maxPosti !== null && maxPosti !== undefined && postiOccupati - 1 >= maxPosti ? "posti_esauriti" : "none");
-      setPostiOccupati(c => Math.max(0, c - 1));
-      setMsg("Iscrizione cancellata.");
+
+    setBusy(true);
+    setMsg("");
+
+    try {
+      const res = await fetch("/api/rsvp", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setMsg(json.error ?? "Errore durante la cancellazione.");
+        return;
+      }
+
+      const nuoviPostiOccupati = Math.max(0, postiOccupati - 1);
+      setPostiOccupati(nuoviPostiOccupati);
+      setStatus("none");
+      setMsg("Iscrizione annullata correttamente.");
+    } catch {
+      setMsg("Errore durante la cancellazione.");
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   const postiRimasti = maxPosti != null ? maxPosti - postiOccupati : null;
@@ -199,7 +221,7 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
       {msg && (
         <p style={{
           margin: 0, fontSize: ".84rem", fontWeight: 500, lineHeight: 1.5, textAlign: "center",
-          color: msg.includes("confermata") ? "#34d399" : msg.includes("cancellata") ? "rgba(255,255,255,.5)" : "#f87171",
+          color: msg.includes("confermata") ? "#34d399" : msg.includes("annullata") ? "rgba(255,255,255,.5)" : "#f87171",
         }}>
           {msg}
         </p>
