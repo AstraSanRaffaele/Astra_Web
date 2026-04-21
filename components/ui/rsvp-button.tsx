@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type RsvpStatus = "loading" | "none" | "confermato" | "posti_esauriti";
@@ -16,6 +16,21 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
   const [postiOccupati, setPostiOccupati] = useState<number>(0);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+    };
+  }, []);
+
+  function redirectToLoginWithMessage() {
+    setMsg("Utente non autenticato. Reindirizzamento al login...");
+    if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+    redirectTimeoutRef.current = setTimeout(() => {
+      window.location.href = `/login?next=${encodeURIComponent(`/eventi/${eventId}`)}`;
+    }, 1800);
+  }
 
   useEffect(() => {
     async function loadStatus() {
@@ -54,6 +69,13 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
     setBusy(true);
     setMsg("");
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setBusy(false);
+      redirectToLoginWithMessage();
+      return;
+    }
+
     try {
       const res = await fetch("/api/rsvp", {
         method: "POST",
@@ -62,8 +84,11 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
       });
 
       const json = await res.json();
-
       if (!res.ok) {
+        if (res.status === 401) {
+          redirectToLoginWithMessage();
+          return;
+        }
         setMsg(json.error ?? "Errore durante l'iscrizione.");
         return;
       }
@@ -84,6 +109,13 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
     setBusy(true);
     setMsg("");
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setBusy(false);
+      redirectToLoginWithMessage();
+      return;
+    }
+
     try {
       const res = await fetch("/api/rsvp", {
         method: "DELETE",
@@ -92,8 +124,11 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
       });
 
       const json = await res.json();
-
       if (!res.ok) {
+        if (res.status === 401) {
+          redirectToLoginWithMessage();
+          return;
+        }
         setMsg(json.error ?? "Errore durante la cancellazione.");
         return;
       }
@@ -221,7 +256,13 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
       {msg && (
         <p style={{
           margin: 0, fontSize: ".84rem", fontWeight: 500, lineHeight: 1.5, textAlign: "center",
-          color: msg.includes("confermata") ? "#34d399" : msg.includes("annullata") ? "rgba(255,255,255,.5)" : "#f87171",
+          color: msg.includes("confermata")
+            ? "#34d399"
+            : msg.includes("annullata")
+              ? "rgba(255,255,255,.5)"
+              : msg.includes("Reindirizzamento")
+                ? "#fbbf24"
+                : "#f87171",
         }}>
           {msg}
         </p>
