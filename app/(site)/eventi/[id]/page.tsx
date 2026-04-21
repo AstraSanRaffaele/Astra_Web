@@ -252,6 +252,8 @@ export default function EventoDetailPage() {
           .det-sidebar { position: static !important; }
           .hero-inner  { padding: 0 1.5rem !important; }
           .meta-chip-blue { display: none !important; }
+
+        :root { --ink: #08102A; }  
         }
       `}</style>
 
