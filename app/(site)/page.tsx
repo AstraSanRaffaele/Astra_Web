@@ -345,7 +345,7 @@ export default function Home() {
 
             <div className="hero-ctas" style={{ display: "flex", gap: "1rem", marginTop: "2.5rem", opacity: 0, flexWrap: "wrap" }}>
               <a href="/convenzioni" className="btn-primary">
-                Le nostre convenzioni
+                Le nostre convenzioni 
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
