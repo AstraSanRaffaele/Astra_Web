@@ -44,7 +44,7 @@ export async function GET() {
     });
 
     pass.setRelevantDate(new Date());
-    pass.setExpirationDate(new Date("2099-12-31T23:59:59Z") );
+    pass.setExpirationDate(new Date("2099-12-31T23:59:59Z"));
     // ── HEADER ───────────────────
     pass.headerFields.push({
       key: "serial",
