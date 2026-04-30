@@ -42,6 +42,12 @@ export async function GET() {
         classId: process.env.GOOGLE_CLASS_ID,
         state: "ACTIVE",
 
+        validTimeInterval: {
+          end: {
+            date: "2099-12-31T23:59:59.000Z",
+          },
+        },
+
         // ── HEADER PRINCIPALE ──
         cardTitle: {
           defaultValue: {
