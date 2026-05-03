@@ -50,7 +50,7 @@ function getAdminClient() {
   });
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const role = await getCallerRole();
 
   if (role !== "admin") {
@@ -63,12 +63,16 @@ export async function GET() {
   try {
     const supabase = getAdminClient();
 
-    const { data, error } = await supabase
+    const { searchParams } = new URL(req.url);
+    const roundId = searchParams.get("round_id");
+
+    let adhesionsQuery = supabase
       .from("book_convention_adhesions")
       .select(`
         id,
         user_id,
         convention_id,
+        round_id,
         payment_method,
         book_titles,
         book_items,
@@ -86,9 +90,21 @@ export async function GET() {
           titolo,
           partner,
           categoria
+        ),
+        book_convention_rounds (
+          id,
+          starts_at,
+          ends_at,
+          created_at
         )
       `)
       .order("created_at", { ascending: false });
+
+    if (roundId) {
+      adhesionsQuery = adhesionsQuery.eq("round_id", roundId);
+    }
+
+    const { data, error } = await adhesionsQuery;
 
     if (error) {
       return NextResponse.json(
@@ -97,9 +113,35 @@ export async function GET() {
       );
     }
 
+    const { data: rounds, error: roundsError } = await supabase
+      .from("book_convention_rounds")
+      .select(`
+        id,
+        convention_id,
+        starts_at,
+        ends_at,
+        created_at,
+        convenzioni (
+          id,
+          titolo,
+          partner,
+          categoria
+        )
+      `)
+      .order("starts_at", { ascending: false });
+
+    if (roundsError) {
+      return NextResponse.json(
+        { error: roundsError.message },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       ok: true,
       adhesions: data ?? [],
+      rounds: rounds ?? [],
+      selectedRoundId: roundId ?? null,
     });
   } catch (error) {
     return NextResponse.json(

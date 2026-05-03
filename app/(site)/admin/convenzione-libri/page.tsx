@@ -19,6 +19,15 @@ type Convenzione = {
   categoria: string | null;
 };
 
+type BookConventionRound = {
+  id: string;
+  convention_id: number;
+  starts_at: string;
+  ends_at: string;
+  created_at: string;
+  convenzioni: Convenzione | null;
+};
+
 type BookItem = {
   title: string;
   price: number | null;
@@ -34,6 +43,8 @@ type Adhesion = {
   created_at: string;
   profiles: Profile | null;
   convenzioni: Convenzione | null;
+  round_id: string | null;
+  book_convention_rounds: BookConventionRound | null;
 };
 
 type ConventionGroup = {
@@ -60,6 +71,21 @@ function formatDate(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatDateOnly(value: string) {
+  return new Date(value).toLocaleDateString("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function formatRoundLabel(round: BookConventionRound | null) {
+  if (!round) return "Senza periodo";
+
+  const title = round.convenzioni?.titolo || `Convenzione #${round.convention_id}`;
+  return `${title} • ${formatDateOnly(round.starts_at)} - ${formatDateOnly(round.ends_at)}`;
 }
 
 function formatPrice(value: number | null | undefined) {
@@ -132,24 +158,29 @@ function matchesAdhesionSearch(adhesion: Adhesion, search: string) {
 
 export default function AdminConvenzioneLibriPage() {
   const [adhesions, setAdhesions] = useState<Adhesion[]>([]);
+  const [rounds, setRounds] = useState<BookConventionRound[]>([]);
+  const [selectedRoundId, setSelectedRoundId] = useState<string>("all");
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  async function loadAdhesions() {
+  async function loadAdhesions(roundId = selectedRoundId) {
     try {
       setLoading(true);
       setMessage(null);
 
-      const res = await fetch("/api/admin/book-convention", {
+      const params = new URLSearchParams();
+      if (roundId !== "all") params.set("round_id", roundId);
+
+      const res = await fetch(`/api/admin/book-convention${params.toString() ? `?${params.toString()}` : ""}`, {
         method: "GET",
         cache: "no-store",
       });
 
       const text = await res.text();
-      let json: { adhesions?: Adhesion[]; error?: string } = {};
+      let json: { adhesions?: Adhesion[]; rounds?: BookConventionRound[]; error?: string } = {};
 
       try {
         json = text ? JSON.parse(text) : {};
@@ -164,6 +195,7 @@ export default function AdminConvenzioneLibriPage() {
       }
 
       setAdhesions(json.adhesions ?? []);
+      setRounds(json.rounds ?? []);
     } catch {
       setMessage({ type: "error", text: "Errore di connessione." });
     } finally {
@@ -210,8 +242,8 @@ export default function AdminConvenzioneLibriPage() {
   }
 
   useEffect(() => {
-    loadAdhesions();
-  }, []);
+    loadAdhesions(selectedRoundId);
+  }, [selectedRoundId]);
 
   const filteredAdhesions = useMemo(() => {
     return adhesions.filter((adhesion) => matchesAdhesionSearch(adhesion, searchTerm));
@@ -340,26 +372,26 @@ export default function AdminConvenzioneLibriPage() {
           </div>
         </section>
         {message && (
-  <div
-    style={{
-      borderRadius: "1rem",
-      padding: ".9rem 1rem",
-      fontSize: ".9rem",
-      fontWeight: 700,
-      background:
-        message.type === "success"
-          ? "rgba(52,211,153,.12)"
-          : "rgba(248,113,113,.12)",
-      color: message.type === "success" ? "#047857" : "#b91c1c",
-      border:
-        message.type === "success"
-          ? "1px solid rgba(16,185,129,.18)"
-          : "1px solid rgba(220,38,38,.16)",
-    }}
-  >
-    {message.text}
-  </div>
-)}
+          <div
+            style={{
+              borderRadius: "1rem",
+              padding: ".9rem 1rem",
+              fontSize: ".9rem",
+              fontWeight: 700,
+              background:
+                message.type === "success"
+                  ? "rgba(52,211,153,.12)"
+                  : "rgba(248,113,113,.12)",
+              color: message.type === "success" ? "#047857" : "#b91c1c",
+              border:
+                message.type === "success"
+                  ? "1px solid rgba(16,185,129,.18)"
+                  : "1px solid rgba(220,38,38,.16)",
+            }}
+          >
+            {message.text}
+          </div>
+        )}
 
         <div className="books-rsvp-layout" style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "1.5rem", alignItems: "start" }}>
           <div style={{ background: "rgba(255,255,255,.85)", border: "1px solid rgba(15,47,110,.08)", borderRadius: "1.8rem", overflow: "hidden", boxShadow: "0 8px 32px rgba(15,47,110,.07)" }}>
@@ -380,6 +412,29 @@ export default function AdminConvenzioneLibriPage() {
                   color: "#0f2f6e",
                 }}
               />
+
+              <select
+                value={selectedRoundId}
+                onChange={(e) => setSelectedRoundId(e.target.value)}
+                style={{
+                  width: "100%",
+                  borderRadius: "1rem",
+                  border: "1px solid rgba(15,47,110,.12)",
+                  padding: ".75rem .9rem",
+                  fontSize: ".9rem",
+                  outline: "none",
+                  background: "white",
+                  color: "#0f2f6e",
+                  fontWeight: 700,
+                }}
+              >
+                <option value="all">Tutti i periodi</option>
+                {rounds.map((round) => (
+                  <option key={round.id} value={round.id}>
+                    {formatRoundLabel(round)}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div style={{ maxHeight: "70vh", overflowY: "auto" }}>

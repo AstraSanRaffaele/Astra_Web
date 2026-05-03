@@ -94,13 +94,48 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  let activeRoundId: string | null = null;
+
+  if (conventionId) {
+    const now = new Date().toISOString();
+
+    const { data: activeRound, error: activeRoundError } = await supabase
+      .from("book_convention_rounds")
+      .select("id")
+      .eq("convention_id", conventionId)
+      .lte("starts_at", now)
+      .gte("ends_at", now)
+      .maybeSingle();
+
+    if (activeRoundError) {
+      return NextResponse.json(
+        { error: activeRoundError.message },
+        { status: 500 }
+      );
+    }
+
+    activeRoundId = activeRound?.id ?? null;
+  }
+
   let query = supabase
     .from("book_convention_adhesions")
-    .select("id, convention_id, payment_method, book_titles, book_items, created_at")
+    .select("id, convention_id, round_id, payment_method, book_titles, book_items, created_at")
     .eq("user_id", user.id);
 
   if (conventionId) {
     query = query.eq("convention_id", conventionId);
+
+    if (activeRoundId) {
+      query = query.eq("round_id", activeRoundId);
+    } else {
+      return NextResponse.json({
+        ok: true,
+        hasAdhered: false,
+        adhesion: null,
+        adhesions: [],
+        activeRound: null,
+      });
+    }
   }
 
   const { data, error } = conventionId
@@ -119,6 +154,7 @@ export async function GET(req: NextRequest) {
     hasAdhered: conventionId ? Boolean(data) : Array.isArray(data) && data.length > 0,
     adhesion: conventionId ? data ?? null : null,
     adhesions: conventionId ? [] : data ?? [],
+    activeRound: activeRoundId ? { id: activeRoundId } : null,
   });
 }
 
@@ -206,11 +242,36 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const now = new Date().toISOString();
+
+  const { data: activeRound, error: activeRoundError } = await supabase
+    .from("book_convention_rounds")
+    .select("id, starts_at, ends_at")
+    .eq("convention_id", conventionId)
+    .lte("starts_at", now)
+    .gte("ends_at", now)
+    .maybeSingle();
+
+  if (activeRoundError) {
+    return NextResponse.json(
+      { error: activeRoundError.message },
+      { status: 500 }
+    );
+  }
+
+  if (!activeRound) {
+    return NextResponse.json(
+      { error: "La convenzione libri non è attiva in questo momento." },
+      { status: 400 }
+    );
+  }
+
   const { data: existingAdhesion, error: existingError } = await supabase
     .from("book_convention_adhesions")
     .select("id")
     .eq("user_id", user.id)
     .eq("convention_id", conventionId)
+    .eq("round_id", activeRound.id)
     .maybeSingle();
 
   if (existingError) {
@@ -233,6 +294,7 @@ export async function POST(req: NextRequest) {
     .insert({
       user_id: user.id,
       convention_id: conventionId,
+      round_id: activeRound.id,
       payment_method: paymentMethod,
       book_titles: bookTitles,
       book_items: bookItems,
