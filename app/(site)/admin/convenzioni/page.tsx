@@ -17,6 +17,7 @@ type Convenzione = {
   attiva: boolean;
   is_book_convention: boolean | null;
   book_titles: string[] | null;
+  book_items: { title: string; price: number | null }[] | null;
   created_at: string;
   updated_at: string;
 };
@@ -31,7 +32,7 @@ type ConvForm = {
   ordine: string;
   attiva: boolean;
   is_book_convention: boolean;
-  book_titles_text: string;
+  book_items_text: string;
 };
 
 const EMPTY_FORM: ConvForm = {
@@ -44,7 +45,7 @@ const EMPTY_FORM: ConvForm = {
   ordine: "0",
   attiva: true,
   is_book_convention: false,
-  book_titles_text: "",
+  book_items_text: "",
 };
 
 const CATEGORY_OPTIONS = [
@@ -100,9 +101,16 @@ function ConvModal({
         ordine: String(initial.ordine),
         attiva: initial.attiva,
         is_book_convention: Boolean(initial.is_book_convention),
-        book_titles_text: Array.isArray(initial.book_titles)
-          ? initial.book_titles.join("\n")
-          : "",
+        book_items_text:
+          Array.isArray(initial.book_items) && initial.book_items.length > 0
+            ? initial.book_items
+              .map(item =>
+                `${item.title}${item.price !== null && item.price !== undefined ? ` | ${item.price}` : ""}`
+              )
+              .join("\n")
+            : Array.isArray(initial.book_titles)
+              ? initial.book_titles.join("\n")
+              : "",
       }
       : EMPTY_FORM
   );
@@ -272,8 +280,8 @@ function ConvModal({
           <div
             style={{
               border: `1px solid ${form.is_book_convention
-                  ? "rgba(46,64,128,.24)"
-                  : "rgba(15,47,110,.12)"
+                ? "rgba(46,64,128,.24)"
+                : "rgba(15,47,110,.12)"
                 }`,
               background: form.is_book_convention
                 ? "rgba(46,64,128,.06)"
@@ -327,13 +335,13 @@ function ConvModal({
             {form.is_book_convention && (
               <div style={{ display: "flex", flexDirection: "column", gap: ".45rem" }}>
                 <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>
-                  Titoli dei libri disponibili
+                  Libri disponibili e prezzo
                 </label>
 
                 <textarea
-                  value={form.book_titles_text}
-                  onChange={e => set("book_titles_text", e.target.value)}
-                  placeholder={"Inserisci un libro per riga, es.\nAnatomia Gray\nFisiologia medica\nBiochimica"}
+                  value={form.book_items_text}
+                  onChange={e => set("book_items_text", e.target.value)}
+                  placeholder={"Inserisci un libro per riga nel formato Titolo | Prezzo, es.\nAnatomia Gray | 45\nFisiologia medica | 38.50\nBiochimica | 42"}
                   rows={5}
                   style={{
                     border: "1px solid rgba(15,47,110,.12)",
@@ -478,12 +486,27 @@ export default function AdminConvenzioni() {
       return { ok: false, message: "L'ordine deve essere un numero valido." };
     }
 
-    const bookTitles = form.is_book_convention
-      ? form.book_titles_text
+    const bookItems = form.is_book_convention
+      ? form.book_items_text
         .split("\n")
-        .map(title => title.trim())
+        .map(row => row.trim())
         .filter(Boolean)
+        .map(row => {
+          const [rawTitle, rawPrice] = row.split("|");
+
+          const title = rawTitle.trim();
+          const normalizedPrice = rawPrice?.trim().replace(",", ".");
+          const priceNumber = normalizedPrice ? Number(normalizedPrice) : null;
+
+          return {
+            title,
+            price: Number.isFinite(priceNumber) ? priceNumber : null,
+          };
+        })
+        .filter(item => item.title.length > 0)
       : [];
+
+    const bookTitles = bookItems.map(item => item.title);
 
     const payload = {
       titolo,
@@ -496,6 +519,7 @@ export default function AdminConvenzioni() {
       attiva: form.attiva,
       is_book_convention: form.is_book_convention,
       book_titles: bookTitles,
+      book_items: bookItems,
     };
 
     try {
@@ -807,6 +831,28 @@ export default function AdminConvenzioni() {
                             }}
                           >
                             {c.vantaggio}
+                          </p>
+                        )}
+                        {c.is_book_convention && Array.isArray(c.book_items) && c.book_items.length > 0 && (
+                          <p
+                            style={{
+                              margin: ".25rem 0 0",
+                              fontSize: ".8rem",
+                              color: "#6b7280",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              maxWidth: "100%",
+                            }}
+                          >
+                            Libri: {c.book_items
+                              .map(item =>
+                                `${item.title}${item.price !== null && item.price !== undefined
+                                  ? ` (€${item.price})`
+                                  : ""
+                                }`
+                              )
+                              .join(", ")}
                           </p>
                         )}
                       </div>

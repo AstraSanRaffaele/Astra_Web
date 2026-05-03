@@ -18,12 +18,18 @@ type Convenzione = {
     categoria: string | null;
 };
 
+type BookItem = {
+    title: string;
+    price: number | null;
+};
+
 type Adhesion = {
     id: string;
     user_id: string;
     convention_id: number | null;
     payment_method: "contanti" | "bonifico" | "carta" | string | null;
     book_titles: string[] | null;
+    book_items: BookItem[] | null;
     created_at: string;
     profiles: Profile | null;
     convenzioni: Convenzione | null;
@@ -46,6 +52,19 @@ function formatDate(value: string) {
     });
 }
 
+function formatPrice(value: number | null | undefined) {
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+        return "—";
+    }
+
+    return new Intl.NumberFormat("it-IT", {
+        style: "currency",
+        currency: "EUR",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(value);
+}
+
 export default function AdminConvenzioneLibriPage() {
     const [adhesions, setAdhesions] = useState<Adhesion[]>([]);
     const [loading, setLoading] = useState(true);
@@ -54,7 +73,7 @@ export default function AdminConvenzioneLibriPage() {
     const [searchTerm, setSearchTerm] = useState("");
 
     const filteredAdhesions = useMemo(() => {
-        const q = searchTerm.trim().toLowerCase() ;
+        const q = searchTerm.trim().toLowerCase();
 
         if (!q) return adhesions;
 
@@ -63,8 +82,14 @@ export default function AdminConvenzioneLibriPage() {
             const convention = item.convenzioni;
 
             const fullName = `${profile?.nome ?? ""} ${profile?.cognome ?? ""}`;
-            const books = item.book_titles?.join(" ") ?? "";
-
+            const books = [
+                item.book_titles?.join(" ") ?? "",
+                Array.isArray(item.book_items)
+                    ? item.book_items
+                        .map((book) => `${book.title} ${book.price ?? ""}`)
+                        .join(" ")
+                    : "",
+            ].join(" ");
             return (
                 fullName.toLowerCase().includes(q) ||
                 (profile?.email ?? "").toLowerCase().includes(q) ||
@@ -347,7 +372,7 @@ export default function AdminConvenzioneLibriPage() {
 
                     <p className="books-admin-subtitle">
                         Gestisci gli studenti che hanno aderito alle convenzioni libri,
-                        controlla i titoli selezionati e il metodo di pagamento scelto.
+                        controlla i libri selezionati, i prezzi e il metodo di pagamento scelto.
                     </p>
                 </div>
 
@@ -390,6 +415,7 @@ export default function AdminConvenzioneLibriPage() {
                                         <th>Corso</th>
                                         <th>Convenzione</th>
                                         <th>Libri</th>
+                                        <th>Totale</th>
                                         <th>Pagamento</th>
                                         <th>Data adesione</th>
                                         <th>Azioni</th>
@@ -406,9 +432,24 @@ export default function AdminConvenzioneLibriPage() {
                                                 .filter(Boolean)
                                                 .join(" ") || "Utente senza nome";
 
-                                        const books = Array.isArray(adhesion.book_titles)
-                                            ? adhesion.book_titles.filter(Boolean)
+                                        const bookItems = Array.isArray(adhesion.book_items)
+                                            ? adhesion.book_items.filter((book) => book?.title)
                                             : [];
+
+                                        const books = bookItems.length > 0
+                                            ? bookItems.map((book) => book.title).filter(Boolean)
+                                            : Array.isArray(adhesion.book_titles)
+                                                ? adhesion.book_titles.filter(Boolean)
+                                                : [];
+
+                                        const total = bookItems.reduce((sum, book) => {
+                                            const price =
+                                                typeof book.price === "number" && Number.isFinite(book.price)
+                                                    ? book.price
+                                                    : 0;
+
+                                            return sum + price;
+                                        }, 0);
 
                                         return (
                                             <tr key={adhesion.id}>
@@ -440,7 +481,18 @@ export default function AdminConvenzioneLibriPage() {
                                                 </td>
 
                                                 <td>
-                                                    {books.length > 0 ? (
+                                                    {bookItems.length > 0 ? (
+                                                        <ul className="books-admin-books">
+                                                            {bookItems.map((book) => (
+                                                                <li key={`${book.title}-${book.price ?? "no-price"}`}>
+                                                                    <strong>{book.title}</strong>
+                                                                    <span className="books-admin-muted">
+                                                                        {" "}· {formatPrice(book.price)}
+                                                                    </span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    ) : books.length > 0 ? (
                                                         <ul className="books-admin-books">
                                                             {books.map((book) => (
                                                                 <li key={book}>{book}</li>
@@ -449,6 +501,12 @@ export default function AdminConvenzioneLibriPage() {
                                                     ) : (
                                                         "—"
                                                     )}
+                                                </td>
+
+                                                <td>
+                                                    <span className="books-admin-pill">
+                                                        {bookItems.length > 0 ? formatPrice(total) : "—"}
+                                                    </span>
                                                 </td>
 
                                                 <td>

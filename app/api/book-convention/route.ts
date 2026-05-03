@@ -4,6 +4,10 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 type PaymentMethod = "contanti" | "bonifico" | "carta";
+type BookItem = {
+    title: string;
+    price: number | null;
+};
 
 const PAYMENT_METHODS: PaymentMethod[] = ["contanti", "bonifico", "carta"];
 
@@ -17,6 +21,33 @@ function cleanBookTitles(value: unknown) {
     return value
         .map((item) => String(item).trim())
         .filter(Boolean);
+}
+
+function cleanBookItems(value: unknown): BookItem[] {
+    if (!Array.isArray(value)) return [];
+
+    return value
+        .map((item) => {
+            if (!item || typeof item !== "object") return null;
+
+            const record = item as Record<string, unknown>;
+            const title = String(record.title ?? "").trim();
+            const rawPrice = record.price;
+
+            let price: number | null = null;
+
+            if (typeof rawPrice === "number" && Number.isFinite(rawPrice)) {
+                price = rawPrice;
+            } else if (typeof rawPrice === "string" && rawPrice.trim()) {
+                const parsed = Number(rawPrice.trim().replace(",", "."));
+                price = Number.isFinite(parsed) ? parsed : null;
+            }
+
+            if (!title) return null;
+
+            return { title, price };
+        })
+        .filter((item): item is BookItem => Boolean(item));
 }
 
 async function getSupabase() {
@@ -62,7 +93,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
         .from("book_convention_adhesions")
-        .select("id, convention_id, payment_method, book_titles, created_at")
+        .select("id, convention_id, payment_method, book_titles, book_items, created_at")
         .eq("user_id", user.id);
 
     if (conventionId) {
@@ -108,6 +139,7 @@ export async function POST(req: NextRequest) {
         convention_id?: number | string | null;
         payment_method?: unknown;
         book_titles?: unknown;
+        book_items?: unknown;
     } = {};
 
     try {
@@ -118,7 +150,10 @@ export async function POST(req: NextRequest) {
 
     const conventionId = body.convention_id ? Number(body.convention_id) : null;
     const paymentMethod = body.payment_method;
-    const bookTitles = cleanBookTitles(body.book_titles);
+    const bookItems = cleanBookItems(body.book_items);
+    const bookTitles = bookItems.length > 0
+        ? bookItems.map((book) => book.title)
+        : cleanBookTitles(body.book_titles);
 
     if (!conventionId || Number.isNaN(conventionId)) {
         return NextResponse.json(
@@ -134,9 +169,16 @@ export async function POST(req: NextRequest) {
         );
     }
 
+    if (bookTitles.length === 0) {
+        return NextResponse.json(
+            { error: "Seleziona almeno un libro." },
+            { status: 400 }
+        );
+    }
+
     const { data: convention, error: conventionError } = await supabase
         .from("convenzioni")
-        .select("id, convenzione_libri")
+        .select("id, is_book_convention")
         .eq("id", conventionId)
         .maybeSingle();
 
@@ -154,7 +196,7 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    if (!convention.convenzione_libri) {
+    if (!convention.is_book_convention) {
         return NextResponse.json(
             { error: "Questa convenzione non è una convenzione libri." },
             { status: 400 }
@@ -183,6 +225,7 @@ export async function POST(req: NextRequest) {
             convention_id: conventionId,
             payment_method: paymentMethod,
             book_titles: bookTitles,
+            book_items: bookItems,
         });
 
     if (error) {
