@@ -55,10 +55,10 @@ export default function AdminPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
 
-     if (!user) {
-  router.replace("/login");
-  return;
-}
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
 
       const { data: myProfile, error: profileError } = await supabase
         .from("profiles")
@@ -195,7 +195,7 @@ export default function AdminPage() {
                   <a href="/admin/eventi" className="ctaButton primary">
                     Vai alla gestione eventi
                   </a>
-                </div>    
+                </div>
                 <div className="quickCard">
                   <h3>Gestione utenti</h3>
                   <p>Accedi all’area dedicata per visualizzare, cercare e gestire gli utenti registrati della piattaforma Astra.</p>
@@ -208,6 +208,16 @@ export default function AdminPage() {
                   <p>Accedi all’area dedicata per visualizzare, cercare e gestire gli RSVPs degli eventi della piattaforma Astra.</p>
                   <a href="/admin/rsvp" className="ctaButton primary">
                     Vai alla gestione RSVPs
+                  </a>
+                </div>
+                <div className="quickCard">
+                  <h3>Adesioni convenzioni libri</h3>
+                  <p>
+                    Visualizza, cerca e gestisci l’elenco degli studenti che hanno aderito
+                    alle convenzioni libri.
+                  </p>
+                  <a href="/admin/convenzione-libri" className="ctaButton primary">
+                    Vai alle adesioni libri
                   </a>
                 </div>
               </div>

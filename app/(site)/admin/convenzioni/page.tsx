@@ -15,8 +15,19 @@ type Convenzione = {
   link: string;
   ordine: number;
   attiva: boolean;
+  is_book_convention: boolean | null;
+  book_titles: string[] | null;
+  book_items: { title: string; price: number | null }[] | null;
   created_at: string;
   updated_at: string;
+};
+
+type BookConventionRound = {
+  id: string;
+  convention_id: number;
+  starts_at: string;
+  ends_at: string;
+  created_at: string;
 };
 
 type ConvForm = {
@@ -28,11 +39,21 @@ type ConvForm = {
   link: string;
   ordine: string;
   attiva: boolean;
+  is_book_convention: boolean;
+  book_items_text: string;
 };
 
 const EMPTY_FORM: ConvForm = {
-  titolo: "", partner: "", descrizione: "", vantaggio: "",
-  categoria: "", link: "#", ordine: "0", attiva: true,
+  titolo: "",
+  partner: "",
+  descrizione: "",
+  vantaggio: "",
+  categoria: "",
+  link: "#",
+  ordine: "0",
+  attiva: true,
+  is_book_convention: false,
+  book_items_text: "",
 };
 
 const CATEGORY_OPTIONS = [
@@ -67,6 +88,19 @@ function getCatStyle(cat: string) {
   return categoryColors[key] ?? categoryColors.default;
 }
 
+function formatDateOnly(value: string) {
+  return new Date(value).toLocaleDateString("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function isRoundActive(round: BookConventionRound) {
+  const now = Date.now();
+  return new Date(round.starts_at).getTime() <= now && now <= new Date(round.ends_at).getTime();
+}
+
 // ── Modal ─────────────────────────────────────────────────────────
 function ConvModal({
   mode, initial, onClose, onSave,
@@ -78,7 +112,27 @@ function ConvModal({
 }) {
   const [form, setForm] = useState<ConvForm>(() =>
     mode === "edit" && initial
-      ? { titolo: initial.titolo, partner: initial.partner, descrizione: initial.descrizione, vantaggio: initial.vantaggio, categoria: initial.categoria, link: initial.link, ordine: String(initial.ordine), attiva: initial.attiva }
+      ? {
+        titolo: initial.titolo,
+        partner: initial.partner,
+        descrizione: initial.descrizione,
+        vantaggio: initial.vantaggio,
+        categoria: initial.categoria,
+        link: initial.link,
+        ordine: String(initial.ordine),
+        attiva: initial.attiva,
+        is_book_convention: Boolean(initial.is_book_convention),
+        book_items_text:
+          Array.isArray(initial.book_items) && initial.book_items.length > 0
+            ? initial.book_items
+              .map(item =>
+                `${item.title}${item.price !== null && item.price !== undefined ? ` | ${item.price}` : ""}`
+              )
+              .join("\n")
+            : Array.isArray(initial.book_titles)
+              ? initial.book_titles.join("\n")
+              : "",
+      }
       : EMPTY_FORM
   );
   const [saving, setSaving] = useState(false);
@@ -200,10 +254,10 @@ function ConvModal({
               >
                 <option value="">Seleziona...</option>
                 {CATEGORY_OPTIONS.map(c => (
-  <option key={c} value={c}>
-    {formatCategoryLabel(c)}
-  </option>
-))}
+                  <option key={c} value={c}>
+                    {formatCategoryLabel(c)}
+                  </option>
+                ))}
               </select>
             </div>
             <MField label="Ordine" type="number" value={form.ordine} onChange={v => set("ordine", v)} placeholder="0" />
@@ -242,6 +296,96 @@ function ConvModal({
           <MField label="Vantaggio" value={form.vantaggio} onChange={v => set("vantaggio", v)} placeholder="es. 30% di sconto sulla tariffa standard" />
           <MField label="Link" value={form.link} onChange={v => set("link", v)} placeholder="https://..." />
 
+          <SectionLabel>Convenzione libri</SectionLabel>
+
+          <div
+            style={{
+              border: `1px solid ${form.is_book_convention
+                ? "rgba(46,64,128,.24)"
+                : "rgba(15,47,110,.12)"
+                }`,
+              background: form.is_book_convention
+                ? "rgba(46,64,128,.06)"
+                : "rgba(15,47,110,.025)",
+              borderRadius: "16px",
+              padding: "1rem",
+              display: "flex",
+              flexDirection: "column",
+              gap: ".85rem",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => set("is_book_convention", !form.is_book_convention)}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: form.is_book_convention ? "#0f2f6e" : "#4a5a7a",
+                padding: 0,
+                fontWeight: 800,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                display: "flex",
+                alignItems: "center",
+                gap: ".65rem",
+                textAlign: "left",
+              }}
+            >
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 7,
+                  border: `2px solid ${form.is_book_convention ? "#0f2f6e" : "rgba(15,47,110,.25)"
+                    }`,
+                  background: form.is_book_convention ? "#0f2f6e" : "#fff",
+                  color: "#fff",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: ".82rem",
+                  flexShrink: 0,
+                }}
+              >
+                {form.is_book_convention ? "✓" : ""}
+              </span>
+
+              Questa è una convenzione libri
+            </button>
+
+            {form.is_book_convention && (
+              <div style={{ display: "flex", flexDirection: "column", gap: ".45rem" }}>
+                <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>
+                  Libri disponibili e prezzo
+                </label>
+
+                <textarea
+                  value={form.book_items_text}
+                  onChange={e => set("book_items_text", e.target.value)}
+                  placeholder={"Inserisci un libro per riga nel formato Titolo | Prezzo, es.\nAnatomia Gray | 45\nFisiologia medica | 38.50\nBiochimica | 42"}
+                  rows={5}
+                  style={{
+                    border: "1px solid rgba(15,47,110,.12)",
+                    background: "white",
+                    color: "#102a56",
+                    borderRadius: "12px",
+                    padding: ".8rem 1rem",
+                    fontSize: ".95rem",
+                    outline: "none",
+                    width: "100%",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                    lineHeight: 1.6,
+                  }}
+                />
+
+                <p style={{ margin: 0, color: "#6b7280", fontSize: ".82rem", lineHeight: 1.5 }}>
+                  Questi titoli verranno mostrati nel popup di adesione. Lo studente potrà
+                  selezionare i libri e scegliere il metodo di pagamento.
+                </p>
+              </div>
+            )}
+          </div>
           {err && (
             <div style={{ background: "rgba(190,39,39,.08)", color: "#8b1d1d", border: "1px solid rgba(190,39,39,.14)", borderRadius: "12px", padding: ".8rem 1rem", fontWeight: 600, fontSize: ".9rem" }}>
               {err}
@@ -294,6 +438,10 @@ export default function AdminConvenzioni() {
   const [filter, setFilter] = useState<"tutte" | "attive" | "disattive">("tutte");
   const [search, setSearch] = useState("");
   const [isFetching, setIsFetching] = useState(false);
+  const [rounds, setRounds] = useState<BookConventionRound[]>([]);
+  const [roundForms, setRoundForms] = useState<Record<number, { starts_at: string; ends_at: string }>>({});
+  const [savingRoundId, setSavingRoundId] = useState<number | null>(null);
+  const [deletingRoundId, setDeletingRoundId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -325,6 +473,18 @@ export default function AdminConvenzioni() {
       }
 
       setConvenzioni((data ?? []) as Convenzione[]);
+
+      const { data: roundData, error: roundErr } = await supabase
+        .from("book_convention_rounds")
+        .select("id, convention_id, starts_at, ends_at, created_at")
+        .order("starts_at", { ascending: false });
+
+      if (roundErr) {
+        setError(`Caricamento periodi non riuscito: ${roundErr.message}`);
+        return;
+      }
+
+      setRounds((roundData ?? []) as BookConventionRound[]);
     } catch (error) {
       console.error("Errore fetch convenzioni:", error);
       setError("Si è verificato un errore durante il caricamento delle convenzioni.");
@@ -363,6 +523,28 @@ export default function AdminConvenzioni() {
       return { ok: false, message: "L'ordine deve essere un numero valido." };
     }
 
+    const bookItems = form.is_book_convention
+      ? form.book_items_text
+        .split("\n")
+        .map(row => row.trim())
+        .filter(Boolean)
+        .map(row => {
+          const [rawTitle, rawPrice] = row.split("|");
+
+          const title = rawTitle.trim();
+          const normalizedPrice = rawPrice?.trim().replace(",", ".");
+          const priceNumber = normalizedPrice ? Number(normalizedPrice) : null;
+
+          return {
+            title,
+            price: Number.isFinite(priceNumber) ? priceNumber : null,
+          };
+        })
+        .filter(item => item.title.length > 0)
+      : [];
+
+    const bookTitles = bookItems.map(item => item.title);
+
     const payload = {
       titolo,
       partner,
@@ -372,6 +554,9 @@ export default function AdminConvenzioni() {
       link: linkValue || "#",
       ordine: Number(ordineValue || "0"),
       attiva: form.attiva,
+      is_book_convention: form.is_book_convention,
+      book_titles: bookTitles,
+      book_items: bookItems,
     };
 
     try {
@@ -465,6 +650,93 @@ export default function AdminConvenzioni() {
     } catch (error) {
       console.error("Errore toggle convenzione:", error);
       setError("Si è verificato un errore durante l'aggiornamento dello stato.");
+    }
+  }
+
+  function updateRoundForm(conventionId: number, key: "starts_at" | "ends_at", value: string) {
+    setRoundForms(current => ({
+      ...current,
+      [conventionId]: {
+        starts_at: current[conventionId]?.starts_at ?? "",
+        ends_at: current[conventionId]?.ends_at ?? "",
+        [key]: value,
+      },
+    }));
+  }
+
+  async function createRound(conventionId: number) {
+    const form = roundForms[conventionId];
+
+    if (!form?.starts_at || !form?.ends_at) {
+      setError("Inserisci sia la data di inizio sia la data di fine del periodo.");
+      return;
+    }
+
+    const startsAt = new Date(`${form.starts_at}T00:00:00`).toISOString();
+    const endsAt = new Date(`${form.ends_at}T23:59:59`).toISOString();
+
+    if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+      setError("La data di fine deve essere successiva alla data di inizio.");
+      return;
+    }
+
+    setSavingRoundId(conventionId);
+    setError("");
+    setSuccess("");
+
+    try {
+      const { error: err } = await supabase
+        .from("book_convention_rounds")
+        .insert({
+          convention_id: conventionId,
+          starts_at: startsAt,
+          ends_at: endsAt,
+        });
+
+      if (err) {
+        setError(`Creazione periodo non riuscita: ${err.message}`);
+        return;
+      }
+
+      setRoundForms(current => ({
+        ...current,
+        [conventionId]: { starts_at: "", ends_at: "" },
+      }));
+      await fetchConvenzioni();
+      setSuccess("Periodo creato.");
+    } catch (error) {
+      console.error("Errore creazione periodo:", error);
+      setError("Si è verificato un errore durante la creazione del periodo.");
+    } finally {
+      setSavingRoundId(null);
+    }
+  }
+
+  async function deleteRound(round: BookConventionRound) {
+    if (!window.confirm(`Eliminare il periodo ${formatDateOnly(round.starts_at)} - ${formatDateOnly(round.ends_at)}? Le adesioni già collegate resteranno salvate senza periodo.`)) return;
+
+    setDeletingRoundId(round.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const { error: err } = await supabase
+        .from("book_convention_rounds")
+        .delete()
+        .eq("id", round.id);
+
+      if (err) {
+        setError(`Eliminazione periodo non riuscita: ${err.message}`);
+        return;
+      }
+
+      await fetchConvenzioni();
+      setSuccess("Periodo eliminato.");
+    } catch (error) {
+      console.error("Errore eliminazione periodo:", error);
+      setError("Si è verificato un errore durante l'eliminazione del periodo.");
+    } finally {
+      setDeletingRoundId(null);
     }
   }
 
@@ -571,8 +843,8 @@ export default function AdminConvenzioni() {
             {/* Search */}
             <div style={{ position: "relative" }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#6b7280" }}>
-                <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
               <input
                 value={search}
@@ -647,6 +919,22 @@ export default function AdminConvenzioni() {
                           <span style={{ fontSize: ".68rem", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", background: catStyle.bg, color: catStyle.text, padding: ".22rem .65rem", borderRadius: "999px" }}>
                             {formatCategoryLabel(c.categoria)}
                           </span>
+                          {c.is_book_convention && (
+                            <span
+                              style={{
+                                fontSize: ".68rem",
+                                fontWeight: 700,
+                                letterSpacing: ".06em",
+                                textTransform: "uppercase",
+                                background: "rgba(46,64,128,.08)",
+                                color: "#2E4080",
+                                padding: ".22rem .65rem",
+                                borderRadius: "999px",
+                              }}
+                            >
+                              Convenzione libri
+                            </span>
+                          )}
                           {!c.attiva && (
                             <span style={{ fontSize: ".62rem", fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: "rgba(15,47,110,.06)", color: "#6b7280", padding: ".2rem .6rem", borderRadius: "999px" }}>
                               Disattiva
@@ -668,6 +956,111 @@ export default function AdminConvenzioni() {
                           >
                             {c.vantaggio}
                           </p>
+                        )}
+                        {c.is_book_convention && Array.isArray(c.book_items) && c.book_items.length > 0 && (
+                          <p
+                            style={{
+                              margin: ".25rem 0 0",
+                              fontSize: ".8rem",
+                              color: "#6b7280",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              maxWidth: "100%",
+                            }}
+                          >
+                            Libri: {c.book_items
+                              .map(item =>
+                                `${item.title}${item.price !== null && item.price !== undefined
+                                  ? ` (€${item.price})`
+                                  : ""
+                                }`
+                              )
+                              .join(", ")}
+                          </p>
+                        )}
+                        {c.is_book_convention && (
+                          <div
+                            style={{
+                              marginTop: ".75rem",
+                              border: "1px solid rgba(15,47,110,.08)",
+                              background: "rgba(15,47,110,.025)",
+                              borderRadius: "1rem",
+                              padding: ".85rem",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: ".75rem",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap", alignItems: "center" }}>
+                              <strong style={{ color: "#0f2f6e", fontSize: ".82rem" }}>Periodi di attivazione</strong>
+                              {rounds.filter(round => round.convention_id === c.id && isRoundActive(round)).length > 0 && (
+                                <span style={{ fontSize: ".68rem", fontWeight: 800, color: "#0b6b46", background: "rgba(12,122,77,.08)", padding: ".22rem .6rem", borderRadius: 999 }}>
+                                  Periodo attivo ora
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr)) auto", gap: ".55rem", alignItems: "end" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: ".25rem" }}>
+                                <label style={{ fontSize: ".68rem", fontWeight: 700, color: "#4a5a7a" }}>Dal</label>
+                                <input
+                                  type="date"
+                                  value={roundForms[c.id]?.starts_at ?? ""}
+                                  onChange={e => updateRoundForm(c.id, "starts_at", e.target.value)}
+                                  style={{ border: "1px solid rgba(15,47,110,.12)", borderRadius: "10px", padding: ".55rem .65rem", fontSize: ".82rem", color: "#102a56", background: "white" }}
+                                />
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: ".25rem" }}>
+                                <label style={{ fontSize: ".68rem", fontWeight: 700, color: "#4a5a7a" }}>Al</label>
+                                <input
+                                  type="date"
+                                  value={roundForms[c.id]?.ends_at ?? ""}
+                                  onChange={e => updateRoundForm(c.id, "ends_at", e.target.value)}
+                                  style={{ border: "1px solid rgba(15,47,110,.12)", borderRadius: "10px", padding: ".55rem .65rem", fontSize: ".82rem", color: "#102a56", background: "white" }}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => createRound(c.id)}
+                                disabled={savingRoundId === c.id}
+                                style={{ border: "none", background: savingRoundId === c.id ? "#8ca4d7" : "#1847a3", color: "white", borderRadius: "999px", padding: ".62rem .95rem", fontWeight: 800, fontSize: ".78rem", cursor: savingRoundId === c.id ? "wait" : "pointer", whiteSpace: "nowrap" }}
+                              >
+                                {savingRoundId === c.id ? "Creo..." : "Crea periodo"}
+                              </button>
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: ".45rem" }}>
+                              {rounds.filter(round => round.convention_id === c.id).length === 0 ? (
+                                <p style={{ margin: 0, color: "#6b7280", fontSize: ".78rem" }}>Nessun periodo creato.</p>
+                              ) : (
+                                rounds
+                                  .filter(round => round.convention_id === c.id)
+                                  .map(round => (
+                                    <div key={round.id} style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", alignItems: "center", background: "white", border: "1px solid rgba(15,47,110,.07)", borderRadius: ".8rem", padding: ".55rem .65rem" }}>
+                                      <span style={{ color: "#374151", fontSize: ".78rem", fontWeight: 700 }}>
+                                        {formatDateOnly(round.starts_at)} - {formatDateOnly(round.ends_at)}
+                                      </span>
+                                      <div style={{ display: "flex", gap: ".45rem", alignItems: "center" }}>
+                                        {isRoundActive(round) && (
+                                          <span style={{ fontSize: ".65rem", fontWeight: 800, color: "#0b6b46", background: "rgba(12,122,77,.08)", padding: ".18rem .5rem", borderRadius: 999 }}>
+                                            Attivo
+                                          </span>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => deleteRound(round)}
+                                          disabled={deletingRoundId === round.id}
+                                          style={{ border: "1px solid rgba(190,39,39,.14)", background: "white", color: deletingRoundId === round.id ? "#b57b7b" : "#8b1d1d", borderRadius: "999px", padding: ".28rem .55rem", fontWeight: 800, fontSize: ".68rem", cursor: deletingRoundId === round.id ? "wait" : "pointer" }}
+                                        >
+                                          {deletingRoundId === round.id ? "..." : "Elimina"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))
+                              )}
+                            </div>
+                          </div>
                         )}
                       </div>
 
