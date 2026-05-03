@@ -78,9 +78,9 @@ export async function GET() {
           nome,
           cognome,
           email_istituzionale,
-          corso,
-          anno
-        ),
+          corso_di_laurea,
+          anno_di_laurea
+)
         convenzioni (
           id,
           titolo,
