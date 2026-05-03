@@ -6,7 +6,8 @@ type Profile = {
   id: string;
   nome: string | null;
   cognome: string | null;
-  email: string | null;
+  email?: string | null;
+  email_istituzionale?: string | null;
   corso: string | null;
   anno: string | number | null;
 };
@@ -76,6 +77,10 @@ function getFullName(profile: Profile | null) {
   return [profile?.nome, profile?.cognome].filter(Boolean).join(" ") || "Utente senza nome";
 }
 
+function getProfileEmail(profile: Profile | null) {
+  return profile?.email || profile?.email_istituzionale || "—";
+}
+
 function getBookItems(adhesion: Adhesion): BookItem[] {
   if (Array.isArray(adhesion.book_items) && adhesion.book_items.length > 0) {
     return adhesion.book_items
@@ -114,7 +119,7 @@ function matchesAdhesionSearch(adhesion: Adhesion, search: string) {
 
   return [
     getFullName(profile),
-    profile?.email ?? "",
+    getProfileEmail(profile),
     profile?.corso ?? "",
     String(profile?.anno ?? ""),
     convention?.titolo ?? "",
@@ -270,7 +275,7 @@ export default function AdminConvenzioneLibriPage() {
 
       return [
         esc(getFullName(profile)),
-        esc(profile?.email || ""),
+        esc(getProfileEmail(profile)),
         esc(profile?.corso || ""),
         esc(String(profile?.anno ?? "")),
         esc(adhesion.convenzioni?.titolo || ""),
@@ -334,6 +339,27 @@ export default function AdminConvenzioneLibriPage() {
             </a>
           </div>
         </section>
+        {message && (
+  <div
+    style={{
+      borderRadius: "1rem",
+      padding: ".9rem 1rem",
+      fontSize: ".9rem",
+      fontWeight: 700,
+      background:
+        message.type === "success"
+          ? "rgba(52,211,153,.12)"
+          : "rgba(248,113,113,.12)",
+      color: message.type === "success" ? "#047857" : "#b91c1c",
+      border:
+        message.type === "success"
+          ? "1px solid rgba(16,185,129,.18)"
+          : "1px solid rgba(220,38,38,.16)",
+    }}
+  >
+    {message.text}
+  </div>
+)}
 
         <div className="books-rsvp-layout" style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "1.5rem", alignItems: "start" }}>
           <div style={{ background: "rgba(255,255,255,.85)", border: "1px solid rgba(15,47,110,.08)", borderRadius: "1.8rem", overflow: "hidden", boxShadow: "0 8px 32px rgba(15,47,110,.07)" }}>
@@ -488,7 +514,7 @@ export default function AdminConvenzioneLibriPage() {
                                   ID: {adhesion.user_id}
                                 </div>
                               </td>
-                              <td style={{ padding: ".85rem 1.2rem", fontSize: ".88rem", color: "#374151" }}>{profile?.email || "—"}</td>
+                              <td style={{ padding: ".85rem 1.2rem", fontSize: ".88rem", color: "#374151" }}>{getProfileEmail(profile)}</td>
                               <td style={{ padding: ".85rem 1.2rem", fontSize: ".88rem", color: "#374151", whiteSpace: "nowrap" }}>
                                 {profile?.corso || "—"}
                                 <div style={{ marginTop: ".18rem", fontSize: ".72rem", color: "#6b7280" }}>Anno: {profile?.anno || "—"}</div>

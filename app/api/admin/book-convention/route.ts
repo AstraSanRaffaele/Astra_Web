@@ -77,7 +77,7 @@ export async function GET() {
           id,
           nome,
           cognome,
-          email,
+          email_istituzionale,
           corso,
           anno
         ),
