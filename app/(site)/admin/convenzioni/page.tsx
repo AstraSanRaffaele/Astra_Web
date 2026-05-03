@@ -22,6 +22,14 @@ type Convenzione = {
   updated_at: string;
 };
 
+type BookConventionRound = {
+  id: string;
+  convention_id: number;
+  starts_at: string;
+  ends_at: string;
+  created_at: string;
+};
+
 type ConvForm = {
   titolo: string;
   partner: string;
@@ -417,6 +425,8 @@ export default function AdminConvenzioni() {
   const [filter, setFilter] = useState<"tutte" | "attive" | "disattive">("tutte");
   const [search, setSearch] = useState("");
   const [isFetching, setIsFetching] = useState(false);
+  const [rounds, setRounds] = useState<BookConventionRound[]>([]);
+  const [roundForms, setRoundForms] = useState<Record<number, { starts_at: string; ends_at: string }>>({});
 
   useEffect(() => {
     async function load() {
@@ -448,6 +458,18 @@ export default function AdminConvenzioni() {
       }
 
       setConvenzioni((data ?? []) as Convenzione[]);
+
+      const { data: roundData, error: roundErr } = await supabase
+        .from("book_convention_rounds")
+        .select("id, convention_id, starts_at, ends_at, created_at")
+        .order("starts_at", { ascending: false });
+
+      if (roundErr) {
+        setError(`Caricamento periodi non riuscito: ${roundErr.message}`);
+        return;
+      }
+
+      setRounds((roundData ?? []) as BookConventionRound[]);
     } catch (error) {
       console.error("Errore fetch convenzioni:", error);
       setError("Si è verificato un errore durante il caricamento delle convenzioni.");
@@ -854,6 +876,15 @@ export default function AdminConvenzioni() {
                               )
                               .join(", ")}
                           </p>
+                        )}
+                        {c.is_book_convention && (
+                          <div>
+                            Dal: <input type="date" />
+                            Al: <input type="date" />
+                            <button>Crea periodo</button>
+
+                            {/* qui sotto lista periodi già creati */}
+                          </div>
                         )}
                       </div>
 
