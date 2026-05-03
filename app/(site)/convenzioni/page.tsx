@@ -43,6 +43,12 @@ type BookConvention = {
   book_items?: BookItem[] | null;
   convenzione_libri?: boolean | null;
   is_book_convention?: boolean | null;
+  activeRound?: {
+    id: string;
+    starts_at: string;
+    ends_at: string;
+  } | null;
+  canAdhere?: boolean;
 };
 
 function isBookConvention(c: any) {
@@ -218,7 +224,29 @@ export default function ConvenzioniPage() {
         .select("*")
         .order("ordine", { ascending: true });
 
-      setConvenzioni(data || []);
+      const now = new Date().toISOString();
+
+      const { data: activeRounds } = await supabase
+        .from("book_convention_rounds")
+        .select("id, convention_id, starts_at, ends_at")
+        .lte("starts_at", now)
+        .gte("ends_at", now);
+
+      const activeRoundByConventionId = new Map(
+        (activeRounds ?? []).map((round) => [round.convention_id, round])
+      );
+
+      const conventionsWithRounds = (data ?? []).map((convention) => {
+        const activeRound = activeRoundByConventionId.get(convention.id) ?? null;
+
+        return {
+          ...convention,
+          activeRound,
+          canAdhere: Boolean(activeRound),
+        };
+      });
+
+      setConvenzioni(conventionsWithRounds);
       setLoading(false);
     }
 
@@ -875,7 +903,7 @@ export default function ConvenzioniPage() {
                         marginTop: ".8rem",
                       }}
                     >
-                      {isBookConvention(c) && (
+                      {isBookConvention(c) && c.canAdhere && (
                         <button
                           type="button"
                           onClick={() => openBookConventionModal(c)}
@@ -909,6 +937,12 @@ export default function ConvenzioniPage() {
                             />
                           </svg>
                         </button>
+                      )}
+
+                      {isBookConvention(c) && !c.canAdhere && (
+                        <p style={{ margin: ".2rem 0 0", color: "#6B7280", fontSize: ".84rem", fontWeight: 700 }}>
+                          Adesioni non attive in questo momento.
+                        </p>
                       )}
 
                       {c.url && (

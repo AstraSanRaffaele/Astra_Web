@@ -296,7 +296,7 @@ export default function AdminConvenzioneLibriPage() {
   function exportCsv() {
     if (!selectedGroup || selectedAdhesions.length === 0) return;
 
-    const cols = ["Nome", "Email", "Corso", "Anno", "Convenzione", "Partner", "Libri", "Totale", "Pagamento", "Data adesione"];
+    const cols = ["Nome", "Email", "Corso", "Anno", "Convenzione", "Partner", "Periodo", "Libri", "Totale", "Pagamento", "Data adesione"];
     const esc = (v: string | number) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
     const rows = selectedAdhesions.map((adhesion) => {
@@ -312,6 +312,7 @@ export default function AdminConvenzioneLibriPage() {
         esc(String(profile?.anno ?? "")),
         esc(adhesion.convenzioni?.titolo || ""),
         esc(adhesion.convenzioni?.partner || ""),
+        esc(formatRoundLabel(adhesion.book_convention_rounds)),
         esc(books),
         esc(formatPrice(getAdhesionTotal(adhesion))),
         esc(formatPaymentMethod(adhesion.payment_method)),
@@ -358,7 +359,7 @@ export default function AdminConvenzioneLibriPage() {
             </span>
             <h1 style={{ margin: 0, fontSize: "clamp(2rem,5vw,3rem)", fontWeight: 800, lineHeight: 1.05 }}>Adesioni libri.</h1>
             <p style={{ margin: 0, color: "rgba(255,255,255,.75)", lineHeight: 1.6 }}>
-              Seleziona una convenzione per vedere gli studenti che hanno aderito, i libri scelti e il totale.
+              Filtra per periodo di attivazione, seleziona una convenzione e consulta adesioni, libri scelti e totale.
             </p>
           </div>
 
@@ -506,6 +507,9 @@ export default function AdminConvenzioneLibriPage() {
                     <p style={{ margin: 0, fontSize: ".84rem", color: "#6b7280" }}>
                       {selectedAdhesions.length} adesioni • {totalBooks} libri • {formatPrice(totalRevenue)} totale
                     </p>
+                    <p style={{ margin: ".25rem 0 0", fontSize: ".78rem", color: "#6b7280" }}>
+                      Periodo: {selectedRoundId === "all" ? "tutti i periodi" : formatRoundLabel(rounds.find((round) => round.id === selectedRoundId) ?? null)}
+                    </p>
                   </div>
                   {selectedAdhesions.length > 0 && (
                     <button onClick={exportCsv} style={actionButtonStyle}>
@@ -548,7 +552,7 @@ export default function AdminConvenzioneLibriPage() {
                     <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
                       <thead>
                         <tr style={{ background: "#edf3ff" }}>
-                          {["Studente", "Email", "Corso", "Libri", "Totale", "Pagamento", "Data", "Azioni"].map((h) => (
+                          {["Studente", "Email", "Corso", "Periodo", "Libri", "Totale", "Pagamento", "Data", "Azioni"].map((h) => (
                             <th key={h} style={{ textAlign: "left", padding: ".85rem 1.2rem", fontSize: ".8rem", fontWeight: 800, color: "#123066", whiteSpace: "nowrap", borderBottom: "1px solid rgba(15,47,110,.08)" }}>
                               {h}
                             </th>
@@ -573,6 +577,16 @@ export default function AdminConvenzioneLibriPage() {
                               <td style={{ padding: ".85rem 1.2rem", fontSize: ".88rem", color: "#374151", whiteSpace: "nowrap" }}>
                                 {profile?.corso || "—"}
                                 <div style={{ marginTop: ".18rem", fontSize: ".72rem", color: "#6b7280" }}>Anno: {profile?.anno || "—"}</div>
+                              </td>
+                              <td style={{ padding: ".85rem 1.2rem", fontSize: ".82rem", color: "#374151", whiteSpace: "nowrap" }}>
+                                {adhesion.book_convention_rounds ? (
+                                  <>
+                                    {formatDateOnly(adhesion.book_convention_rounds.starts_at)}
+                                    <div style={{ marginTop: ".18rem", fontSize: ".72rem", color: "#6b7280" }}>
+                                      fino al {formatDateOnly(adhesion.book_convention_rounds.ends_at)}
+                                    </div>
+                                  </>
+                                ) : "—"}
                               </td>
                               <td style={{ padding: ".85rem 1.2rem", fontSize: ".86rem", color: "#374151", minWidth: 220 }}>
                                 {books.length > 0 ? (

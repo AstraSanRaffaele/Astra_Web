@@ -88,6 +88,19 @@ function getCatStyle(cat: string) {
   return categoryColors[key] ?? categoryColors.default;
 }
 
+function formatDateOnly(value: string) {
+  return new Date(value).toLocaleDateString("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function isRoundActive(round: BookConventionRound) {
+  const now = Date.now();
+  return new Date(round.starts_at).getTime() <= now && now <= new Date(round.ends_at).getTime();
+}
+
 // ── Modal ─────────────────────────────────────────────────────────
 function ConvModal({
   mode, initial, onClose, onSave,
@@ -427,6 +440,8 @@ export default function AdminConvenzioni() {
   const [isFetching, setIsFetching] = useState(false);
   const [rounds, setRounds] = useState<BookConventionRound[]>([]);
   const [roundForms, setRoundForms] = useState<Record<number, { starts_at: string; ends_at: string }>>({});
+  const [savingRoundId, setSavingRoundId] = useState<number | null>(null);
+  const [deletingRoundId, setDeletingRoundId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -635,6 +650,93 @@ export default function AdminConvenzioni() {
     } catch (error) {
       console.error("Errore toggle convenzione:", error);
       setError("Si è verificato un errore durante l'aggiornamento dello stato.");
+    }
+  }
+
+  function updateRoundForm(conventionId: number, key: "starts_at" | "ends_at", value: string) {
+    setRoundForms(current => ({
+      ...current,
+      [conventionId]: {
+        starts_at: current[conventionId]?.starts_at ?? "",
+        ends_at: current[conventionId]?.ends_at ?? "",
+        [key]: value,
+      },
+    }));
+  }
+
+  async function createRound(conventionId: number) {
+    const form = roundForms[conventionId];
+
+    if (!form?.starts_at || !form?.ends_at) {
+      setError("Inserisci sia la data di inizio sia la data di fine del periodo.");
+      return;
+    }
+
+    const startsAt = new Date(`${form.starts_at}T00:00:00`).toISOString();
+    const endsAt = new Date(`${form.ends_at}T23:59:59`).toISOString();
+
+    if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+      setError("La data di fine deve essere successiva alla data di inizio.");
+      return;
+    }
+
+    setSavingRoundId(conventionId);
+    setError("");
+    setSuccess("");
+
+    try {
+      const { error: err } = await supabase
+        .from("book_convention_rounds")
+        .insert({
+          convention_id: conventionId,
+          starts_at: startsAt,
+          ends_at: endsAt,
+        });
+
+      if (err) {
+        setError(`Creazione periodo non riuscita: ${err.message}`);
+        return;
+      }
+
+      setRoundForms(current => ({
+        ...current,
+        [conventionId]: { starts_at: "", ends_at: "" },
+      }));
+      await fetchConvenzioni();
+      setSuccess("Periodo creato.");
+    } catch (error) {
+      console.error("Errore creazione periodo:", error);
+      setError("Si è verificato un errore durante la creazione del periodo.");
+    } finally {
+      setSavingRoundId(null);
+    }
+  }
+
+  async function deleteRound(round: BookConventionRound) {
+    if (!window.confirm(`Eliminare il periodo ${formatDateOnly(round.starts_at)} - ${formatDateOnly(round.ends_at)}? Le adesioni già collegate resteranno salvate senza periodo.`)) return;
+
+    setDeletingRoundId(round.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const { error: err } = await supabase
+        .from("book_convention_rounds")
+        .delete()
+        .eq("id", round.id);
+
+      if (err) {
+        setError(`Eliminazione periodo non riuscita: ${err.message}`);
+        return;
+      }
+
+      await fetchConvenzioni();
+      setSuccess("Periodo eliminato.");
+    } catch (error) {
+      console.error("Errore eliminazione periodo:", error);
+      setError("Si è verificato un errore durante l'eliminazione del periodo.");
+    } finally {
+      setDeletingRoundId(null);
     }
   }
 
@@ -878,12 +980,86 @@ export default function AdminConvenzioni() {
                           </p>
                         )}
                         {c.is_book_convention && (
-                          <div>
-                            Dal: <input type="date" />
-                            Al: <input type="date" />
-                            <button>Crea periodo</button>
+                          <div
+                            style={{
+                              marginTop: ".75rem",
+                              border: "1px solid rgba(15,47,110,.08)",
+                              background: "rgba(15,47,110,.025)",
+                              borderRadius: "1rem",
+                              padding: ".85rem",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: ".75rem",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap", alignItems: "center" }}>
+                              <strong style={{ color: "#0f2f6e", fontSize: ".82rem" }}>Periodi di attivazione</strong>
+                              {rounds.filter(round => round.convention_id === c.id && isRoundActive(round)).length > 0 && (
+                                <span style={{ fontSize: ".68rem", fontWeight: 800, color: "#0b6b46", background: "rgba(12,122,77,.08)", padding: ".22rem .6rem", borderRadius: 999 }}>
+                                  Periodo attivo ora
+                                </span>
+                              )}
+                            </div>
 
-                            {/* qui sotto lista periodi già creati */}
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr)) auto", gap: ".55rem", alignItems: "end" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: ".25rem" }}>
+                                <label style={{ fontSize: ".68rem", fontWeight: 700, color: "#4a5a7a" }}>Dal</label>
+                                <input
+                                  type="date"
+                                  value={roundForms[c.id]?.starts_at ?? ""}
+                                  onChange={e => updateRoundForm(c.id, "starts_at", e.target.value)}
+                                  style={{ border: "1px solid rgba(15,47,110,.12)", borderRadius: "10px", padding: ".55rem .65rem", fontSize: ".82rem", color: "#102a56", background: "white" }}
+                                />
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: ".25rem" }}>
+                                <label style={{ fontSize: ".68rem", fontWeight: 700, color: "#4a5a7a" }}>Al</label>
+                                <input
+                                  type="date"
+                                  value={roundForms[c.id]?.ends_at ?? ""}
+                                  onChange={e => updateRoundForm(c.id, "ends_at", e.target.value)}
+                                  style={{ border: "1px solid rgba(15,47,110,.12)", borderRadius: "10px", padding: ".55rem .65rem", fontSize: ".82rem", color: "#102a56", background: "white" }}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => createRound(c.id)}
+                                disabled={savingRoundId === c.id}
+                                style={{ border: "none", background: savingRoundId === c.id ? "#8ca4d7" : "#1847a3", color: "white", borderRadius: "999px", padding: ".62rem .95rem", fontWeight: 800, fontSize: ".78rem", cursor: savingRoundId === c.id ? "wait" : "pointer", whiteSpace: "nowrap" }}
+                              >
+                                {savingRoundId === c.id ? "Creo..." : "Crea periodo"}
+                              </button>
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: ".45rem" }}>
+                              {rounds.filter(round => round.convention_id === c.id).length === 0 ? (
+                                <p style={{ margin: 0, color: "#6b7280", fontSize: ".78rem" }}>Nessun periodo creato.</p>
+                              ) : (
+                                rounds
+                                  .filter(round => round.convention_id === c.id)
+                                  .map(round => (
+                                    <div key={round.id} style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", alignItems: "center", background: "white", border: "1px solid rgba(15,47,110,.07)", borderRadius: ".8rem", padding: ".55rem .65rem" }}>
+                                      <span style={{ color: "#374151", fontSize: ".78rem", fontWeight: 700 }}>
+                                        {formatDateOnly(round.starts_at)} - {formatDateOnly(round.ends_at)}
+                                      </span>
+                                      <div style={{ display: "flex", gap: ".45rem", alignItems: "center" }}>
+                                        {isRoundActive(round) && (
+                                          <span style={{ fontSize: ".65rem", fontWeight: 800, color: "#0b6b46", background: "rgba(12,122,77,.08)", padding: ".18rem .5rem", borderRadius: 999 }}>
+                                            Attivo
+                                          </span>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => deleteRound(round)}
+                                          disabled={deletingRoundId === round.id}
+                                          style={{ border: "1px solid rgba(190,39,39,.14)", background: "white", color: deletingRoundId === round.id ? "#b57b7b" : "#8b1d1d", borderRadius: "999px", padding: ".28rem .55rem", fontWeight: 800, fontSize: ".68rem", cursor: deletingRoundId === round.id ? "wait" : "pointer" }}
+                                        >
+                                          {deletingRoundId === round.id ? "..." : "Elimina"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
