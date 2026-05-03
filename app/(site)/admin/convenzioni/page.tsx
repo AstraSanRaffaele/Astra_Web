@@ -713,13 +713,29 @@ export default function AdminConvenzioni() {
   }
 
   async function deleteRound(round: BookConventionRound) {
-    if (!window.confirm(`Eliminare il periodo ${formatDateOnly(round.starts_at)} - ${formatDateOnly(round.ends_at)}? Le adesioni già collegate resteranno salvate senza periodo.`)) return;
+    if (
+      !window.confirm(
+        `Eliminare il periodo ${formatDateOnly(round.starts_at)} - ${formatDateOnly(round.ends_at)}? Verranno eliminate anche tutte le adesioni collegate a questo periodo.`
+      )
+    ) {
+      return;
+    }
 
     setDeletingRoundId(round.id);
     setError("");
     setSuccess("");
 
     try {
+      const { error: adhesionErr } = await supabase
+        .from("book_convention_adhesions")
+        .delete()
+        .eq("round_id", round.id);
+
+      if (adhesionErr) {
+        setError(`Eliminazione adesioni del periodo non riuscita: ${adhesionErr.message}`);
+        return;
+      }
+
       const { error: err } = await supabase
         .from("book_convention_rounds")
         .delete()
@@ -731,7 +747,7 @@ export default function AdminConvenzioni() {
       }
 
       await fetchConvenzioni();
-      setSuccess("Periodo eliminato.");
+      setSuccess("Periodo e adesioni collegate eliminati.");
     } catch (error) {
       console.error("Errore eliminazione periodo:", error);
       setError("Si è verificato un errore durante l'eliminazione del periodo.");
