@@ -28,6 +28,11 @@ function getCategoryStyle(cat: string) {
 
 type PaymentMethod = "contanti" | "bonifico" | "carta";
 
+type BookItem = {
+  title: string;
+  price: number | null;
+};
+
 type BookConvention = {
   id: string;
   titolo?: string | null;
@@ -35,6 +40,7 @@ type BookConvention = {
   libri_titoli?: string[] | string | null;
   book_titles?: string[] | string | null;
   libri?: string[] | string | null;
+  book_items?: BookItem[] | null;
   convenzione_libri?: boolean | null;
   is_book_convention?: boolean | null;
 };
@@ -60,6 +66,40 @@ function getBookTitles(c: BookConvention | null) {
   }
 
   return [];
+}
+
+function getBookItems(c: BookConvention | null): BookItem[] {
+  if (!c) return [];
+
+  if (Array.isArray(c.book_items) && c.book_items.length > 0) {
+    return c.book_items
+      .map((item) => ({
+        title: String(item?.title ?? "").trim(),
+        price:
+          typeof item?.price === "number" && Number.isFinite(item.price)
+            ? item.price
+            : null,
+      }))
+      .filter((item) => item.title.length > 0);
+  }
+
+  return getBookTitles(c).map((title) => ({
+    title,
+    price: null,
+  }));
+}
+
+function formatBookPrice(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "Prezzo non indicato";
+  }
+
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function SkeletonCard() {
@@ -194,11 +234,19 @@ export default function ConvenzioniPage() {
     return convenzioni.filter((c) => {
       const q = searchTerm.toLowerCase();
 
+      const bookSearchText = Array.isArray(c.book_items)
+        ? c.book_items
+          .map((item: BookItem) => `${item.title} ${item.price ?? ""}`)
+          .join(" ")
+          .toLowerCase()
+        : getBookTitles(c).join(" ").toLowerCase();
+
       const matchSearch =
         !q ||
         c.titolo?.toLowerCase().includes(q) ||
         c.partner?.toLowerCase().includes(q) ||
-        c.categoria?.toLowerCase().includes(q);
+        c.categoria?.toLowerCase().includes(q) ||
+        bookSearchText.includes(q);
 
       const matchCat = !activeCategory || c.categoria === activeCategory;
 
@@ -224,6 +272,7 @@ export default function ConvenzioniPage() {
     try {
       setBookSubmitting(true);
       setBookMessage("");
+      const selectedBookItems = getBookItems(selectedBookConvention);
 
       const res = await fetch("/api/book-convention", {
         method: "POST",
@@ -233,7 +282,8 @@ export default function ConvenzioniPage() {
         body: JSON.stringify({
           convention_id: selectedBookConvention.id,
           payment_method: paymentMethod,
-          book_titles: getBookTitles(selectedBookConvention),
+          book_titles: selectedBookItems.map((book) => book.title),
+          book_items: selectedBookItems,
         }),
       });
 
@@ -983,8 +1033,9 @@ export default function ConvenzioniPage() {
               {selectedBookConvention.partner
                 ? ` con ${selectedBookConvention.partner}`
                 : ""}
-              . Una volta inviata, l’adesione sarà registrata nell’elenco e non potrà
-              essere rimossa autonomamente.
+              . Nel riepilogo trovi i libri disponibili con il relativo prezzo. Una volta
+              inviata, l’adesione sarà registrata nell’elenco e non potrà essere rimossa
+              autonomamente.
             </p>
 
             <div
@@ -1009,21 +1060,66 @@ export default function ConvenzioniPage() {
                 Libri a cui stai aderendo
               </p>
 
-              {getBookTitles(selectedBookConvention).length > 0 ? (
-                <ul
-                  style={{
-                    display: "grid",
-                    gap: ".45rem",
-                    paddingLeft: "1.1rem",
-                    color: "#08102A",
-                  }}
-                >
-                  {getBookTitles(selectedBookConvention).map((book) => (
-                    <li key={book} style={{ lineHeight: 1.45, fontWeight: 600 }}>
-                      {book}
-                    </li>
-                  ))}
-                </ul>
+              {getBookItems(selectedBookConvention).length > 0 ? (
+                <div style={{ display: "grid", gap: ".65rem" }}>
+                  <ul
+                    style={{
+                      display: "grid",
+                      gap: ".55rem",
+                      paddingLeft: "1.1rem",
+                      color: "#08102A",
+                    }}
+                  >
+                    {getBookItems(selectedBookConvention).map((book) => (
+                      <li
+                        key={`${book.title}-${book.price ?? "no-price"}`}
+                        style={{ lineHeight: 1.45 }}
+                      >
+                        <span style={{ fontWeight: 700 }}>{book.title}</span>
+                        <span style={{ color: "#6B7280", fontWeight: 700 }}>
+                          {" "}· {formatBookPrice(book.price)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "1rem",
+                      borderTop: "1px solid rgba(8,16,42,.08)",
+                      paddingTop: ".75rem",
+                      marginTop: ".15rem",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: ".72rem",
+                        fontWeight: 800,
+                        letterSpacing: ".14em",
+                        textTransform: "uppercase",
+                        color: "#6B7280",
+                      }}
+                    >
+                      Totale
+                    </span>
+
+                    <span style={{ color: "#08102A", fontWeight: 900, fontSize: "1rem" }}>
+                      {formatBookPrice(
+                        getBookItems(selectedBookConvention).reduce((sum, book) => {
+                          const price =
+                            typeof book.price === "number" && Number.isFinite(book.price)
+                              ? book.price
+                              : 0;
+
+                          return sum + price;
+                        }, 0)
+                      )}
+                    </span>
+                  </div>
+                </div>
               ) : (
                 <p style={{ color: "#08102A", fontWeight: 600, lineHeight: 1.5 }}>
                   {selectedBookConvention.titolo || "Convenzione libri"}
@@ -1088,8 +1184,8 @@ export default function ConvenzioniPage() {
                 onChange={(e) => setBookConfirmChecked(e.target.checked)}
                 style={{ marginTop: ".2rem" }}
               />
-              Confermo di voler aderire alla convenzione libri e di aver selezionato
-              correttamente il metodo di pagamento.
+              Confermo di voler aderire alla convenzione libri, di aver preso visione dei
+              prezzi indicati e di aver selezionato correttamente il metodo di pagamento.
             </label>
 
             {bookMessage && (

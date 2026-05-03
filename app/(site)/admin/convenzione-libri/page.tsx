@@ -1,543 +1,576 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 type Profile = {
-    id: string;
-    nome: string | null;
-    cognome: string | null;
-    email: string | null;
-    corso: string | null;
-    anno: string | number | null;
+  id: string;
+  nome: string | null;
+  cognome: string | null;
+  email: string | null;
+  corso: string | null;
+  anno: string | number | null;
 };
 
 type Convenzione = {
-    id: number;
-    titolo: string | null;
-    partner: string | null;
-    categoria: string | null;
+  id: number;
+  titolo: string | null;
+  partner: string | null;
+  categoria: string | null;
 };
 
 type BookItem = {
-    title: string;
-    price: number | null;
+  title: string;
+  price: number | null;
 };
 
 type Adhesion = {
-    id: string;
-    user_id: string;
-    convention_id: number | null;
-    payment_method: "contanti" | "bonifico" | "carta" | string | null;
-    book_titles: string[] | null;
-    book_items: BookItem[] | null;
-    created_at: string;
-    profiles: Profile | null;
-    convenzioni: Convenzione | null;
+  id: string;
+  user_id: string;
+  convention_id: number | null;
+  payment_method: "contanti" | "bonifico" | "carta" | string | null;
+  book_titles: string[] | null;
+  book_items: BookItem[] | null;
+  created_at: string;
+  profiles: Profile | null;
+  convenzioni: Convenzione | null;
+};
+
+type ConventionGroup = {
+  id: number | null;
+  title: string;
+  partner: string;
+  category: string;
+  adhesions: Adhesion[];
+  total: number;
 };
 
 function formatPaymentMethod(value: string | null) {
-    if (value === "contanti") return "Contanti";
-    if (value === "bonifico") return "Bonifico";
-    if (value === "carta") return "Carta";
-    return "—";
+  if (value === "contanti") return "Contanti";
+  if (value === "bonifico") return "Bonifico";
+  if (value === "carta") return "Carta";
+  return "—";
 }
 
 function formatDate(value: string) {
-    return new Date(value).toLocaleString("it-IT", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+  return new Date(value).toLocaleString("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function formatPrice(value: number | null | undefined) {
-    if (value === null || value === undefined || !Number.isFinite(value)) {
-        return "—";
-    }
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
 
-    return new Intl.NumberFormat("it-IT", {
-        style: "currency",
-        currency: "EUR",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(value);
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function getFullName(profile: Profile | null) {
+  return [profile?.nome, profile?.cognome].filter(Boolean).join(" ") || "Utente senza nome";
+}
+
+function getBookItems(adhesion: Adhesion): BookItem[] {
+  if (Array.isArray(adhesion.book_items) && adhesion.book_items.length > 0) {
+    return adhesion.book_items
+      .map((book) => ({
+        title: String(book?.title ?? "").trim(),
+        price: typeof book?.price === "number" && Number.isFinite(book.price) ? book.price : null,
+      }))
+      .filter((book) => book.title.length > 0);
+  }
+
+  if (Array.isArray(adhesion.book_titles)) {
+    return adhesion.book_titles
+      .map((title) => ({ title: String(title ?? "").trim(), price: null }))
+      .filter((book) => book.title.length > 0);
+  }
+
+  return [];
+}
+
+function getAdhesionTotal(adhesion: Adhesion) {
+  return getBookItems(adhesion).reduce((sum, book) => {
+    const price = typeof book.price === "number" && Number.isFinite(book.price) ? book.price : 0;
+    return sum + price;
+  }, 0);
+}
+
+function matchesAdhesionSearch(adhesion: Adhesion, search: string) {
+  const q = search.trim().toLowerCase();
+  if (!q) return true;
+
+  const profile = adhesion.profiles;
+  const convention = adhesion.convenzioni;
+  const books = getBookItems(adhesion)
+    .map((book) => `${book.title} ${book.price ?? ""}`)
+    .join(" ");
+
+  return [
+    getFullName(profile),
+    profile?.email ?? "",
+    profile?.corso ?? "",
+    String(profile?.anno ?? ""),
+    convention?.titolo ?? "",
+    convention?.partner ?? "",
+    convention?.categoria ?? "",
+    books,
+    formatPaymentMethod(adhesion.payment_method),
+  ].some((field) => field.toLowerCase().includes(q));
 }
 
 export default function AdminConvenzioneLibriPage() {
-    const [adhesions, setAdhesions] = useState<Adhesion[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [message, setMessage] = useState("");
-    const [searchTerm, setSearchTerm] = useState("");
+  const [adhesions, setAdhesions] = useState<Adhesion[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
-    const filteredAdhesions = useMemo(() => {
-        const q = searchTerm.trim().toLowerCase();
+  async function loadAdhesions() {
+    try {
+      setLoading(true);
+      setMessage(null);
 
-        if (!q) return adhesions;
+      const res = await fetch("/api/admin/book-convention", {
+        method: "GET",
+        cache: "no-store",
+      });
 
-        return adhesions.filter((item) => {
-            const profile = item.profiles;
-            const convention = item.convenzioni;
+      const text = await res.text();
+      let json: { adhesions?: Adhesion[]; error?: string } = {};
 
-            const fullName = `${profile?.nome ?? ""} ${profile?.cognome ?? ""}`;
-            const books = [
-                item.book_titles?.join(" ") ?? "",
-                Array.isArray(item.book_items)
-                    ? item.book_items
-                        .map((book) => `${book.title} ${book.price ?? ""}`)
-                        .join(" ")
-                    : "",
-            ].join(" ");
-            return (
-                fullName.toLowerCase().includes(q) ||
-                (profile?.email ?? "").toLowerCase().includes(q) ||
-                (profile?.corso ?? "").toLowerCase().includes(q) ||
-                (convention?.titolo ?? "").toLowerCase().includes(q) ||
-                (convention?.partner ?? "").toLowerCase().includes(q) ||
-                books.toLowerCase().includes(q) ||
-                formatPaymentMethod(item.payment_method).toLowerCase().includes(q)
-            );
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        setMessage({ type: "error", text: "La route ha restituito una risposta non valida." });
+        return;
+      }
+
+      if (!res.ok) {
+        setMessage({ type: "error", text: json.error || "Errore durante il caricamento delle adesioni." });
+        return;
+      }
+
+      setAdhesions(json.adhesions ?? []);
+    } catch {
+      setMessage({ type: "error", text: "Errore di connessione." });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deleteAdhesion(adhesionId: string) {
+    const confirmDelete = window.confirm("Vuoi eliminare questa adesione dalla convenzione libri?");
+    if (!confirmDelete) return;
+
+    try {
+      setDeletingId(adhesionId);
+      setMessage(null);
+
+      const res = await fetch("/api/admin/book-convention", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adhesion_id: adhesionId }),
+      });
+
+      const text = await res.text();
+      let json: { error?: string } = {};
+
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        setMessage({ type: "error", text: "La route ha restituito una risposta non valida." });
+        return;
+      }
+
+      if (!res.ok) {
+        setMessage({ type: "error", text: json.error || "Errore durante l'eliminazione." });
+        return;
+      }
+
+      setAdhesions((prev) => prev.filter((item) => item.id !== adhesionId));
+      setMessage({ type: "success", text: "Adesione eliminata correttamente." });
+    } catch {
+      setMessage({ type: "error", text: "Errore di connessione." });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  useEffect(() => {
+    loadAdhesions();
+  }, []);
+
+  const filteredAdhesions = useMemo(() => {
+    return adhesions.filter((adhesion) => matchesAdhesionSearch(adhesion, searchTerm));
+  }, [adhesions, searchTerm]);
+
+  const groups = useMemo<ConventionGroup[]>(() => {
+    const map = new Map<string, ConventionGroup>();
+
+    filteredAdhesions.forEach((adhesion) => {
+      const convention = adhesion.convenzioni;
+      const key = String(adhesion.convention_id ?? "no-convention");
+
+      if (!map.has(key)) {
+        map.set(key, {
+          id: adhesion.convention_id,
+          title: convention?.titolo || "Convenzione non trovata",
+          partner: convention?.partner || "—",
+          category: convention?.categoria || "—",
+          adhesions: [],
+          total: 0,
         });
-    }, [adhesions, searchTerm]);
+      }
 
-    async function loadAdhesions() {
-        try {
-            setLoading(true);
-            setMessage("");
+      const group = map.get(key)!;
+      group.adhesions.push(adhesion);
+      group.total += getAdhesionTotal(adhesion);
+    });
 
-            const res = await fetch("/api/admin/book-convention", {
-                method: "GET",
-                cache: "no-store",
-            });
+    return Array.from(map.values()).sort((a, b) => b.adhesions.length - a.adhesions.length);
+  }, [filteredAdhesions]);
 
-            const json = await res.json();
-
-            if (!res.ok) {
-                setMessage(json.error || "Errore durante il caricamento delle adesioni.");
-                return;
-            }
-
-            setAdhesions(json.adhesions ?? []);
-        } catch {
-            setMessage("Errore di connessione.");
-        } finally {
-            setLoading(false);
-        }
+  useEffect(() => {
+    if (groups.length === 0) {
+      setSelectedGroupId(null);
+      return;
     }
 
-    async function deleteAdhesion(adhesionId: string) {
-        const confirmDelete = window.confirm(
-            "Vuoi eliminare questa adesione dalla convenzione libri?"
-        );
+    const currentExists = groups.some((group) => String(group.id ?? "no-convention") === selectedGroupId);
 
-        if (!confirmDelete) return;
-
-        try {
-            setDeletingId(adhesionId);
-            setMessage("");
-
-            const res = await fetch("/api/admin/book-convention", {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    adhesion_id: adhesionId,
-                }),
-            });
-
-            const json = await res.json();
-
-            if (!res.ok) {
-                setMessage(json.error || "Errore durante l'eliminazione.");
-                return;
-            }
-
-            setAdhesions((prev) => prev.filter((item) => item.id !== adhesionId));
-            setMessage("Adesione eliminata correttamente.");
-        } catch {
-            setMessage("Errore di connessione.");
-        } finally {
-            setDeletingId(null);
-        }
+    if (!selectedGroupId || !currentExists) {
+      setSelectedGroupId(String(groups[0].id ?? "no-convention"));
     }
+  }, [groups, selectedGroupId]);
 
-    useEffect(() => {
-        loadAdhesions();
-    }, []);
+  const selectedGroup = groups.find((group) => String(group.id ?? "no-convention") === selectedGroupId) ?? null;
+  const selectedAdhesions = selectedGroup?.adhesions ?? [];
+  const totalRevenue = selectedAdhesions.reduce((sum, adhesion) => sum + getAdhesionTotal(adhesion), 0);
+  const totalBooks = selectedAdhesions.reduce((sum, adhesion) => sum + getBookItems(adhesion).length, 0);
 
-    return (
-        <main className="books-admin-page">
-            <style>{`
-        .books-admin-page {
-          min-height: 100vh;
-          background: var(--cream);
-          color: var(--ink);
-          padding: 7.5rem 1.5rem 5rem;
-        }
+  function exportCsv() {
+    if (!selectedGroup || selectedAdhesions.length === 0) return;
 
-        .books-admin-wrap {
-          width: 100%;
-          max-width: 1220px;
-          margin: 0 auto;
-        }
+    const cols = ["Nome", "Email", "Corso", "Anno", "Convenzione", "Partner", "Libri", "Totale", "Pagamento", "Data adesione"];
+    const esc = (v: string | number) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
-        .books-admin-eyebrow {
-          margin: 0 0 .8rem;
-          font-size: .72rem;
-          font-weight: 800;
-          letter-spacing: .18em;
-          text-transform: uppercase;
-          color: var(--ink-soft);
-          font-family: "DM Sans", sans-serif;
-        }
+    const rows = selectedAdhesions.map((adhesion) => {
+      const profile = adhesion.profiles;
+      const books = getBookItems(adhesion)
+        .map((book) => `${book.title}${book.price !== null && book.price !== undefined ? ` (${formatPrice(book.price)})` : ""}`)
+        .join(", ");
 
-        .books-admin-title {
-          margin: 0;
-          font-size: clamp(2rem, 5vw, 4rem);
-          line-height: 1;
-          color: var(--ink);
-          font-family: var(--font-serif);
-        }
+      return [
+        esc(getFullName(profile)),
+        esc(profile?.email || ""),
+        esc(profile?.corso || ""),
+        esc(String(profile?.anno ?? "")),
+        esc(adhesion.convenzioni?.titolo || ""),
+        esc(adhesion.convenzioni?.partner || ""),
+        esc(books),
+        esc(formatPrice(getAdhesionTotal(adhesion))),
+        esc(formatPaymentMethod(adhesion.payment_method)),
+        esc(formatDate(adhesion.created_at)),
+      ].join(";");
+    });
 
-        .books-admin-subtitle {
-          margin: 1rem 0 0;
-          max-width: 760px;
-          color: var(--ink-soft);
-          font-family: "DM Sans", sans-serif;
-          font-size: 1rem;
-          line-height: 1.7;
-        }
+    const csv = [cols.map(esc).join(";"), ...rows].join("\r\n");
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })),
+      download: `adesioni-libri-${selectedGroup.title.replace(/\s+/g, "-").toLowerCase()}.csv`,
+    });
 
-        .books-admin-toolbar {
-          margin: 2rem 0 1rem;
-          display: flex;
-          gap: .8rem;
-          align-items: center;
-          justify-content: space-between;
-          flex-wrap: wrap;
-        }
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 
-        .books-admin-search {
-          width: min(100%, 420px);
-          border: 1px solid rgba(8,16,42,.12);
-          border-radius: 999px;
-          padding: .85rem 1.1rem;
-          background: #fff;
-          color: #08102A;
-          outline: none;
-          font-family: "DM Sans", sans-serif;
-          font-weight: 600;
-        }
+  const actionButtonStyle: CSSProperties = {
+    border: "1px solid rgba(15,47,110,.14)",
+    background: "white",
+    color: "#0f2f6e",
+    borderRadius: "999px",
+    padding: ".55rem 1rem",
+    fontWeight: 700,
+    fontSize: ".8rem",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  };
 
-        .books-admin-count {
-          color: var(--ink-soft);
-          font-family: "DM Sans", sans-serif;
-          font-weight: 700;
-          font-size: .9rem;
-        }
+  const dangerButtonStyle: CSSProperties = {
+    ...actionButtonStyle,
+    border: "1px solid rgba(220,38,38,.16)",
+    color: "#b91c1c",
+  };
 
-        .books-admin-message {
-          margin-bottom: 1rem;
-          padding: 1rem;
-          border-radius: 16px;
-          background: rgba(8,16,42,.06);
-          color: var(--ink);
-          font-family: "DM Sans", sans-serif;
-          font-weight: 700;
-        }
+  return (
+    <main style={{ minHeight: "100vh", background: "linear-gradient(180deg,#f7f9fc 0%,#eef3fb 100%)", padding: "8.5rem 1.5rem 4rem" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+        <section style={{ background: "linear-gradient(135deg,#0f2f6e 0%,#1847a3 100%)", borderRadius: "2rem", padding: "clamp(1.5rem,3vw,2.5rem)", color: "white", boxShadow: "0 24px 60px rgba(15,47,110,.18)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1.5rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}>
+            <span style={{ alignSelf: "flex-start", padding: ".4rem .9rem", borderRadius: 999, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.18)", fontSize: ".85rem", fontWeight: 700 }}>
+              Amministrazione • Convenzioni libri
+            </span>
+            <h1 style={{ margin: 0, fontSize: "clamp(2rem,5vw,3rem)", fontWeight: 800, lineHeight: 1.05 }}>Adesioni libri.</h1>
+            <p style={{ margin: 0, color: "rgba(255,255,255,.75)", lineHeight: 1.6 }}>
+              Seleziona una convenzione per vedere gli studenti che hanno aderito, i libri scelti e il totale.
+            </p>
+          </div>
 
-        .books-admin-card {
-          background: #fff;
-          border: 1px solid rgba(8,16,42,.1);
-          border-radius: 24px;
-          overflow: hidden;
-          box-shadow: 0 18px 45px rgba(8,16,42,.08);
-        }
+          <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap" }}>
+            <a href="/admin/convenzioni" style={{ textDecoration: "none", color: "white", padding: ".85rem 1.3rem", borderRadius: "999px", border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.1)", fontWeight: 700, whiteSpace: "nowrap" }}>
+              Gestisci convenzioni
+            </a>
+            <a href="/admin" style={{ textDecoration: "none", color: "white", padding: ".85rem 1.3rem", borderRadius: "999px", border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.1)", fontWeight: 700, whiteSpace: "nowrap" }}>
+              Pannello admin
+            </a>
+          </div>
+        </section>
 
-        .books-admin-empty {
-          padding: 1.5rem;
-          margin: 0;
-          color: var(--ink-soft);
-          font-family: "DM Sans", sans-serif;
-        }
+        <div className="books-rsvp-layout" style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "1.5rem", alignItems: "start" }}>
+          <div style={{ background: "rgba(255,255,255,.85)", border: "1px solid rgba(15,47,110,.08)", borderRadius: "1.8rem", overflow: "hidden", boxShadow: "0 8px 32px rgba(15,47,110,.07)" }}>
+            <div style={{ padding: "1.2rem 1.4rem", borderBottom: "1px solid rgba(15,47,110,.07)", display: "flex", flexDirection: "column", gap: ".8rem" }}>
+              <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#0f2f6e" }}>Convenzioni libri</h2>
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Cerca nome, email, libro..."
+                style={{
+                  width: "100%",
+                  borderRadius: "1rem",
+                  border: "1px solid rgba(15,47,110,.12)",
+                  padding: ".75rem .9rem",
+                  fontSize: ".9rem",
+                  outline: "none",
+                  background: "white",
+                  color: "#0f2f6e",
+                }}
+              />
+            </div>
 
-        .books-admin-table-wrap {
-          width: 100%;
-          overflow-x: auto;
-        }
-
-        .books-admin-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-family: "DM Sans", sans-serif;
-          min-width: 1080px;
-        }
-
-        .books-admin-table thead tr {
-          background: rgba(8,16,42,.04);
-          text-align: left;
-        }
-
-        .books-admin-table th {
-          padding: 1rem;
-          font-size: .72rem;
-          letter-spacing: .08em;
-          text-transform: uppercase;
-          color: var(--ink-soft);
-          font-weight: 800;
-          white-space: nowrap;
-        }
-
-        .books-admin-table td {
-          padding: 1rem;
-          color: var(--ink);
-          font-size: .92rem;
-          vertical-align: top;
-          border-top: 1px solid rgba(8,16,42,.08);
-        }
-
-        .books-admin-name {
-          font-weight: 800;
-          color: #08102A;
-        }
-
-        .books-admin-muted {
-          color: var(--ink-soft);
-          font-size: .84rem;
-          margin-top: .25rem;
-        }
-
-        .books-admin-pill {
-          display: inline-flex;
-          align-items: center;
-          width: fit-content;
-          border-radius: 999px;
-          padding: .35rem .7rem;
-          background: rgba(46,64,128,.08);
-          color: #2E4080;
-          font-weight: 800;
-          font-size: .78rem;
-          white-space: nowrap;
-        }
-
-        .books-admin-books {
-          display: grid;
-          gap: .3rem;
-          margin: 0;
-          padding-left: 1rem;
-        }
-
-        .books-admin-delete {
-          border: 1px solid rgba(220,38,38,.25);
-          background: rgba(220,38,38,.08);
-          color: #991b1b;
-          border-radius: 999px;
-          padding: .55rem .9rem;
-          font-weight: 800;
-          cursor: pointer;
-          font-family: "DM Sans", sans-serif;
-          white-space: nowrap;
-        }
-
-        .books-admin-delete:disabled {
-          cursor: not-allowed;
-          opacity: .6;
-        }
-
-        @media (max-width: 720px) {
-          .books-admin-page {
-            padding: 6.5rem 1rem 4rem;
-          }
-
-          .books-admin-toolbar {
-            align-items: stretch;
-          }
-
-          .books-admin-search {
-            width: 100%;
-          }
-        }
-      `}</style>
-
-            <section className="books-admin-wrap">
-                <div>
-                    <p className="books-admin-eyebrow">Admin</p>
-
-                    <h1 className="books-admin-title">
-                        Adesioni convenzione libri
-                    </h1>
-
-                    <p className="books-admin-subtitle">
-                        Gestisci gli studenti che hanno aderito alle convenzioni libri,
-                        controlla i libri selezionati, i prezzi e il metodo di pagamento scelto.
-                    </p>
+            <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+              {loading ? (
+                <div style={{ padding: "2rem", display: "flex", flexDirection: "column", gap: ".75rem" }}>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} style={{ height: 64, borderRadius: "1rem", background: "rgba(15,47,110,.06)", animation: "sk 1.4s ease infinite" }} />
+                  ))}
                 </div>
+              ) : groups.length === 0 ? (
+                <p style={{ padding: "2rem", color: "#6b7280", textAlign: "center" }}>Nessuna adesione trovata.</p>
+              ) : groups.map((group) => {
+                const groupId = String(group.id ?? "no-convention");
+                const isSelected = selectedGroupId === groupId;
 
-                <div className="books-admin-toolbar">
-                    <input
-                        className="books-admin-search"
-                        type="search"
-                        placeholder="Cerca per nome, email, corso, libro, convenzione..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-
-                    <div className="books-admin-count">
-                        {filteredAdhesions.length} adesioni
+                return (
+                  <button
+                    key={groupId}
+                    onClick={() => setSelectedGroupId(groupId)}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "1rem 1.4rem",
+                      background: isSelected ? "rgba(15,47,110,.07)" : "transparent",
+                      borderLeft: isSelected ? "3px solid #1847a3" : "3px solid transparent",
+                      transition: "background .15s",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: ".35rem",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: ".5rem" }}>
+                      <span style={{ fontSize: ".92rem", fontWeight: 700, color: "#0f2f6e", lineHeight: 1.3 }}>{group.title}</span>
+                      <span style={{
+                        fontSize: ".65rem",
+                        fontWeight: 700,
+                        letterSpacing: ".06em",
+                        whiteSpace: "nowrap",
+                        background: "rgba(52,211,153,.1)",
+                        color: "#059669",
+                        padding: ".2rem .55rem",
+                        borderRadius: "999px",
+                      }}>
+                        {group.adhesions.length} adesioni
+                      </span>
                     </div>
+                    <span style={{ fontSize: ".8rem", color: "#6b7280" }}>{group.partner}</span>
+                    <span style={{ fontSize: ".78rem", color: "#6b7280" }}>Totale: {formatPrice(group.total)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ background: "rgba(255,255,255,.85)", border: "1px solid rgba(15,47,110,.08)", borderRadius: "1.8rem", overflow: "hidden", boxShadow: "0 8px 32px rgba(15,47,110,.07)" }}>
+            {!selectedGroup ? (
+              <div style={{ padding: "5rem 2rem", textAlign: "center", color: "#6b7280" }}>
+                <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>👈</div>
+                <p style={{ fontWeight: 600, color: "#0f2f6e", marginBottom: ".5rem" }}>Seleziona una convenzione</p>
+                <p style={{ fontSize: ".9rem" }}>Clicca su una convenzione a sinistra per vedere le adesioni.</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ padding: "1.4rem 1.8rem", borderBottom: "1px solid rgba(15,47,110,.07)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                  <div>
+                    <h2 style={{ margin: "0 0 .25rem", fontSize: "1.15rem", fontWeight: 800, color: "#0f2f6e" }}>{selectedGroup.title}</h2>
+                    <p style={{ margin: 0, fontSize: ".84rem", color: "#6b7280" }}>
+                      {selectedAdhesions.length} adesioni • {totalBooks} libri • {formatPrice(totalRevenue)} totale
+                    </p>
+                  </div>
+                  {selectedAdhesions.length > 0 && (
+                    <button onClick={exportCsv} style={actionButtonStyle}>
+                      Esporta CSV
+                    </button>
+                  )}
                 </div>
 
                 {message && (
-                    <div className="books-admin-message">
-                        {message}
+                  <div style={{ padding: "1.2rem 1.8rem", borderBottom: "1px solid rgba(15,47,110,.07)", background: "rgba(237,243,255,.45)" }}>
+                    <div
+                      style={{
+                        borderRadius: "1rem",
+                        padding: ".8rem 1rem",
+                        fontSize: ".84rem",
+                        fontWeight: 600,
+                        background: message.type === "success" ? "rgba(52,211,153,.12)" : "rgba(248,113,113,.12)",
+                        color: message.type === "success" ? "#047857" : "#b91c1c",
+                        border: message.type === "success" ? "1px solid rgba(16,185,129,.18)" : "1px solid rgba(220,38,38,.16)",
+                      }}
+                    >
+                      {message.text}
                     </div>
+                  </div>
                 )}
 
-                <div className="books-admin-card">
-                    {loading ? (
-                        <p className="books-admin-empty">
-                            Caricamento adesioni...
-                        </p>
-                    ) : filteredAdhesions.length === 0 ? (
-                        <p className="books-admin-empty">
-                            Nessuna adesione trovata.
-                        </p>
-                    ) : (
-                        <div className="books-admin-table-wrap">
-                            <table className="books-admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>Studente</th>
-                                        <th>Email</th>
-                                        <th>Corso</th>
-                                        <th>Convenzione</th>
-                                        <th>Libri</th>
-                                        <th>Totale</th>
-                                        <th>Pagamento</th>
-                                        <th>Data adesione</th>
-                                        <th>Azioni</th>
-                                    </tr>
-                                </thead>
+                {loading ? (
+                  <div style={{ padding: "2rem", display: "flex", flexDirection: "column", gap: ".75rem" }}>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} style={{ height: 52, borderRadius: "1rem", background: "rgba(15,47,110,.06)", animation: "sk 1.4s ease infinite" }} />
+                    ))}
+                  </div>
+                ) : selectedAdhesions.length === 0 ? (
+                  <div style={{ padding: "5rem 2rem", textAlign: "center", color: "#6b7280" }}>
+                    <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>📚</div>
+                    <p style={{ fontWeight: 600, color: "#0f2f6e" }}>Nessuna adesione ancora</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+                      <thead>
+                        <tr style={{ background: "#edf3ff" }}>
+                          {["Studente", "Email", "Corso", "Libri", "Totale", "Pagamento", "Data", "Azioni"].map((h) => (
+                            <th key={h} style={{ textAlign: "left", padding: ".85rem 1.2rem", fontSize: ".8rem", fontWeight: 800, color: "#123066", whiteSpace: "nowrap", borderBottom: "1px solid rgba(15,47,110,.08)" }}>
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedAdhesions.map((adhesion) => {
+                          const profile = adhesion.profiles;
+                          const books = getBookItems(adhesion);
+                          const total = getAdhesionTotal(adhesion);
 
-                                <tbody>
-                                    {filteredAdhesions.map((adhesion) => {
-                                        const profile = adhesion.profiles;
-                                        const convention = adhesion.convenzioni;
+                          return (
+                            <tr key={adhesion.id} style={{ borderBottom: "1px solid rgba(15,47,110,.06)", background: "white" }}>
+                              <td style={{ padding: ".85rem 1.2rem", fontWeight: 600, color: "#0f2f6e", whiteSpace: "nowrap" }}>
+                                {getFullName(profile)}
+                                <div style={{ marginTop: ".18rem", fontSize: ".72rem", color: "#6b7280", fontWeight: 600 }}>
+                                  ID: {adhesion.user_id}
+                                </div>
+                              </td>
+                              <td style={{ padding: ".85rem 1.2rem", fontSize: ".88rem", color: "#374151" }}>{profile?.email || "—"}</td>
+                              <td style={{ padding: ".85rem 1.2rem", fontSize: ".88rem", color: "#374151", whiteSpace: "nowrap" }}>
+                                {profile?.corso || "—"}
+                                <div style={{ marginTop: ".18rem", fontSize: ".72rem", color: "#6b7280" }}>Anno: {profile?.anno || "—"}</div>
+                              </td>
+                              <td style={{ padding: ".85rem 1.2rem", fontSize: ".86rem", color: "#374151", minWidth: 220 }}>
+                                {books.length > 0 ? (
+                                  <ul style={{ margin: 0, paddingLeft: "1rem", display: "grid", gap: ".28rem" }}>
+                                    {books.map((book) => (
+                                      <li key={`${book.title}-${book.price ?? "no-price"}`}>
+                                        <strong>{book.title}</strong>
+                                        <span style={{ color: "#6b7280" }}> · {formatPrice(book.price)}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : "—"}
+                              </td>
+                              <td style={{ padding: ".85rem 1.2rem" }}>
+                                <span style={{
+                                  fontSize: ".7rem",
+                                  fontWeight: 700,
+                                  letterSpacing: ".06em",
+                                  textTransform: "uppercase",
+                                  background: "rgba(52,211,153,.12)",
+                                  color: "#059669",
+                                  padding: ".25rem .7rem",
+                                  borderRadius: "999px",
+                                  whiteSpace: "nowrap",
+                                }}>
+                                  {formatPrice(total)}
+                                </span>
+                              </td>
+                              <td style={{ padding: ".85rem 1.2rem" }}>
+                                <span style={{
+                                  fontSize: ".7rem",
+                                  fontWeight: 700,
+                                  letterSpacing: ".06em",
+                                  textTransform: "uppercase",
+                                  background: "rgba(15,47,110,.08)",
+                                  color: "#0f2f6e",
+                                  padding: ".25rem .7rem",
+                                  borderRadius: "999px",
+                                  whiteSpace: "nowrap",
+                                }}>
+                                  {formatPaymentMethod(adhesion.payment_method)}
+                                </span>
+                              </td>
+                              <td style={{ padding: ".85rem 1.2rem", fontSize: ".82rem", color: "#6b7280", whiteSpace: "nowrap" }}>{formatDate(adhesion.created_at)}</td>
+                              <td style={{ padding: ".85rem 1.2rem" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteAdhesion(adhesion.id)}
+                                  disabled={deletingId === adhesion.id}
+                                  style={{
+                                    ...dangerButtonStyle,
+                                    opacity: deletingId === adhesion.id ? 0.65 : 1,
+                                    cursor: deletingId === adhesion.id ? "wait" : "pointer",
+                                  }}
+                                >
+                                  {deletingId === adhesion.id ? "Elimino..." : "Elimina"}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
 
-                                        const fullName =
-                                            [profile?.nome, profile?.cognome]
-                                                .filter(Boolean)
-                                                .join(" ") || "Utente senza nome";
-
-                                        const bookItems = Array.isArray(adhesion.book_items)
-                                            ? adhesion.book_items.filter((book) => book?.title)
-                                            : [];
-
-                                        const books = bookItems.length > 0
-                                            ? bookItems.map((book) => book.title).filter(Boolean)
-                                            : Array.isArray(adhesion.book_titles)
-                                                ? adhesion.book_titles.filter(Boolean)
-                                                : [];
-
-                                        const total = bookItems.reduce((sum, book) => {
-                                            const price =
-                                                typeof book.price === "number" && Number.isFinite(book.price)
-                                                    ? book.price
-                                                    : 0;
-
-                                            return sum + price;
-                                        }, 0);
-
-                                        return (
-                                            <tr key={adhesion.id}>
-                                                <td>
-                                                    <div className="books-admin-name">
-                                                        {fullName}
-                                                    </div>
-                                                    <div className="books-admin-muted">
-                                                        ID: {adhesion.user_id}
-                                                    </div>
-                                                </td>
-
-                                                <td>{profile?.email || "—"}</td>
-
-                                                <td>
-                                                    <div>{profile?.corso || "—"}</div>
-                                                    <div className="books-admin-muted">
-                                                        Anno: {profile?.anno || "—"}
-                                                    </div>
-                                                </td>
-
-                                                <td>
-                                                    <div className="books-admin-name">
-                                                        {convention?.titolo || "Convenzione non trovata"}
-                                                    </div>
-                                                    <div className="books-admin-muted">
-                                                        {convention?.partner || "—"}
-                                                    </div>
-                                                </td>
-
-                                                <td>
-                                                    {bookItems.length > 0 ? (
-                                                        <ul className="books-admin-books">
-                                                            {bookItems.map((book) => (
-                                                                <li key={`${book.title}-${book.price ?? "no-price"}`}>
-                                                                    <strong>{book.title}</strong>
-                                                                    <span className="books-admin-muted">
-                                                                        {" "}· {formatPrice(book.price)}
-                                                                    </span>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    ) : books.length > 0 ? (
-                                                        <ul className="books-admin-books">
-                                                            {books.map((book) => (
-                                                                <li key={book}>{book}</li>
-                                                            ))}
-                                                        </ul>
-                                                    ) : (
-                                                        "—"
-                                                    )}
-                                                </td>
-
-                                                <td>
-                                                    <span className="books-admin-pill">
-                                                        {bookItems.length > 0 ? formatPrice(total) : "—"}
-                                                    </span>
-                                                </td>
-
-                                                <td>
-                                                    <span className="books-admin-pill">
-                                                        {formatPaymentMethod(adhesion.payment_method)}
-                                                    </span>
-                                                </td>
-
-                                                <td>{formatDate(adhesion.created_at)}</td>
-
-                                                <td>
-                                                    <button
-                                                        type="button"
-                                                        className="books-admin-delete"
-                                                        onClick={() => deleteAdhesion(adhesion.id)}
-                                                        disabled={deletingId === adhesion.id}
-                                                    >
-                                                        {deletingId === adhesion.id
-                                                            ? "Elimino..."
-                                                            : "Elimina"}
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            </section>
-        </main>
-    );
+      <style>{`
+        @keyframes sk{0%,100%{opacity:.4}50%{opacity:.9}}
+        @media (max-width: 980px) {
+          .books-rsvp-layout {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+    </main>
+  );
 }
