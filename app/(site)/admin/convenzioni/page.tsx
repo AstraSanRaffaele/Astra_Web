@@ -15,6 +15,8 @@ type Convenzione = {
   link: string;
   ordine: number;
   attiva: boolean;
+  is_book_convention: boolean | null;
+  book_titles: string[] | null;
   created_at: string;
   updated_at: string;
 };
@@ -28,11 +30,21 @@ type ConvForm = {
   link: string;
   ordine: string;
   attiva: boolean;
+  is_book_convention: boolean;
+  book_titles_text: string;
 };
 
 const EMPTY_FORM: ConvForm = {
-  titolo: "", partner: "", descrizione: "", vantaggio: "",
-  categoria: "", link: "#", ordine: "0", attiva: true,
+  titolo: "",
+  partner: "",
+  descrizione: "",
+  vantaggio: "",
+  categoria: "",
+  link: "#",
+  ordine: "0",
+  attiva: true,
+  is_book_convention: false,
+  book_titles_text: "",
 };
 
 const CATEGORY_OPTIONS = [
@@ -78,7 +90,20 @@ function ConvModal({
 }) {
   const [form, setForm] = useState<ConvForm>(() =>
     mode === "edit" && initial
-      ? { titolo: initial.titolo, partner: initial.partner, descrizione: initial.descrizione, vantaggio: initial.vantaggio, categoria: initial.categoria, link: initial.link, ordine: String(initial.ordine), attiva: initial.attiva }
+      ? {
+        titolo: initial.titolo,
+        partner: initial.partner,
+        descrizione: initial.descrizione,
+        vantaggio: initial.vantaggio,
+        categoria: initial.categoria,
+        link: initial.link,
+        ordine: String(initial.ordine),
+        attiva: initial.attiva,
+        is_book_convention: Boolean(initial.is_book_convention),
+        book_titles_text: Array.isArray(initial.book_titles)
+          ? initial.book_titles.join("\n")
+          : "",
+      }
       : EMPTY_FORM
   );
   const [saving, setSaving] = useState(false);
@@ -200,10 +225,10 @@ function ConvModal({
               >
                 <option value="">Seleziona...</option>
                 {CATEGORY_OPTIONS.map(c => (
-  <option key={c} value={c}>
-    {formatCategoryLabel(c)}
-  </option>
-))}
+                  <option key={c} value={c}>
+                    {formatCategoryLabel(c)}
+                  </option>
+                ))}
               </select>
             </div>
             <MField label="Ordine" type="number" value={form.ordine} onChange={v => set("ordine", v)} placeholder="0" />
@@ -242,6 +267,96 @@ function ConvModal({
           <MField label="Vantaggio" value={form.vantaggio} onChange={v => set("vantaggio", v)} placeholder="es. 30% di sconto sulla tariffa standard" />
           <MField label="Link" value={form.link} onChange={v => set("link", v)} placeholder="https://..." />
 
+          <SectionLabel>Convenzione libri</SectionLabel>
+
+          <div
+            style={{
+              border: `1px solid ${form.is_book_convention
+                  ? "rgba(46,64,128,.24)"
+                  : "rgba(15,47,110,.12)"
+                }`,
+              background: form.is_book_convention
+                ? "rgba(46,64,128,.06)"
+                : "rgba(15,47,110,.025)",
+              borderRadius: "16px",
+              padding: "1rem",
+              display: "flex",
+              flexDirection: "column",
+              gap: ".85rem",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => set("is_book_convention", !form.is_book_convention)}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: form.is_book_convention ? "#0f2f6e" : "#4a5a7a",
+                padding: 0,
+                fontWeight: 800,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                display: "flex",
+                alignItems: "center",
+                gap: ".65rem",
+                textAlign: "left",
+              }}
+            >
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 7,
+                  border: `2px solid ${form.is_book_convention ? "#0f2f6e" : "rgba(15,47,110,.25)"
+                    }`,
+                  background: form.is_book_convention ? "#0f2f6e" : "#fff",
+                  color: "#fff",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: ".82rem",
+                  flexShrink: 0,
+                }}
+              >
+                {form.is_book_convention ? "✓" : ""}
+              </span>
+
+              Questa è una convenzione libri
+            </button>
+
+            {form.is_book_convention && (
+              <div style={{ display: "flex", flexDirection: "column", gap: ".45rem" }}>
+                <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>
+                  Titoli dei libri disponibili
+                </label>
+
+                <textarea
+                  value={form.book_titles_text}
+                  onChange={e => set("book_titles_text", e.target.value)}
+                  placeholder={"Inserisci un libro per riga, es.\nAnatomia Gray\nFisiologia medica\nBiochimica"}
+                  rows={5}
+                  style={{
+                    border: "1px solid rgba(15,47,110,.12)",
+                    background: "white",
+                    color: "#102a56",
+                    borderRadius: "12px",
+                    padding: ".8rem 1rem",
+                    fontSize: ".95rem",
+                    outline: "none",
+                    width: "100%",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                    lineHeight: 1.6,
+                  }}
+                />
+
+                <p style={{ margin: 0, color: "#6b7280", fontSize: ".82rem", lineHeight: 1.5 }}>
+                  Questi titoli verranno mostrati nel popup di adesione. Lo studente potrà
+                  selezionare i libri e scegliere il metodo di pagamento.
+                </p>
+              </div>
+            )}
+          </div>
           {err && (
             <div style={{ background: "rgba(190,39,39,.08)", color: "#8b1d1d", border: "1px solid rgba(190,39,39,.14)", borderRadius: "12px", padding: ".8rem 1rem", fontWeight: 600, fontSize: ".9rem" }}>
               {err}
@@ -363,6 +478,13 @@ export default function AdminConvenzioni() {
       return { ok: false, message: "L'ordine deve essere un numero valido." };
     }
 
+    const bookTitles = form.is_book_convention
+      ? form.book_titles_text
+        .split("\n")
+        .map(title => title.trim())
+        .filter(Boolean)
+      : [];
+
     const payload = {
       titolo,
       partner,
@@ -372,6 +494,8 @@ export default function AdminConvenzioni() {
       link: linkValue || "#",
       ordine: Number(ordineValue || "0"),
       attiva: form.attiva,
+      is_book_convention: form.is_book_convention,
+      book_titles: bookTitles,
     };
 
     try {
@@ -571,8 +695,8 @@ export default function AdminConvenzioni() {
             {/* Search */}
             <div style={{ position: "relative" }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#6b7280" }}>
-                <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
               <input
                 value={search}
@@ -647,6 +771,22 @@ export default function AdminConvenzioni() {
                           <span style={{ fontSize: ".68rem", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", background: catStyle.bg, color: catStyle.text, padding: ".22rem .65rem", borderRadius: "999px" }}>
                             {formatCategoryLabel(c.categoria)}
                           </span>
+                          {c.is_book_convention && (
+                            <span
+                              style={{
+                                fontSize: ".68rem",
+                                fontWeight: 700,
+                                letterSpacing: ".06em",
+                                textTransform: "uppercase",
+                                background: "rgba(46,64,128,.08)",
+                                color: "#2E4080",
+                                padding: ".22rem .65rem",
+                                borderRadius: "999px",
+                              }}
+                            >
+                              Convenzione libri
+                            </span>
+                          )}
                           {!c.attiva && (
                             <span style={{ fontSize: ".62rem", fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: "rgba(15,47,110,.06)", color: "#6b7280", padding: ".2rem .6rem", borderRadius: "999px" }}>
                               Disattiva
