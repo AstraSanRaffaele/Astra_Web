@@ -54,7 +54,7 @@ export default function AdminConvenzioneLibriPage() {
     const [searchTerm, setSearchTerm] = useState("");
 
     const filteredAdhesions = useMemo(() => {
-        const q = searchTerm.trim().toLowerCase();
+        const q = searchTerm.trim().toLowerCase() ;
 
         if (!q) return adhesions;
 
