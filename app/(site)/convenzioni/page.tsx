@@ -26,6 +26,42 @@ function getCategoryStyle(cat: string) {
   return categoryColors[key] ?? categoryColors.default;
 }
 
+type PaymentMethod = "contanti" | "bonifico" | "carta";
+
+type BookConvention = {
+  id: string;
+  titolo?: string | null;
+  partner?: string | null;
+  libri_titoli?: string[] | string | null;
+  book_titles?: string[] | string | null;
+  libri?: string[] | string | null;
+  convenzione_libri?: boolean | null;
+  is_book_convention?: boolean | null;
+};
+
+function isBookConvention(c: any) {
+  return Boolean(c?.convenzione_libri || c?.is_book_convention);
+}
+
+function getBookTitles(c: BookConvention | null) {
+  if (!c) return [];
+
+  const raw = c.libri_titoli ?? c.book_titles ?? c.libri ?? null;
+
+  if (Array.isArray(raw)) {
+    return raw.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof raw === "string") {
+    return raw
+      .split(/\n|,|;/g)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 function SkeletonCard() {
   return (
     <div
@@ -119,6 +155,13 @@ export default function ConvenzioniPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
+  const [selectedBookConvention, setSelectedBookConvention] =
+    useState<BookConvention | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("contanti");
+  const [bookConfirmChecked, setBookConfirmChecked] = useState(false);
+  const [bookSubmitting, setBookSubmitting] = useState(false);
+  const [bookMessage, setBookMessage] = useState("");
+
   useEffect(() => {
     async function load() {
       const {
@@ -163,6 +206,64 @@ export default function ConvenzioniPage() {
     });
   }, [convenzioni, searchTerm, activeCategory]);
 
+  function openBookConventionModal(convention: BookConvention) {
+    setSelectedBookConvention(convention);
+    setPaymentMethod("contanti");
+    setBookConfirmChecked(false);
+    setBookMessage("");
+  }
+
+  async function submitBookConventionAdhesion() {
+    if (!selectedBookConvention) return;
+
+    if (!bookConfirmChecked) {
+      setBookMessage("Devi confermare di voler aderire alla convenzione libri.");
+      return;
+    }
+
+    try {
+      setBookSubmitting(true);
+      setBookMessage("");
+
+      const res = await fetch("/api/book-convention", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          convention_id: selectedBookConvention.id,
+          payment_method: paymentMethod,
+          book_titles: getBookTitles(selectedBookConvention),
+        }),
+      });
+
+      if (res.status === 401) {
+        router.replace("/login?next=/convenzioni");
+        return;
+      }
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setBookMessage(
+          json.error || "Errore durante l'adesione alla convenzione libri."
+        );
+        return;
+      }
+
+      setBookMessage(json.message || "Adesione registrata correttamente.");
+
+      window.setTimeout(() => {
+        setSelectedBookConvention(null);
+        setBookMessage("");
+      }, 900);
+    } catch {
+      setBookMessage("Errore di connessione.");
+    } finally {
+      setBookSubmitting(false);
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -180,6 +281,51 @@ export default function ConvenzioniPage() {
           color: #08102A;
           overflow-x: hidden;
         }
+
+        .book-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(8,16,42,.48);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.book-modal {
+  width: min(100%, 560px);
+  max-height: min(88vh, 720px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(8,16,42,.1);
+  box-shadow: 0 30px 90px rgba(8,16,42,.28);
+  padding: 1.5rem;
+}
+
+.payment-option {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  border: 1px solid rgba(8,16,42,.1);
+  border-radius: 1rem;
+  padding: .85rem 1rem;
+  cursor: pointer;
+  color: #08102A;
+  font-weight: 700;
+}
+
+.payment-option:hover {
+  background: rgba(8,16,42,.035);
+  border-color: rgba(8,16,42,.2);
+}
+
+.payment-option input,
+.book-confirm-check input {
+  accent-color: #08102A;
+}
 
         @keyframes sk {
           0%, 100% { opacity: .5; }
@@ -473,10 +619,10 @@ export default function ConvenzioniPage() {
                     style={
                       isActive
                         ? {
-                            background: catStyle.text,
-                            color: "#fff",
-                            borderColor: catStyle.text,
-                          }
+                          background: catStyle.text,
+                          color: "#fff",
+                          borderColor: catStyle.text,
+                        }
                         : {}
                     }
                   >
@@ -671,40 +817,84 @@ export default function ConvenzioniPage() {
                       </div>
                     )}
 
-                    {c.url && (
-                      <a
-                        href={c.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="card-cta"
-                        style={{
-                          marginTop: ".8rem",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          fontSize: ".84rem",
-                          fontWeight: 600,
-                          color: "#08102A",
-                          textDecoration: "none",
-                          border: "1px solid rgba(8,16,42,.12)",
-                          borderRadius: "999px",
-                          padding: ".5rem 1.1rem",
-                          transition: "background .18s, border-color .18s",
-                          width: "fit-content",
-                        }}
-                      >
-                        Scopri di più
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path
-                            d="M2.5 6H9.5M6.5 3L9.5 6L6.5 9"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </a>
-                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: ".6rem",
+                        marginTop: ".8rem",
+                      }}
+                    >
+                      {isBookConvention(c) && (
+                        <button
+                          type="button"
+                          onClick={() => openBookConventionModal(c)}
+                          className="card-cta"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: ".84rem",
+                            fontWeight: 700,
+                            color: "#fff",
+                            textDecoration: "none",
+                            border: "1px solid #08102A",
+                            background: "#08102A",
+                            borderRadius: "999px",
+                            padding: ".55rem 1.15rem",
+                            transition: "background .18s, border-color .18s",
+                            width: "fit-content",
+                            cursor: "pointer",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          Aderisci
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path
+                              d="M2.5 6H9.5M6.5 3L9.5 6L6.5 9"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      )}
+
+                      {c.url && (
+                        <a
+                          href={c.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="card-cta"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: ".84rem",
+                            fontWeight: 600,
+                            color: "#08102A",
+                            textDecoration: "none",
+                            border: "1px solid rgba(8,16,42,.12)",
+                            borderRadius: "999px",
+                            padding: ".5rem 1.1rem",
+                            transition: "background .18s, border-color .18s",
+                            width: "fit-content",
+                          }}
+                        >
+                          Scopri di più
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path
+                              d="M2.5 6H9.5M6.5 3L9.5 6L6.5 9"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -712,6 +902,265 @@ export default function ConvenzioniPage() {
           )}
         </section>
       </div>
+      {selectedBookConvention && (
+        <div
+          className="book-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="book-modal-title"
+          onClick={() => {
+            if (!bookSubmitting) setSelectedBookConvention(null);
+          }}
+        >
+          <div className="book-modal" onClick={(e) => e.stopPropagation()}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "1rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    fontSize: ".68rem",
+                    fontWeight: 800,
+                    letterSpacing: ".18em",
+                    textTransform: "uppercase",
+                    color: "#2E4080",
+                    marginBottom: ".55rem",
+                  }}
+                >
+                  Convenzione libri
+                </p>
+
+                <h2
+                  id="book-modal-title"
+                  style={{
+                    fontFamily: "'Cormorant Garamond', serif",
+                    fontSize: "clamp(2rem, 5vw, 3rem)",
+                    lineHeight: 1,
+                    color: "#08102A",
+                    margin: 0,
+                  }}
+                >
+                  Conferma adesione
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedBookConvention(null)}
+                disabled={bookSubmitting}
+                aria-label="Chiudi popup"
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: "999px",
+                  border: "1px solid rgba(8,16,42,.1)",
+                  background: "#fff",
+                  color: "#08102A",
+                  cursor: bookSubmitting ? "not-allowed" : "pointer",
+                  fontWeight: 800,
+                  flexShrink: 0,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p
+              style={{
+                color: "#6B7280",
+                lineHeight: 1.7,
+                fontSize: ".95rem",
+                marginBottom: "1.1rem",
+              }}
+            >
+              Stai confermando la tua adesione alla convenzione libri
+              {selectedBookConvention.partner
+                ? ` con ${selectedBookConvention.partner}`
+                : ""}
+              . Una volta inviata, l’adesione sarà registrata nell’elenco e non potrà
+              essere rimossa autonomamente.
+            </p>
+
+            <div
+              style={{
+                border: "1px solid rgba(8,16,42,.08)",
+                borderRadius: "1.15rem",
+                padding: "1rem",
+                background: "rgba(8,16,42,.025)",
+                marginBottom: "1rem",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: ".72rem",
+                  fontWeight: 800,
+                  letterSpacing: ".14em",
+                  textTransform: "uppercase",
+                  color: "#6B7280",
+                  marginBottom: ".75rem",
+                }}
+              >
+                Libri a cui stai aderendo
+              </p>
+
+              {getBookTitles(selectedBookConvention).length > 0 ? (
+                <ul
+                  style={{
+                    display: "grid",
+                    gap: ".45rem",
+                    paddingLeft: "1.1rem",
+                    color: "#08102A",
+                  }}
+                >
+                  {getBookTitles(selectedBookConvention).map((book) => (
+                    <li key={book} style={{ lineHeight: 1.45, fontWeight: 600 }}>
+                      {book}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ color: "#08102A", fontWeight: 600, lineHeight: 1.5 }}>
+                  {selectedBookConvention.titolo || "Convenzione libri"}
+                </p>
+              )}
+            </div>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <p
+                style={{
+                  fontSize: ".72rem",
+                  fontWeight: 800,
+                  letterSpacing: ".14em",
+                  textTransform: "uppercase",
+                  color: "#6B7280",
+                  marginBottom: ".75rem",
+                }}
+              >
+                Metodo di pagamento
+              </p>
+
+              <div style={{ display: "grid", gap: ".65rem" }}>
+                {[
+                  ["contanti", "Contanti"],
+                  ["bonifico", "Bonifico"],
+                  ["carta", "Carta"],
+                ].map(([value, label]) => (
+                  <label key={value} className="payment-option">
+                    <input
+                      type="radio"
+                      name="book-payment-method"
+                      value={value}
+                      checked={paymentMethod === value}
+                      onChange={() => setPaymentMethod(value as PaymentMethod)}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <label
+              className="book-confirm-check"
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: ".7rem",
+                padding: "1rem",
+                borderRadius: "1rem",
+                background: "rgba(46,64,128,.06)",
+                color: "#08102A",
+                fontSize: ".9rem",
+                lineHeight: 1.55,
+                fontWeight: 600,
+                marginBottom: "1rem",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={bookConfirmChecked}
+                onChange={(e) => setBookConfirmChecked(e.target.checked)}
+                style={{ marginTop: ".2rem" }}
+              />
+              Confermo di voler aderire alla convenzione libri e di aver selezionato
+              correttamente il metodo di pagamento.
+            </label>
+
+            {bookMessage && (
+              <div
+                style={{
+                  padding: ".85rem 1rem",
+                  borderRadius: "1rem",
+                  background: bookMessage.toLowerCase().includes("correttamente")
+                    ? "rgba(22,101,52,.08)"
+                    : "rgba(220,38,38,.08)",
+                  color: bookMessage.toLowerCase().includes("correttamente")
+                    ? "#166534"
+                    : "#991b1b",
+                  fontWeight: 700,
+                  fontSize: ".9rem",
+                  marginBottom: "1rem",
+                }}
+              >
+                {bookMessage}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: ".7rem",
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedBookConvention(null)}
+                disabled={bookSubmitting}
+                style={{
+                  border: "1px solid rgba(8,16,42,.12)",
+                  background: "#fff",
+                  color: "#08102A",
+                  borderRadius: "999px",
+                  padding: ".75rem 1.15rem",
+                  cursor: bookSubmitting ? "not-allowed" : "pointer",
+                  fontWeight: 800,
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Annulla
+              </button>
+
+              <button
+                type="button"
+                onClick={submitBookConventionAdhesion}
+                disabled={bookSubmitting || !bookConfirmChecked}
+                style={{
+                  border: "1px solid #08102A",
+                  background: "#08102A",
+                  color: "#fff",
+                  borderRadius: "999px",
+                  padding: ".75rem 1.2rem",
+                  cursor:
+                    bookSubmitting || !bookConfirmChecked ? "not-allowed" : "pointer",
+                  opacity: bookSubmitting || !bookConfirmChecked ? 0.55 : 1,
+                  fontWeight: 800,
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                {bookSubmitting ? "Invio..." : "Conferma adesione"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
