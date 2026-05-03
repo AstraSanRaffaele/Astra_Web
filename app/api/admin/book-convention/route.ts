@@ -1,5 +1,3 @@
-
-
 // app/api/admin/book-convention/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";

@@ -1,13 +1,62 @@
-// app/api/admin/book-convention/route.ts
+
+
+// app/api/book-convention/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-async function getCallerRole(): Promise<string | null> {
+type PaymentMethod = "contanti" | "bonifico" | "carta";
+
+type BookItem = {
+  title: string;
+  price: number | null;
+};
+
+const PAYMENT_METHODS: PaymentMethod[] = ["contanti", "bonifico", "carta"];
+
+function isPaymentMethod(value: unknown): value is PaymentMethod {
+  return typeof value === "string" && PAYMENT_METHODS.includes(value as PaymentMethod);
+}
+
+function cleanBookTitles(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => String(item).trim())
+    .filter(Boolean);
+}
+
+function cleanBookItems(value: unknown): BookItem[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+
+      const record = item as Record<string, unknown>;
+      const title = String(record.title ?? "").trim();
+      const rawPrice = record.price;
+
+      let price: number | null = null;
+
+      if (typeof rawPrice === "number" && Number.isFinite(rawPrice)) {
+        price = rawPrice;
+      } else if (typeof rawPrice === "string" && rawPrice.trim()) {
+        const parsed = Number(rawPrice.trim().replace(",", "."));
+        price = Number.isFinite(parsed) ? parsed : null;
+      }
+
+      if (!title) return null;
+
+      return { title, price };
+    })
+    .filter((item): item is BookItem => Boolean(item));
+}
+
+async function getSupabase() {
   const cookieStore = await cookies();
 
-  const supabase = createServerClient(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -16,115 +65,85 @@ async function getCallerRole(): Promise<string | null> {
       },
     }
   );
+}
+
+// GET /api/book-convention
+// Controlla se l'utente loggato ha già aderito a una convenzione libri.
+export async function GET(req: NextRequest) {
+  const supabase = await getSupabase();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return null;
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (error) return null;
-
-  return data?.role ?? null;
-}
-
-function getAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("Variabili Supabase admin mancanti.");
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-export async function GET() {
-  const role = await getCallerRole();
-
-  if (role !== "admin") {
+  if (!user) {
     return NextResponse.json(
-      { error: "Non autorizzato." },
-      { status: 403 }
+      { error: "Non autenticato." },
+      { status: 401 }
     );
   }
 
-  try {
-    const supabase = getAdminClient();
+  const { searchParams } = new URL(req.url);
+  const conventionIdParam = searchParams.get("convention_id");
+  const conventionId = conventionIdParam ? Number(conventionIdParam) : null;
 
-    const { data, error } = await supabase
-      .from("book_convention_adhesions")
-      .select(`
-        id,
-        user_id,
-        convention_id,
-        payment_method,
-        book_titles,
-        book_items,
-        created_at,
-        profiles (
-          id,
-          nome,
-          cognome,
-          email,
-          corso,
-          anno
-        ),
-        convenzioni (
-          id,
-          titolo,
-          partner,
-          categoria
-        )
-      `)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      ok: true,
-      adhesions: data ?? [],
-    });
-  } catch (error) {
+  if (conventionIdParam && (!conventionId || Number.isNaN(conventionId))) {
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Errore durante il caricamento delle adesioni.",
-      },
+      { error: "Convenzione non valida." },
+      { status: 400 }
+    );
+  }
+
+  let query = supabase
+    .from("book_convention_adhesions")
+    .select("id, convention_id, payment_method, book_titles, book_items, created_at")
+    .eq("user_id", user.id);
+
+  if (conventionId) {
+    query = query.eq("convention_id", conventionId);
+  }
+
+  const { data, error } = conventionId
+    ? await query.maybeSingle()
+    : await query.order("created_at", { ascending: false });
+
+  if (error) {
+    return NextResponse.json(
+      { error: error.message },
       { status: 500 }
     );
   }
+
+  return NextResponse.json({
+    ok: true,
+    hasAdhered: conventionId ? Boolean(data) : Array.isArray(data) && data.length > 0,
+    adhesion: conventionId ? data ?? null : null,
+    adhesions: conventionId ? [] : data ?? [],
+  });
 }
 
-export async function DELETE(req: NextRequest) {
-  const role = await getCallerRole();
+// POST /api/book-convention
+// Crea una nuova adesione alla convenzione libri per l'utente loggato.
+export async function POST(req: NextRequest) {
+  const supabase = await getSupabase();
 
-  if (role !== "admin") {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
     return NextResponse.json(
-      { error: "Non autorizzato." },
-      { status: 403 }
+      { error: "Non autenticato." },
+      { status: 401 }
     );
   }
 
-  let body: { adhesion_id?: string } = {};
+  let body: {
+    convention_id?: number | string | null;
+    payment_method?: unknown;
+    book_titles?: unknown;
+    book_items?: unknown;
+  } = {};
 
   try {
     body = await req.json();
@@ -132,41 +151,111 @@ export async function DELETE(req: NextRequest) {
     body = {};
   }
 
-  if (!body.adhesion_id) {
+  const conventionId = body.convention_id ? Number(body.convention_id) : null;
+  const paymentMethod = body.payment_method;
+  const bookItems = cleanBookItems(body.book_items);
+  const bookTitles = bookItems.length > 0
+    ? bookItems.map((book) => book.title)
+    : cleanBookTitles(body.book_titles);
+
+  if (!conventionId || Number.isNaN(conventionId)) {
     return NextResponse.json(
-      { error: "Adesione non valida." },
+      { error: "Convenzione non valida." },
       { status: 400 }
     );
   }
 
-  try {
-    const supabase = getAdminClient();
-
-    const { error } = await supabase
-      .from("book_convention_adhesions")
-      .delete()
-      .eq("id", body.adhesion_id);
-
-    if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      ok: true,
-      message: "Adesione eliminata correttamente.",
-    });
-  } catch (error) {
+  if (!isPaymentMethod(paymentMethod)) {
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Errore durante l'eliminazione.",
-      },
+      { error: "Metodo di pagamento non valido." },
+      { status: 400 }
+    );
+  }
+
+  if (bookTitles.length === 0) {
+    return NextResponse.json(
+      { error: "Seleziona almeno un libro." },
+      { status: 400 }
+    );
+  }
+
+  const { data: convention, error: conventionError } = await supabase
+    .from("convenzioni")
+    .select("id, is_book_convention")
+    .eq("id", conventionId)
+    .maybeSingle();
+
+  if (conventionError) {
+    return NextResponse.json(
+      { error: conventionError.message },
       { status: 500 }
     );
   }
+
+  if (!convention) {
+    return NextResponse.json(
+      { error: "Convenzione non trovata." },
+      { status: 404 }
+    );
+  }
+
+  if (!convention.is_book_convention) {
+    return NextResponse.json(
+      { error: "Questa convenzione non è una convenzione libri." },
+      { status: 400 }
+    );
+  }
+
+  const { data: existingAdhesion, error: existingError } = await supabase
+    .from("book_convention_adhesions")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("convention_id", conventionId)
+    .maybeSingle();
+
+  if (existingError) {
+    return NextResponse.json(
+      { error: existingError.message },
+      { status: 500 }
+    );
+  }
+
+  if (existingAdhesion) {
+    return NextResponse.json({
+      ok: true,
+      hasAdhered: true,
+      message: "Hai già aderito a questa convenzione libri.",
+    });
+  }
+
+  const { error } = await supabase
+    .from("book_convention_adhesions")
+    .insert({
+      user_id: user.id,
+      convention_id: conventionId,
+      payment_method: paymentMethod,
+      book_titles: bookTitles,
+      book_items: bookItems,
+    });
+
+  if (error) {
+    if (error.code === "23505") {
+      return NextResponse.json({
+        ok: true,
+        hasAdhered: true,
+        message: "Hai già aderito a questa convenzione libri.",
+      });
+    }
+
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    hasAdhered: true,
+    message: "Adesione registrata correttamente.",
+  });
 }
