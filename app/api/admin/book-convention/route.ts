@@ -194,7 +194,6 @@ export async function GET(req: NextRequest) {
       .select(`
         id,
         convention_id,
-        label,
         starts_at,
         ends_at,
         created_at,
@@ -246,7 +245,6 @@ export async function GET(req: NextRequest) {
         ),
         book_convention_rounds (
           id,
-          label,
           starts_at,
           ends_at,
           created_at

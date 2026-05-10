@@ -47,7 +47,6 @@ type BookItem = {
 type BookConventionRound = {
   id: string;
   convention_id: number;
-  label?: string | null;
   starts_at: string;
   ends_at: string;
 };
@@ -167,7 +166,7 @@ function formatRoundLabel(round: BookConventionRound | null | undefined) {
     year: "numeric",
   });
 
-  return round.label ? `${round.label} • ${start} - ${end}` : `${start} - ${end}`;
+  return `${start} - ${end}`;
 }
 
 function groupBooksByYear(books: BookItem[]) {

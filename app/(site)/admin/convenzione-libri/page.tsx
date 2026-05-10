@@ -32,7 +32,6 @@ type Convenzione = {
 type BookConventionRound = {
   id: string;
   convention_id: number;
-  label?: string | null;
   starts_at: string;
   ends_at: string;
   created_at?: string;
@@ -144,11 +143,6 @@ function getConventionTitle(convention: Convenzione | null | undefined) {
 
 function formatRoundLabel(round: BookConventionRound | null | undefined) {
   if (!round) return "Senza periodo";
-
-  if (round.label) {
-    return `${round.label} • ${formatDateOnly(round.starts_at)} - ${formatDateOnly(round.ends_at)}`;
-  }
-
   return `${formatDateOnly(round.starts_at)} - ${formatDateOnly(round.ends_at)}`;
 }
 

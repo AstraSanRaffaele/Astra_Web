@@ -26,7 +26,6 @@ type BookConventionBook = {
 type BookConventionRound = {
   id: string;
   convention_id: number;
-  label: string | null;
   starts_at: string;
   ends_at: string;
 };
@@ -95,7 +94,7 @@ async function getActiveRound(supabase: Awaited<ReturnType<typeof getSupabase>>,
 
   const { data, error } = await supabase
     .from("book_convention_rounds")
-    .select("id, convention_id, label, starts_at, ends_at")
+    .select("id, convention_id, starts_at, ends_at")
     .eq("convention_id", conventionId)
     .lte("starts_at", now)
     .gte("ends_at", now)
@@ -161,7 +160,7 @@ export async function GET(req: NextRequest) {
       getActiveRound(supabase, conventionId),
       supabase
         .from("book_convention_rounds")
-        .select("id, convention_id, label, starts_at, ends_at")
+        .select("id, convention_id, starts_at, ends_at")
         .eq("convention_id", conventionId)
         .order("starts_at", { ascending: true }),
       supabase
