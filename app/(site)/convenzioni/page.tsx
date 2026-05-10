@@ -528,6 +528,7 @@ export default function ConvenzioniPage() {
 }
 
 .book-modal-shell {
+  position: relative;
   background: #fff;
   border: 1px solid rgba(8,16,42,.08);
   border-radius: 2rem;
@@ -542,7 +543,7 @@ export default function ConvenzioniPage() {
   background: rgba(255,255,255,.94);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(8,16,42,.08);
-  padding: 1.25rem 1.5rem;
+  padding: 1.25rem 4.25rem 1.25rem 1.5rem;
 }
 
 .book-modal-content {
@@ -567,10 +568,10 @@ export default function ConvenzioniPage() {
 }
 
 .book-modal-close {
-  position: fixed;
-  top: 5.4rem;
-  right: max(1rem, calc((100vw - 1180px) / 2 + 1rem));
-  z-index: 90;
+  position: absolute;
+  top: 1.15rem;
+  right: 1.15rem;
+  z-index: 5;
 }
 
 .payment-option {
@@ -737,8 +738,8 @@ export default function ConvenzioniPage() {
           }
 
           .book-modal-close {
-            top: 4.55rem !important;
-            right: .85rem !important;
+            top: .9rem !important;
+            right: .9rem !important;
           }
         }
       `}</style>
@@ -1298,13 +1299,13 @@ export default function ConvenzioniPage() {
               </div>
             </div>
             <div className="book-modal-content">
-              <div style={{ display: "grid", gap: "1rem", minWidth: 0 }}>
+              <div style={{ display: "grid", gap: ".65rem", minWidth: 0 }}>
             <p
               style={{
                 color: "#6B7280",
-                lineHeight: 1.7,
+                lineHeight: 1.65,
                 fontSize: ".98rem",
-                margin: 0,
+                margin: "0 0 .15rem",
               }}
             >
               Seleziona uno o più libri/promozioni e completa i dati necessari per spedizione, fatturazione e pagamento.
