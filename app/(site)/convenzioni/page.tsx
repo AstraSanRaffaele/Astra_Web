@@ -551,6 +551,7 @@ export default function ConvenzioniPage() {
   grid-template-columns: minmax(0, 1.15fr) minmax(340px, .85fr);
   gap: 1.25rem;
   padding: 1.5rem;
+  align-items: start;
 }
 
 .book-modal-panel {
@@ -1299,7 +1300,7 @@ export default function ConvenzioniPage() {
               </div>
             </div>
             <div className="book-modal-content">
-              <div style={{ display: "grid", gap: ".65rem", minWidth: 0 }}>
+              <div style={{ display: "grid", gap: ".65rem", minWidth: 0, alignContent: "start", alignSelf: "start" }}>
             <p
               style={{
                 color: "#6B7280",
@@ -1312,7 +1313,7 @@ export default function ConvenzioniPage() {
               Una volta inviata, l’adesione sarà registrata nell’elenco e non potrà essere rimossa autonomamente.
             </p>
 
-            <div className="book-modal-panel">
+            <div className="book-modal-panel" style={{ alignSelf: "start" }}>
               <p className="book-modal-section-title">
                 Libri e promozioni disponibili
               </p>
