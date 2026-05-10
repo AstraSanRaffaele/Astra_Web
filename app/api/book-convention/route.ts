@@ -218,12 +218,6 @@ function buildBookConventionReceiptHtml(params: {
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Metodo di pagamento</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(PAYMENT_METHOD_LABELS[paymentMethod])}</td>
               </tr>
-              <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Periodo</strong></td>
-                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">
-                  ${escapeHtml(new Date(activeRound.starts_at).toLocaleDateString("it-IT"))} - ${escapeHtml(new Date(activeRound.ends_at).toLocaleDateString("it-IT"))}
-                </td>
-              </tr>
             </tbody>
           </table>
 
