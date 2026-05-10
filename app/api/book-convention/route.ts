@@ -174,8 +174,8 @@ function buildBookConventionReceiptHtml(params: {
         <div style="margin-top: 24px; padding: 16px; border-radius: 12px; background: #eef4ff; border: 1px solid #c7d7fe;">
           <h3 style="margin: 0 0 8px; color: #0f2f6e; font-size: 16px;">Coordinate per il bonifico</h3>
           <p style="margin: 0; color: #1f2937;">
-            IBAN: <strong>INSERIRE_IBAN_QUI</strong><br />
-            Intestatario: <strong>INSERIRE_INTESTATARIO_QUI</strong><br />
+            IBAN: <strong>Intesa San Paolo SPA – IBAN IT72D0306951150100000009695</strong><br />
+            Intestatario: <strong>CP GROUP SRLS</strong><br />
             Causale: <strong>Adesione convenzione libri - ${escapeHtml(profile.firstName)} ${escapeHtml(profile.lastName)}</strong>
           </p>
         </div>
