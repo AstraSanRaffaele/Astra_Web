@@ -414,8 +414,13 @@ export default function ConvenzioniPage() {
       return;
     }
 
-    if (!selectedRoundId) {
-      setBookMessage("Seleziona un periodo disponibile.");
+    const effectiveRoundId =
+      bookConventionDetails?.activeRound?.id ??
+      selectedBookConvention.activeRound?.id ??
+      "";
+
+    if (!effectiveRoundId) {
+      setBookMessage("Nessun periodo attivo disponibile per questa convenzione.");
       return;
     }
 
@@ -445,7 +450,7 @@ export default function ConvenzioniPage() {
         },
         body: JSON.stringify({
           convention_id: selectedBookConvention.id,
-          round_id: selectedRoundId,
+          round_id: effectiveRoundId,
           selected_book_ids: selectedBookIds,
           payment_method: paymentMethod,
           fiscal_code_or_vat: fiscalCodeOrVat,
@@ -1202,7 +1207,7 @@ export default function ConvenzioniPage() {
                 marginBottom: "1.1rem",
               }}
             >
-              Seleziona uno o più libri/promozioni, scegli il periodo disponibile e completa i dati necessari per spedizione, fatturazione e pagamento.
+              Seleziona uno o più libri/promozioni e completa i dati necessari per spedizione, fatturazione e pagamento.
               Una volta inviata, l’adesione sarà registrata nell’elenco e non potrà essere rimossa autonomamente.
             </p>
 
@@ -1338,7 +1343,14 @@ export default function ConvenzioniPage() {
             </div>
 
             <div style={{ marginBottom: "1rem", display: "grid", gap: ".9rem" }}>
-              <div>
+              <div
+                style={{
+                  border: "1px solid rgba(8,16,42,.08)",
+                  borderRadius: "1rem",
+                  padding: ".85rem 1rem",
+                  background: "rgba(46,64,128,.045)",
+                }}
+              >
                 <p
                   style={{
                     fontSize: ".72rem",
@@ -1346,33 +1358,14 @@ export default function ConvenzioniPage() {
                     letterSpacing: ".14em",
                     textTransform: "uppercase",
                     color: "#6B7280",
-                    marginBottom: ".55rem",
+                    marginBottom: ".35rem",
                   }}
                 >
-                  Periodo disponibile
+                  Periodo applicato automaticamente
                 </p>
-                <select
-                  value={selectedRoundId}
-                  onChange={(e) => setSelectedRoundId(e.target.value)}
-                  disabled={bookSubmitting}
-                  style={{
-                    width: "100%",
-                    border: "1px solid rgba(8,16,42,.1)",
-                    borderRadius: "1rem",
-                    padding: ".85rem 1rem",
-                    color: "#08102A",
-                    fontWeight: 700,
-                    background: "#fff",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  <option value="">Seleziona periodo</option>
-                  {(bookConventionDetails?.rounds ?? (selectedBookConvention.activeRound ? [selectedBookConvention.activeRound] : [])).map((round) => (
-                    <option key={round.id} value={round.id}>
-                      {formatRoundLabel(round)}
-                    </option>
-                  ))}
-                </select>
+                <p style={{ margin: 0, color: "#08102A", fontWeight: 800, lineHeight: 1.45 }}>
+                  {formatRoundLabel(bookConventionDetails?.activeRound ?? selectedBookConvention.activeRound)}
+                </p>
               </div>
 
               <div>
@@ -1493,7 +1486,7 @@ export default function ConvenzioniPage() {
                 onChange={(e) => setBookConfirmChecked(e.target.checked)}
                 style={{ marginTop: ".2rem" }}
               />
-              Confermo di voler aderire alla convenzione libri, di aver selezionato correttamente libri/promozioni, periodo, dati di fatturazione/spedizione e metodo di pagamento.
+              Confermo di voler aderire alla convenzione libri, di aver selezionato correttamente libri/promozioni, dati di fatturazione/spedizione e metodo di pagamento.
             </label>
 
             {bookMessage && (

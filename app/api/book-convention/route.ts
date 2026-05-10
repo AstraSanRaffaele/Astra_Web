@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
 
   let conventionQuery = supabase
     .from("convenzioni")
-    .select("id, title, nome, descrizione, description, is_book_convention")
+    .select("id, titolo, partner, descrizione, is_book_convention")
     .eq("is_book_convention", true);
 
   if (requestedConventionId) {

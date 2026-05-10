@@ -173,7 +173,7 @@ export async function GET(req: NextRequest) {
 
     let conventionsQuery = supabase
       .from("convenzioni")
-      .select("id, titolo, title, nome, partner, categoria, descrizione, description, is_book_convention")
+      .select("id, titolo, partner, categoria, descrizione, is_book_convention")
       .eq("is_book_convention", true)
       .order("id", { ascending: true });
 
