@@ -22,6 +22,18 @@ type Convenzione = {
   updated_at: string;
 };
 
+type BookYear = "primo_anno" | "secondo_anno" | "terzo_anno";
+
+type BookConventionBook = {
+  id?: number | null;
+  convention_id?: number | null;
+  title: string;
+  price: number | null;
+  reference_year: BookYear;
+  description: string | null;
+  sort_order: number;
+};
+
 type BookConventionRound = {
   id: string;
   convention_id: number;
@@ -40,7 +52,7 @@ type ConvForm = {
   ordine: string;
   attiva: boolean;
   is_book_convention: boolean;
-  book_items_text: string;
+  books: BookConventionBook[];
 };
 
 const EMPTY_FORM: ConvForm = {
@@ -53,7 +65,7 @@ const EMPTY_FORM: ConvForm = {
   ordine: "0",
   attiva: true,
   is_book_convention: false,
-  book_items_text: "",
+  books: [],
 };
 
 const CATEGORY_OPTIONS = [
@@ -64,6 +76,23 @@ const CATEGORY_OPTIONS = [
   "Bar_e_Ristoranti",
   "Altro",
 ];
+
+const BOOK_YEAR_OPTIONS: Array<{ value: BookYear; label: string }> = [
+  { value: "primo_anno", label: "Primo anno" },
+  { value: "secondo_anno", label: "Secondo anno" },
+  { value: "terzo_anno", label: "Terzo anno" },
+];
+
+function createEmptyBook(sortOrder = 0): BookConventionBook {
+  return {
+    id: null,
+    title: "",
+    price: 0,
+    reference_year: "primo_anno",
+    description: "",
+    sort_order: sortOrder,
+  };
+}
 
 const categoryColors: Record<string, { bg: string; text: string }> = {
   trasporti: { bg: "rgba(16,107,60,.08)", text: "#0a6638" },
@@ -103,10 +132,11 @@ function isRoundActive(round: BookConventionRound) {
 
 // ── Modal ─────────────────────────────────────────────────────────
 function ConvModal({
-  mode, initial, onClose, onSave,
+  mode, initial, initialBooks = [], onClose, onSave,
 }: {
   mode: "create" | "edit";
   initial?: Convenzione;
+  initialBooks?: BookConventionBook[];
   onClose: () => void;
   onSave: (f: ConvForm) => Promise<{ ok: boolean; message?: string }>;
 }) {
@@ -122,24 +152,57 @@ function ConvModal({
         ordine: String(initial.ordine),
         attiva: initial.attiva,
         is_book_convention: Boolean(initial.is_book_convention),
-        book_items_text:
-          Array.isArray(initial.book_items) && initial.book_items.length > 0
-            ? initial.book_items
-              .map(item =>
-                `${item.title}${item.price !== null && item.price !== undefined ? ` | ${item.price}` : ""}`
-              )
-              .join("\n")
-            : Array.isArray(initial.book_titles)
-              ? initial.book_titles.join("\n")
-              : "",
+        books:
+          initialBooks.length > 0
+            ? initialBooks.map((book, index) => ({
+              id: book.id ?? null,
+              convention_id: book.convention_id ?? initial.id,
+              title: book.title ?? "",
+              price: typeof book.price === "number" && Number.isFinite(book.price) ? book.price : 0,
+              reference_year: book.reference_year ?? "primo_anno",
+              description: book.description ?? "",
+              sort_order: book.sort_order ?? index,
+            }))
+            : Array.isArray(initial.book_items) && initial.book_items.length > 0
+              ? initial.book_items.map((item, index) => ({
+                id: null,
+                convention_id: initial.id,
+                title: item.title,
+                price: typeof item.price === "number" && Number.isFinite(item.price) ? item.price : 0,
+                reference_year: "primo_anno" as BookYear,
+                description: "",
+                sort_order: index,
+              }))
+              : [],
       }
-      : EMPTY_FORM
+      : { ...EMPTY_FORM, books: [] }
   );
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const set = (k: keyof ConvForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
+
+  const updateBook = (index: number, patch: Partial<BookConventionBook>) => {
+    setForm(current => ({
+      ...current,
+      books: current.books.map((book, i) => i === index ? { ...book, ...patch } : book),
+    }));
+  };
+
+  const addBook = () => {
+    setForm(current => ({
+      ...current,
+      books: [...current.books, createEmptyBook(current.books.length)],
+    }));
+  };
+
+  const removeBook = (index: number) => {
+    setForm(current => ({
+      ...current,
+      books: current.books.filter((_, i) => i !== index).map((book, i) => ({ ...book, sort_order: i })),
+    }));
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -182,6 +245,25 @@ function ConvModal({
     if (ordine && Number.isNaN(Number(ordine))) {
       setErr("L'ordine deve essere un numero valido.");
       return;
+    }
+
+    if (form.is_book_convention) {
+      if (form.books.length === 0) {
+        setErr("Aggiungi almeno un libro o una promozione.");
+        return;
+      }
+
+      const invalidBook = form.books.find(book => !book.title.trim());
+      if (invalidBook) {
+        setErr("Ogni libro/promozione deve avere un titolo.");
+        return;
+      }
+
+      const invalidPrice = form.books.find(book => book.price === null || !Number.isFinite(Number(book.price)) || Number(book.price) < 0);
+      if (invalidPrice) {
+        setErr("Ogni libro/promozione deve avere un prezzo valido.");
+        return;
+      }
     }
 
     setSaving(true);
@@ -354,34 +436,76 @@ function ConvModal({
             </button>
 
             {form.is_book_convention && (
-              <div style={{ display: "flex", flexDirection: "column", gap: ".45rem" }}>
-                <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>
-                  Libri disponibili e prezzo
-                </label>
+              <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap" }}>
+                  <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>
+                    Libri/promozioni collegati
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addBook}
+                    style={{ border: "1px solid rgba(15,47,110,.14)", background: "white", color: "#0f2f6e", borderRadius: "999px", padding: ".5rem .85rem", fontWeight: 800, cursor: "pointer", fontSize: ".78rem" }}
+                  >
+                    + Aggiungi libro
+                  </button>
+                </div>
 
-                <textarea
-                  value={form.book_items_text}
-                  onChange={e => set("book_items_text", e.target.value)}
-                  placeholder={"Inserisci un libro per riga nel formato Titolo | Prezzo, es.\nAnatomia Gray | 45\nFisiologia medica | 38.50\nBiochimica | 42"}
-                  rows={5}
-                  style={{
-                    border: "1px solid rgba(15,47,110,.12)",
-                    background: "white",
-                    color: "#102a56",
-                    borderRadius: "12px",
-                    padding: ".8rem 1rem",
-                    fontSize: ".95rem",
-                    outline: "none",
-                    width: "100%",
-                    resize: "vertical",
-                    fontFamily: "inherit",
-                    lineHeight: 1.6,
-                  }}
-                />
+                {form.books.length === 0 ? (
+                  <div style={{ border: "1px dashed rgba(15,47,110,.2)", borderRadius: "14px", padding: "1rem", color: "#6b7280", fontSize: ".86rem", lineHeight: 1.5 }}>
+                    Nessun libro aggiunto. Aggiungi libri singoli o bundle/promozioni, ad esempio “Libro A + Libro B”.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
+                    {form.books.map((book, index) => (
+                      <div key={book.id ?? `new-${index}`} style={{ border: "1px solid rgba(15,47,110,.1)", background: "white", borderRadius: "16px", padding: "1rem", display: "grid", gap: ".85rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".75rem" }}>
+                          <strong style={{ color: "#0f2f6e", fontSize: ".85rem" }}>Libro/promozione #{index + 1}</strong>
+                          <button
+                            type="button"
+                            onClick={() => removeBook(index)}
+                            style={{ border: "1px solid rgba(190,39,39,.14)", background: "white", color: "#8b1d1d", borderRadius: "999px", padding: ".35rem .7rem", fontWeight: 800, cursor: "pointer", fontSize: ".72rem" }}
+                          >
+                            Rimuovi
+                          </button>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1.4fr .8fr .9fr", gap: ".75rem" }}>
+                          <MField label="Titolo *" value={book.title} onChange={v => updateBook(index, { title: v })} placeholder="es. Anatomia Gray" />
+                          <MField label="Prezzo *" type="number" value={String(book.price ?? "")} onChange={v => updateBook(index, { price: v === "" ? null : Number(v) })} placeholder="45" />
+                          <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
+                            <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Anno *</label>
+                            <select
+                              value={book.reference_year}
+                              onChange={e => updateBook(index, { reference_year: e.target.value as BookYear })}
+                              style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: "#102a56", borderRadius: "12px", padding: ".8rem 1rem", fontSize: ".95rem", outline: "none" }}
+                            >
+                              {BOOK_YEAR_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: ".75rem" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
+                            <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Descrizione/promozione</label>
+                            <textarea
+                              value={book.description ?? ""}
+                              onChange={e => updateBook(index, { description: e.target.value })}
+                              placeholder="es. Bundle Libro A + Libro B, promo valida fino a esaurimento scorte..."
+                              rows={2}
+                              style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: "#102a56", borderRadius: "12px", padding: ".8rem 1rem", fontSize: ".95rem", outline: "none", width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }}
+                            />
+                          </div>
+                          <MField label="Ordine" type="number" value={String(book.sort_order ?? index)} onChange={v => updateBook(index, { sort_order: Number(v || index) })} placeholder="0" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <p style={{ margin: 0, color: "#6b7280", fontSize: ".82rem", lineHeight: 1.5 }}>
-                  Questi titoli verranno mostrati nel popup di adesione. Lo studente potrà
-                  selezionare i libri e scegliere il metodo di pagamento.
+                  Ogni elemento può essere un libro singolo oppure un bundle/promozione. Gli studenti vedranno la lista divisa per anno.
                 </p>
               </div>
             )}
@@ -439,6 +563,7 @@ export default function AdminConvenzioni() {
   const [search, setSearch] = useState("");
   const [isFetching, setIsFetching] = useState(false);
   const [rounds, setRounds] = useState<BookConventionRound[]>([]);
+  const [bookConventionBooks, setBookConventionBooks] = useState<Record<number, BookConventionBook[]>>({});
   const [roundForms, setRoundForms] = useState<Record<number, { starts_at: string; ends_at: string }>>({});
   const [savingRoundId, setSavingRoundId] = useState<number | null>(null);
   const [deletingRoundId, setDeletingRoundId] = useState<string | null>(null);
@@ -473,6 +598,36 @@ export default function AdminConvenzioni() {
       }
 
       setConvenzioni((data ?? []) as Convenzione[]);
+
+      const bookConventionIds = (data ?? [])
+        .filter(item => Boolean(item.is_book_convention))
+        .map(item => Number(item.id));
+
+      if (bookConventionIds.length > 0) {
+        const { data: booksData, error: booksErr } = await supabase
+          .from("book_convention_books")
+          .select("id, convention_id, title, price, reference_year, description, sort_order")
+          .in("convention_id", bookConventionIds)
+          .order("reference_year", { ascending: true })
+          .order("sort_order", { ascending: true })
+          .order("title", { ascending: true });
+
+        if (booksErr) {
+          setError(`Caricamento libri non riuscito: ${booksErr.message}`);
+          return;
+        }
+
+        const groupedBooks = ((booksData ?? []) as BookConventionBook[]).reduce<Record<number, BookConventionBook[]>>((acc, book) => {
+          const conventionId = Number(book.convention_id);
+          if (!acc[conventionId]) acc[conventionId] = [];
+          acc[conventionId].push(book);
+          return acc;
+        }, {});
+
+        setBookConventionBooks(groupedBooks);
+      } else {
+        setBookConventionBooks({});
+      }
 
       const { data: roundData, error: roundErr } = await supabase
         .from("book_convention_rounds")
@@ -523,28 +678,6 @@ export default function AdminConvenzioni() {
       return { ok: false, message: "L'ordine deve essere un numero valido." };
     }
 
-    const bookItems = form.is_book_convention
-      ? form.book_items_text
-        .split("\n")
-        .map(row => row.trim())
-        .filter(Boolean)
-        .map(row => {
-          const [rawTitle, rawPrice] = row.split("|");
-
-          const title = rawTitle.trim();
-          const normalizedPrice = rawPrice?.trim().replace(",", ".");
-          const priceNumber = normalizedPrice ? Number(normalizedPrice) : null;
-
-          return {
-            title,
-            price: Number.isFinite(priceNumber) ? priceNumber : null,
-          };
-        })
-        .filter(item => item.title.length > 0)
-      : [];
-
-    const bookTitles = bookItems.map(item => item.title);
-
     const payload = {
       titolo,
       partner,
@@ -555,11 +688,67 @@ export default function AdminConvenzioni() {
       ordine: Number(ordineValue || "0"),
       attiva: form.attiva,
       is_book_convention: form.is_book_convention,
-      book_titles: bookTitles,
-      book_items: bookItems,
+      book_titles: form.is_book_convention ? form.books.map(item => item.title.trim()).filter(Boolean) : [],
+      book_items: form.is_book_convention
+        ? form.books.map(item => ({ title: item.title.trim(), price: Number(item.price ?? 0) }))
+        : [],
     };
 
     try {
+      if (form.is_book_convention) {
+        const res = await fetch("/api/admin/book-convention", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            convention_id: editingId,
+            title: titolo,
+            partner,
+            description: form.descrizione.trim(),
+            books: form.books.map((book, index) => ({
+              id: book.id ?? null,
+              title: book.title.trim(),
+              price: Number(book.price ?? 0),
+              reference_year: book.reference_year,
+              description: book.description?.trim() || null,
+              sort_order: Number(book.sort_order ?? index),
+            })),
+          }),
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          const message = json.error || "Salvataggio convenzione libri non riuscito.";
+          setError(message);
+          return { ok: false, message };
+        }
+
+        const savedId = Number(json.convention_id || editingId);
+        const { error: extraErr } = await supabase
+          .from("convenzioni")
+          .update({
+            vantaggio: form.vantaggio.trim(),
+            categoria,
+            link: linkValue || "#",
+            ordine: Number(ordineValue || "0"),
+            attiva: form.attiva,
+            book_titles: form.books.map(item => item.title.trim()).filter(Boolean),
+            book_items: form.books.map(item => ({ title: item.title.trim(), price: Number(item.price ?? 0) })),
+          })
+          .eq("id", savedId);
+
+        if (extraErr) {
+          const message = `Salvataggio dettagli convenzione non riuscito: ${extraErr.message}`;
+          setError(message);
+          return { ok: false, message };
+        }
+
+        await fetchConvenzioni();
+        setSuccess(editingId !== undefined ? "Convenzione libri aggiornata." : "Convenzione libri creata.");
+        setModal(null);
+        return { ok: true };
+      }
+
       if (editingId !== undefined) {
         const { error: err } = await supabase
           .from("convenzioni")
@@ -776,6 +965,7 @@ export default function AdminConvenzioni() {
         <ConvModal
           mode={modal.mode}
           initial={modal.conv}
+          initialBooks={modal.conv ? bookConventionBooks[modal.conv.id] ?? [] : []}
           onClose={() => setModal(null)}
           onSave={f => handleSave(f, modal.conv?.id)}
         />
@@ -973,7 +1163,7 @@ export default function AdminConvenzioni() {
                             {c.vantaggio}
                           </p>
                         )}
-                        {c.is_book_convention && Array.isArray(c.book_items) && c.book_items.length > 0 && (
+                        {c.is_book_convention && (bookConventionBooks[c.id]?.length ?? 0) > 0 && (
                           <p
                             style={{
                               margin: ".25rem 0 0",
@@ -985,7 +1175,7 @@ export default function AdminConvenzioni() {
                               maxWidth: "100%",
                             }}
                           >
-                            Libri: {c.book_items
+                            Libri: {bookConventionBooks[c.id]
                               .map(item =>
                                 `${item.title}${item.price !== null && item.price !== undefined
                                   ? ` (€${item.price})`
@@ -1172,6 +1362,11 @@ export default function AdminConvenzioni() {
             flex: 1 1 100%;
             justify-content: center;
             padding: .72rem 1rem !important;
+          }
+
+          form div[style*="grid-template-columns: 1.4fr .8fr .9fr"],
+          form div[style*="grid-template-columns: 1fr 120px"] {
+            grid-template-columns: 1fr !important;
           }
         }
 
