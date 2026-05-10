@@ -179,6 +179,8 @@ function ConvModal({
   );
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const [bookRemovalIndex, setBookRemovalIndex] = useState<number | null>(null);
+  const [bookRemovalChecked, setBookRemovalChecked] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const set = (k: keyof ConvForm, v: string | boolean) => setForm(f => ({ ...f, [k]: v }));
@@ -197,11 +199,23 @@ function ConvModal({
     }));
   };
 
-  const removeBook = (index: number) => {
+  const requestRemoveBook = (index: number) => {
+    setBookRemovalIndex(index);
+    setBookRemovalChecked(false);
+  };
+
+  const confirmRemoveBook = () => {
+    if (bookRemovalIndex === null || !bookRemovalChecked) return;
+
     setForm(current => ({
       ...current,
-      books: current.books.filter((_, i) => i !== index).map((book, i) => ({ ...book, sort_order: i })),
+      books: current.books
+        .filter((_, i) => i !== bookRemovalIndex)
+        .map((book, i) => ({ ...book, sort_order: i })),
     }));
+
+    setBookRemovalIndex(null);
+    setBookRemovalChecked(false);
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -248,12 +262,8 @@ function ConvModal({
     }
 
     if (form.is_book_convention) {
-      if (form.books.length === 0) {
-        setErr("Aggiungi almeno un libro o una promozione.");
-        return;
-      }
-
       const invalidBook = form.books.find(book => !book.title.trim());
+
       if (invalidBook) {
         setErr("Ogni libro/promozione deve avere un titolo.");
         return;
@@ -302,6 +312,104 @@ function ConvModal({
         style={{ background: "#fff", borderRadius: "2rem", padding: "2.5rem", width: "100%", maxWidth: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(10,20,50,.22)" }}
         onClick={e => e.stopPropagation()}
       >
+        {bookRemovalIndex !== null && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 260,
+              background: "rgba(10,20,50,.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "1rem",
+            }}
+            onClick={() => {
+              setBookRemovalIndex(null);
+              setBookRemovalChecked(false);
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 520,
+                background: "white",
+                borderRadius: "1.5rem",
+                padding: "1.5rem",
+                boxShadow: "0 24px 70px rgba(10,20,50,.28)",
+                border: "1px solid rgba(190,39,39,.14)",
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <p style={{ margin: "0 0 .5rem", fontSize: ".75rem", fontWeight: 900, letterSpacing: ".16em", textTransform: "uppercase", color: "#8b1d1d" }}>
+                Conferma rimozione libro
+              </p>
+
+              <h3 style={{ margin: "0 0 .75rem", color: "#0f2f6e", fontSize: "1.25rem", fontWeight: 900 }}>
+                Vuoi rimuovere questo libro/promozione?
+              </h3>
+
+              <p style={{ margin: "0 0 1rem", color: "#4b5563", lineHeight: 1.6, fontSize: ".94rem" }}>
+                Se il libro è già stato salvato, al prossimo salvataggio verranno eliminate anche tutte le adesioni collegate a questo libro/promozione.
+              </p>
+
+              <div style={{ border: "1px solid rgba(15,47,110,.08)", background: "rgba(15,47,110,.025)", borderRadius: "1rem", padding: ".85rem 1rem", marginBottom: "1rem" }}>
+                <strong style={{ color: "#0f2f6e" }}>
+                  {form.books[bookRemovalIndex]?.title || `Libro/promozione #${bookRemovalIndex + 1}`}
+                </strong>
+              </div>
+
+              <label style={{ display: "flex", alignItems: "flex-start", gap: ".7rem", color: "#08102A", fontWeight: 700, lineHeight: 1.5, cursor: "pointer", marginBottom: "1.2rem" }}>
+                <input
+                  type="checkbox"
+                  checked={bookRemovalChecked}
+                  onChange={e => setBookRemovalChecked(e.target.checked)}
+                  style={{ marginTop: ".2rem" }}
+                />
+                Confermo di voler rimuovere il libro e le eventuali adesioni collegate.
+              </label>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: ".7rem", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBookRemovalIndex(null);
+                    setBookRemovalChecked(false);
+                  }}
+                  style={{
+                    border: "1px solid rgba(15,47,110,.12)",
+                    background: "white",
+                    color: "#0f2f6e",
+                    borderRadius: "999px",
+                    padding: ".7rem 1.2rem",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  Annulla
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmRemoveBook}
+                  disabled={!bookRemovalChecked}
+                  style={{
+                    border: "none",
+                    background: "#8b1d1d",
+                    color: "white",
+                    borderRadius: "999px",
+                    padding: ".7rem 1.2rem",
+                    fontWeight: 800,
+                    cursor: bookRemovalChecked ? "pointer" : "not-allowed",
+                    opacity: bookRemovalChecked ? 1 : .55,
+                  }}
+                >
+                  Rimuovi libro
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
           <div>
@@ -462,7 +570,7 @@ function ConvModal({
                           <strong style={{ color: "#0f2f6e", fontSize: ".85rem" }}>Libro/promozione #{index + 1}</strong>
                           <button
                             type="button"
-                            onClick={() => removeBook(index)}
+                            onClick={() => requestRemoveBook(index)}
                             style={{ border: "1px solid rgba(190,39,39,.14)", background: "white", color: "#8b1d1d", borderRadius: "999px", padding: ".35rem .7rem", fontWeight: 800, cursor: "pointer", fontSize: ".72rem" }}
                           >
                             Rimuovi

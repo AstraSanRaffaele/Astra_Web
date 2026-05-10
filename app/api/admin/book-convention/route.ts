@@ -406,6 +406,31 @@ export async function POST(req: NextRequest) {
       .map((book) => book.id)
       .filter((id): id is number => Boolean(id));
 
+    const { data: currentBooks, error: currentBooksError } = await supabase
+      .from("book_convention_books")
+      .select("id")
+      .eq("convention_id", savedConventionId);
+
+    if (currentBooksError) {
+      return NextResponse.json({ error: currentBooksError.message }, { status: 500 });
+    }
+
+    const removedBookIds = (currentBooks ?? [])
+      .map((book) => Number(book.id))
+      .filter((id) => Number.isInteger(id) && !existingBookIds.includes(id));
+
+    for (const removedBookId of removedBookIds) {
+      const { error: deleteAdhesionsError } = await supabase
+        .from("book_convention_adhesions")
+        .delete()
+        .eq("convention_id", savedConventionId)
+        .contains("selected_book_ids", [removedBookId]);
+
+      if (deleteAdhesionsError) {
+        return NextResponse.json({ error: deleteAdhesionsError.message }, { status: 500 });
+      }
+    }
+
     if (existingBookIds.length > 0) {
       const { error: deleteMissingError } = await supabase
         .from("book_convention_books")

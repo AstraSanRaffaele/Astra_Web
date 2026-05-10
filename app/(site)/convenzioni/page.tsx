@@ -507,23 +507,70 @@ export default function ConvenzioniPage() {
   position: fixed;
   inset: 0;
   z-index: 80;
-  background: rgba(8,16,42,.48);
-  backdrop-filter: blur(8px);
+  background: rgba(248,247,243,.98);
+  backdrop-filter: blur(10px);
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  padding: 1.25rem;
+  padding: 0;
+  overflow: auto;
 }
 
 .book-modal {
-  width: min(100%, 560px);
-  max-height: min(88vh, 720px);
-  overflow: auto;
+  width: min(100%, 1180px);
+  min-height: 100vh;
+  overflow: visible;
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  padding: 7.5rem 1.5rem 4rem;
+}
+
+.book-modal-shell {
   background: #fff;
-  border-radius: 1.75rem;
-  border: 1px solid rgba(8,16,42,.1);
-  box-shadow: 0 30px 90px rgba(8,16,42,.28);
+  border: 1px solid rgba(8,16,42,.08);
+  border-radius: 2rem;
+  box-shadow: 0 24px 80px rgba(8,16,42,.14);
+  overflow: hidden;
+}
+
+.book-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255,255,255,.94);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(8,16,42,.08);
+  padding: 1.25rem 1.5rem;
+}
+
+.book-modal-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, .85fr);
+  gap: 1.25rem;
   padding: 1.5rem;
+}
+
+.book-modal-panel {
+  border: 1px solid rgba(8,16,42,.08);
+  border-radius: 1.4rem;
+  background: rgba(8,16,42,.018);
+  padding: 1.15rem;
+}
+
+.book-modal-summary {
+  position: sticky;
+  top: 6rem;
+  align-self: start;
+  background: #fff;
+}
+
+.book-modal-close {
+  position: fixed;
+  top: 5.4rem;
+  right: max(1rem, calc((100vw - 1180px) / 2 + 1rem));
+  z-index: 90;
 }
 
 .payment-option {
@@ -538,9 +585,27 @@ export default function ConvenzioniPage() {
   font-weight: 700;
 }
 
-.payment-option:hover {
+        .payment-option:hover {
   background: rgba(8,16,42,.035);
   border-color: rgba(8,16,42,.2);
+}
+
+.book-field-label {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #6B7280;
+  margin-bottom: .55rem;
+}
+
+.book-modal-section-title {
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #2E4080;
+  margin-bottom: .75rem;
 }
 
 .payment-option input,
@@ -642,6 +707,38 @@ export default function ConvenzioniPage() {
 
           .conv-grid {
             grid-template-columns: 1fr !important;
+          }
+
+          .book-modal {
+            width: 100%;
+            min-height: 100vh;
+            padding: 5.25rem 0 0 !important;
+          }
+
+          .book-modal-shell {
+            min-height: calc(100vh - 5.25rem);
+            border-left: none;
+            border-right: none;
+            border-bottom: none;
+            border-radius: 1.4rem 1.4rem 0 0;
+          }
+
+          .book-modal-header {
+            padding: 1rem 1.1rem;
+          }
+
+          .book-modal-content {
+            grid-template-columns: 1fr !important;
+            padding: 1rem !important;
+          }
+
+          .book-modal-summary {
+            position: static !important;
+          }
+
+          .book-modal-close {
+            top: 4.55rem !important;
+            right: .85rem !important;
           }
         }
       `}</style>
@@ -1140,95 +1237,82 @@ export default function ConvenzioniPage() {
           }}
         >
           <div className="book-modal" onClick={(e) => e.stopPropagation()}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: "1rem",
-                marginBottom: "1rem",
-              }}
-            >
-              <div>
-                <p
-                  style={{
-                    fontSize: ".68rem",
-                    fontWeight: 800,
-                    letterSpacing: ".18em",
-                    textTransform: "uppercase",
-                    color: "#2E4080",
-                    marginBottom: ".55rem",
-                  }}
-                >
-                  Convenzione libri
-                </p>
-
-                <h2
-                  id="book-modal-title"
-                  style={{
-                    fontFamily: "'Cormorant Garamond', serif",
-                    fontSize: "clamp(2rem, 5vw, 3rem)",
-                    lineHeight: 1,
-                    color: "#08102A",
-                    margin: 0,
-                  }}
-                >
-                  Conferma adesione
-                </h2>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedBookConvention(null)}
-                disabled={bookSubmitting}
-                aria-label="Chiudi popup"
+            <div className="book-modal-shell">
+            <div className="book-modal-header">
+              <div
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: "999px",
-                  border: "1px solid rgba(8,16,42,.1)",
-                  background: "#fff",
-                  color: "#08102A",
-                  cursor: bookSubmitting ? "not-allowed" : "pointer",
-                  fontWeight: 800,
-                  flexShrink: 0,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: "1rem",
                 }}
               >
-                ✕
-              </button>
-            </div>
+                <div>
+                  <p
+                    style={{
+                      fontSize: ".68rem",
+                      fontWeight: 800,
+                      letterSpacing: ".18em",
+                      textTransform: "uppercase",
+                      color: "#2E4080",
+                      marginBottom: ".55rem",
+                    }}
+                  >
+                    Convenzione libri
+                  </p>
 
+                  <h2
+                    id="book-modal-title"
+                    style={{
+                      fontFamily: "'Cormorant Garamond', serif",
+                      fontSize: "clamp(2rem, 5vw, 3rem)",
+                      lineHeight: 1,
+                      color: "#08102A",
+                      margin: 0,
+                    }}
+                  >
+                    Conferma adesione
+                  </h2>
+                </div>
+
+                <button
+                  type="button"
+                  className="book-modal-close"
+                  onClick={() => setSelectedBookConvention(null)}
+                  disabled={bookSubmitting}
+                  aria-label="Chiudi popup"
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: "999px",
+                    border: "1px solid rgba(8,16,42,.1)",
+                    background: "#fff",
+                    color: "#08102A",
+                    cursor: bookSubmitting ? "not-allowed" : "pointer",
+                    fontWeight: 800,
+                    flexShrink: 0,
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="book-modal-content">
+              <div style={{ display: "grid", gap: "1rem", minWidth: 0 }}>
             <p
               style={{
                 color: "#6B7280",
                 lineHeight: 1.7,
-                fontSize: ".95rem",
-                marginBottom: "1.1rem",
+                fontSize: ".98rem",
+                margin: 0,
               }}
             >
               Seleziona uno o più libri/promozioni e completa i dati necessari per spedizione, fatturazione e pagamento.
               Una volta inviata, l’adesione sarà registrata nell’elenco e non potrà essere rimossa autonomamente.
             </p>
 
-            <div
-              style={{
-                border: "1px solid rgba(8,16,42,.08)",
-                borderRadius: "1.15rem",
-                padding: "1rem",
-                background: "rgba(8,16,42,.025)",
-                marginBottom: "1rem",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: ".72rem",
-                  fontWeight: 800,
-                  letterSpacing: ".14em",
-                  textTransform: "uppercase",
-                  color: "#6B7280",
-                  marginBottom: ".75rem",
-                }}
-              >
+            <div className="book-modal-panel">
+              <p className="book-modal-section-title">
                 Libri e promozioni disponibili
               </p>
 
@@ -1340,44 +1424,11 @@ export default function ConvenzioniPage() {
                 );
               })()}
             </div>
-
-            <div style={{ marginBottom: "1rem", display: "grid", gap: ".9rem" }}>
-              <div
-                style={{
-                  border: "1px solid rgba(8,16,42,.08)",
-                  borderRadius: "1rem",
-                  padding: ".85rem 1rem",
-                  background: "rgba(46,64,128,.045)",
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: ".72rem",
-                    fontWeight: 800,
-                    letterSpacing: ".14em",
-                    textTransform: "uppercase",
-                    color: "#6B7280",
-                    marginBottom: ".35rem",
-                  }}
-                >
-                  Periodo applicato automaticamente
-                </p>
-                <p style={{ margin: 0, color: "#08102A", fontWeight: 800, lineHeight: 1.45 }}>
-                  {formatRoundLabel(bookConventionDetails?.activeRound ?? selectedBookConvention.activeRound)}
-                </p>
               </div>
-
+              <div className="book-modal-summary book-modal-panel">
+            <div style={{ display: "grid", gap: ".9rem" }}>
               <div>
-                <p
-                  style={{
-                    fontSize: ".72rem",
-                    fontWeight: 800,
-                    letterSpacing: ".14em",
-                    textTransform: "uppercase",
-                    color: "#6B7280",
-                    marginBottom: ".55rem",
-                  }}
-                >
+                <p className="book-field-label">
                   Codice fiscale / Partita IVA
                 </p>
                 <input
@@ -1399,23 +1450,16 @@ export default function ConvenzioniPage() {
               </div>
 
               <div>
-                <p
-                  style={{
-                    fontSize: ".72rem",
-                    fontWeight: 800,
-                    letterSpacing: ".14em",
-                    textTransform: "uppercase",
-                    color: "#6B7280",
-                    marginBottom: ".55rem",
-                  }}
-                >
+                <p className="book-field-label">
                   Indirizzo spedizione / fatturazione
                 </p>
                 <textarea
                   value={billingShippingAddress}
                   onChange={(e) => setBillingShippingAddress(e.target.value)}
                   disabled={bookSubmitting}
-                  placeholder="Inserisci indirizzo completo"
+                  placeholder={
+                    "Nome e cognome intestatario\nVia/Piazza e numero civico\nCAP, città e provincia\nEventuali note per la spedizione/fatturazione"
+                  }
                   rows={3}
                   style={{
                     width: "100%",
@@ -1427,22 +1471,14 @@ export default function ConvenzioniPage() {
                     background: "#fff",
                     resize: "vertical",
                     fontFamily: "'DM Sans', sans-serif",
+                    lineHeight: 1.5,
                   }}
                 />
               </div>
             </div>
 
-            <div style={{ marginBottom: "1rem" }}>
-              <p
-                style={{
-                  fontSize: ".72rem",
-                  fontWeight: 800,
-                  letterSpacing: ".14em",
-                  textTransform: "uppercase",
-                  color: "#6B7280",
-                  marginBottom: ".75rem",
-                }}
-              >
+            <div style={{ marginTop: "1rem" }}>
+              <p className="book-field-label">
                 Metodo di pagamento
               </p>
 
@@ -1475,6 +1511,7 @@ export default function ConvenzioniPage() {
                 fontSize: ".9rem",
                 lineHeight: 1.55,
                 fontWeight: 600,
+                marginTop: "1rem",
                 marginBottom: "1rem",
                 cursor: "pointer",
               }}
@@ -1514,6 +1551,8 @@ export default function ConvenzioniPage() {
                 justifyContent: "flex-end",
                 gap: ".7rem",
                 flexWrap: "wrap",
+                borderTop: "1px solid rgba(8,16,42,.08)",
+                paddingTop: "1rem",
               }}
             >
               <button
@@ -1553,6 +1592,9 @@ export default function ConvenzioniPage() {
               >
                 {bookSubmitting ? "Invio..." : "Conferma adesione"}
               </button>
+            </div>
+              </div>
+            </div>
             </div>
           </div>
         </div>
