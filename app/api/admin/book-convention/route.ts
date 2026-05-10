@@ -452,26 +452,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const booksToUpsert = books.map((book) => ({
-      ...(book.id ? { id: book.id } : {}),
-      convention_id: savedConventionId,
+    const booksToUpdate = books.filter((book) => book.id);
+const booksToInsert = books.filter((book) => !book.id);
+
+for (const book of booksToUpdate) {
+  const { error: updateBookError } = await supabase
+    .from("book_convention_books")
+    .update({
       title: book.title,
       price: book.price,
       reference_year: book.reference_year,
       description: book.description,
       sort_order: book.sort_order,
       updated_at: new Date().toISOString(),
-    }));
+    })
+    .eq("id", book.id)
+    .eq("convention_id", savedConventionId);
 
-    if (booksToUpsert.length > 0) {
-      const { error: booksError } = await supabase
-        .from("book_convention_books")
-        .upsert(booksToUpsert, { onConflict: "id" });
+  if (updateBookError) {
+    return NextResponse.json({ error: updateBookError.message }, { status: 500 });
+  }
+}
 
-      if (booksError) {
-        return NextResponse.json({ error: booksError.message }, { status: 500 });
-      }
-    }
+if (booksToInsert.length > 0) {
+  const { error: insertBooksError } = await supabase
+    .from("book_convention_books")
+    .insert(
+      booksToInsert.map((book) => ({
+        convention_id: savedConventionId,
+        title: book.title,
+        price: book.price,
+        reference_year: book.reference_year,
+        description: book.description,
+        sort_order: book.sort_order,
+        updated_at: new Date().toISOString(),
+      }))
+    );
+
+  if (insertBooksError) {
+    return NextResponse.json({ error: insertBooksError.message }, { status: 500 });
+  }
+}
 
     return NextResponse.json({
       ok: true,
