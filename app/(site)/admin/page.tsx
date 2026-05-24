@@ -227,7 +227,7 @@ export default function AdminPage() {
                   <span className="adminMenuArrow">→</span>
                 </a>
 
-                <a href="/admin/replicarank" className="adminMenuItem replicaRankMenuItem">
+                <a href="/admin/replicarank" className="adminMenuItem">
                   <span className="adminMenuIcon">06</span>
                   <span className="adminMenuText">
                     <strong>ReplicaRANK</strong>
@@ -552,21 +552,6 @@ const styles = `
     font-size: 1.05rem;
   }
 
-  .replicaRankMenuItem {
-    background:
-      radial-gradient(circle at top right, rgba(39,67,180,.12), transparent 38%),
-      linear-gradient(180deg, rgba(232,237,251,.92) 0%, rgba(255,255,255,.96) 100%);
-    border-color: rgba(14,31,107,.16);
-  }
-
-  .replicaRankMenuItem .adminMenuIcon {
-    background: #0E1F6B;
-    color: white;
-  }
-
-  .replicaRankMenuItem .adminMenuText strong {
-    color: #0E1F6B;
-  }
 
   .tableWrap {
     width: 100%;

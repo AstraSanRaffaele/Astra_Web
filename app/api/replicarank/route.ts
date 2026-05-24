@@ -128,7 +128,6 @@ export async function GET(req: NextRequest) {
               email_istituzionale,
               numero_telefono,
               data_di_nascita,
-              intermediate_out_of_course_count,
               total_cfu,
               weighted_average,
               final_score,

@@ -16,6 +16,9 @@ type Preference = {
   preference_order?: unknown;
 };
 
+const VALID_AREAS = ["Chirurgica", "Clinica", "Ricerca"] as const;
+type ValidArea = (typeof VALID_AREAS)[number];
+
 function getAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -86,22 +89,51 @@ function normalizeSelectedSubjects(value: unknown) {
 }
 
 function normalizePreferences(value: unknown) {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) {
+    throw new Error("Devi indicare tutte e 3 le aree in ordine di preferenza.");
+  }
 
-  return value
+  const normalized = value
     .map((item, index) => {
       const preference = (item ?? {}) as Preference;
       const groupName = cleanString(preference.group_name);
       const preferenceOrder = parseInteger(preference.preference_order) ?? index + 1;
-
-      if (!groupName) return null;
 
       return {
         group_name: groupName,
         preference_order: preferenceOrder,
       };
     })
-    .filter(Boolean) as { group_name: string; preference_order: number }[];
+    .sort((a, b) => a.preference_order - b.preference_order);
+
+  if (normalized.length !== 3) {
+    throw new Error("Devi indicare esattamente 3 preferenze: Chirurgica, Clinica e Ricerca.");
+  }
+
+  const areaNames = normalized.map((preference) => preference.group_name);
+
+  const allValid = areaNames.every((area): area is ValidArea =>
+    VALID_AREAS.includes(area as ValidArea)
+  );
+
+  if (!allValid) {
+    throw new Error("Le preferenze devono essere solo: Chirurgica, Clinica e Ricerca.");
+  }
+
+  if (new Set(areaNames).size !== 3) {
+    throw new Error("Non puoi indicare due volte la stessa area nelle preferenze.");
+  }
+
+  const expectedOrders = [1, 2, 3];
+  const hasValidOrders = normalized.every(
+    (preference, index) => preference.preference_order === expectedOrders[index]
+  );
+
+  if (!hasValidOrders) {
+    throw new Error("L’ordine delle preferenze deve essere 1, 2 e 3.");
+  }
+
+  return normalized;
 }
 
 function calculateWeightedAverage(
@@ -246,7 +278,6 @@ export async function POST(req: NextRequest) {
 
   let body: {
     edition_id?: unknown;
-    intermediate_out_of_course_count?: unknown;
     selected_subjects?: unknown;
     preferences?: unknown;
   } = {};
@@ -258,17 +289,9 @@ export async function POST(req: NextRequest) {
   }
 
   const editionId = cleanString(body.edition_id);
-  const intermediateOutOfCourseCount = parseInteger(body.intermediate_out_of_course_count) ?? 0;
 
   if (!editionId) {
     return NextResponse.json({ error: "Edizione non valida." }, { status: 400 });
-  }
-
-  if (intermediateOutOfCourseCount < 0) {
-    return NextResponse.json(
-      { error: "Il numero di volte fuori corso intermedio non può essere negativo." },
-      { status: 400 }
-    );
   }
 
   let selectedSubjects;
@@ -403,6 +426,10 @@ export async function POST(req: NextRequest) {
       fakeMatricola = generateFakeMatricola(Number(edition.cohort_year));
     }
 
+    const orderedPreferences = preferences
+      .sort((a, b) => a.preference_order - b.preference_order)
+      .map((preference) => preference.group_name);
+
     const { data: participant, error: participantError } = await supabase
       .from("replicarank_participants")
       .insert({
@@ -414,11 +441,13 @@ export async function POST(req: NextRequest) {
         email_istituzionale: profile.email_istituzionale,
         numero_telefono: profile.numero_telefono,
         data_di_nascita: profile.data_di_nascita,
-        intermediate_out_of_course_count: intermediateOutOfCourseCount,
         total_cfu: totalCfu,
         weighted_average: weightedAverage,
         final_score: 0,
         assignment_status: "non_assegnato",
+        first_choice: orderedPreferences[0],
+        second_choice: orderedPreferences[1],
+        third_choice: orderedPreferences[2],
       })
       .select("*")
       .single();
@@ -455,25 +484,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (preferences.length > 0) {
-      const { error: preferencesError } = await supabase
-        .from("replicarank_preferences")
-        .insert(
-          preferences.map((preference) => ({
-            participant_id: participant.id,
-            group_name: preference.group_name,
-            preference_order: preference.preference_order,
-          }))
-        );
+    const { error: preferencesError } = await supabase
+      .from("replicarank_preferences")
+      .insert(
+        preferences.map((preference) => ({
+          participant_id: participant.id,
+          group_name: preference.group_name,
+          preference_order: preference.preference_order,
+        }))
+      );
 
-      if (preferencesError) {
-        await supabase.from("replicarank_participants").delete().eq("id", participant.id);
+    if (preferencesError) {
+      await supabase.from("replicarank_participants").delete().eq("id", participant.id);
 
-        return NextResponse.json(
-          { error: preferencesError.message },
-          { status: 500 }
-        );
-      }
+      return NextResponse.json(
+        { error: preferencesError.message },
+        { status: 500 }
+      );
     }
 
     try {

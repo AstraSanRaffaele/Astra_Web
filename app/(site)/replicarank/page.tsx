@@ -1,4 +1,3 @@
-// REPLACED CONTENT BELOW
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -65,6 +64,8 @@ type SelectedSubject = {
   has_honors: boolean;
 };
 
+const AREA_OPTIONS = ["Chirurgica", "Clinica", "Ricerca"] as const;
+
 const DISCLAIMER =
   "Questa NON è una graduatoria ufficiale dell’Università. È una simulazione/previsione indipendente basata sugli stessi criteri pubblici della graduatoria originale.";
 
@@ -80,8 +81,11 @@ export default function ReplicaRankPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const [selectedSubjects, setSelectedSubjects] = useState<SelectedSubject[]>([]);
-  const [preferences, setPreferences] = useState("");
-  const [outOfCourseCount, setOutOfCourseCount] = useState(0);
+  const [areaPreferences, setAreaPreferences] = useState({
+    first: "",
+    second: "",
+    third: "",
+  });
   const [matricolaSearch, setMatricolaSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
 
@@ -125,6 +129,16 @@ export default function ReplicaRankPage() {
       )
     );
   }, [ranking]);
+
+  const hasValidAreaPreferences = useMemo(() => {
+    const values = [
+      areaPreferences.first,
+      areaPreferences.second,
+      areaPreferences.third,
+    ].filter(Boolean);
+
+    return values.length === 3 && new Set(values).size === 3;
+  }, [areaPreferences]);
 
   async function loadReplicaRank() {
     setLoading(true);
@@ -220,19 +234,24 @@ export default function ReplicaRankPage() {
       return;
     }
 
+    if (!hasValidAreaPreferences) {
+      setError("Devi indicare tutte e 3 le aree in ordine di preferenza, senza ripetizioni.");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
     setMessage("");
 
     try {
-      const preferenceRows = preferences
-        .split("\n")
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .map((groupName, index) => ({
-          group_name: groupName,
-          preference_order: index + 1,
-        }));
+      const preferenceRows = [
+        areaPreferences.first,
+        areaPreferences.second,
+        areaPreferences.third,
+      ].map((groupName, index) => ({
+        group_name: groupName,
+        preference_order: index + 1,
+      }));
 
       const res = await fetch("/api/replicarank/register", {
         method: "POST",
@@ -241,7 +260,6 @@ export default function ReplicaRankPage() {
         },
         body: JSON.stringify({
           edition_id: edition.id,
-          intermediate_out_of_course_count: outOfCourseCount,
           selected_subjects: selectedSubjects,
           preferences: preferenceRows,
         }),
@@ -607,10 +625,11 @@ export default function ReplicaRankPage() {
               </div>
 
               <div className="stats">
-                <div className="stat-card"><strong>{edition?.available_places ?? 250}</strong><span>posti disponibili</span></div>
+                <div className="stat-card"><strong>{edition?.available_places ?? 750}</strong><span>posti totali</span></div>
+                <div className="stat-card"><strong>250</strong><span>chirurgica</span></div>
+                <div className="stat-card"><strong>250</strong><span>clinica</span></div>
+                <div className="stat-card"><strong>250</strong><span>ricerca</span></div>
                 <div className="stat-card"><strong>{ranking.length}</strong><span>in graduatoria</span></div>
-                <div className="stat-card"><strong>{subjects.length}</strong><span>esami</span></div>
-                <div className="stat-card"><strong>{archives.length}</strong><span>archivi</span></div>
               </div>
             </section>
 
@@ -633,7 +652,7 @@ export default function ReplicaRankPage() {
                     <h2 className="display section-title">Una previsione chiara, non ufficiale</h2>
 
                     <p className="muted">
-                      ReplicaRANK raccoglie i dati inseriti dagli studenti registrati, calcola media ponderata, CFU e punteggio finale, producendo una graduatoria simulata dinamica.
+                      ReplicaRANK raccoglie i dati inseriti dagli studenti registrati, calcola media ponderata, CFU e punteggio finale, poi assegna progressivamente i posti nelle tre aree: Chirurgica, Clinica e Ricerca, con massimo 250 persone per area.
                     </p>
 
                     <div className="alert alert-warning">{DISCLAIMER}</div>
@@ -663,7 +682,9 @@ export default function ReplicaRankPage() {
                       <div className="alert alert-warning">Registrazioni chiuse.</div>
                     ) : (
                       <>
-                        <p className="muted">Seleziona gli esami sostenuti, inserisci il voto e indica eventuali preferenze.</p>
+                        <p className="muted">
+                          Seleziona gli esami sostenuti, inserisci il voto e ordina obbligatoriamente le aree in base alle tue preferenze.
+                        </p>
 
                         <div className="alert alert-warning">{DISCLAIMER}</div>
 
@@ -722,27 +743,107 @@ export default function ReplicaRankPage() {
                           )}
                         </div>
 
-                        <div style={{ marginTop: "1.5rem" }}>
-                          <label style={{ display: "block", marginBottom: ".5rem", fontWeight: 700 }}>Numero volte fuori corso intermedio</label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={outOfCourseCount}
-                            onChange={(event) => setOutOfCourseCount(Math.max(0, Number(event.target.value) || 0))}
-                            className="form-input"
-                          />
-                        </div>
 
                         <div style={{ marginTop: "1.5rem" }}>
-                          <label style={{ display: "block", marginBottom: ".5rem", fontWeight: 700 }}>Preferenze / gruppi</label>
-                          <textarea
-                            value={preferences}
-                            onChange={(event) => setPreferences(event.target.value)}
-                            placeholder="Una preferenza per riga. Se non inserisci preferenze, verrai assegnato automaticamente per bilanciare i gruppi."
-                            rows={4}
-                            className="form-input"
-                            style={{ resize: "vertical" }}
-                          />
+                          <label style={{ display: "block", marginBottom: ".5rem", fontWeight: 700 }}>
+                            Ordine preferenze aree
+                          </label>
+
+                          <p className="muted" style={{ fontSize: ".92rem", marginBottom: ".9rem" }}>
+                            Devi ordinare tutte le aree. L’algoritmo proverà prima la tua 1ª scelta, poi la 2ª e infine la 3ª in base ai posti disponibili.
+                          </p>
+
+                          <div style={{ display: "grid", gap: ".9rem" }}>
+                            <div>
+                              <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
+                                1ª preferenza
+                              </label>
+                              <select
+                                value={areaPreferences.first}
+                                onChange={(event) =>
+                                  setAreaPreferences((prev) => ({
+                                    ...prev,
+                                    first: event.target.value,
+                                  }))
+                                }
+                                className="form-input"
+                              >
+                                <option value="">Seleziona area</option>
+                                {AREA_OPTIONS.map((area) => (
+                                  <option
+                                    key={area}
+                                    value={area}
+                                    disabled={
+                                      area === areaPreferences.second ||
+                                      area === areaPreferences.third
+                                    }
+                                  >
+                                    {area}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
+                                2ª preferenza
+                              </label>
+                              <select
+                                value={areaPreferences.second}
+                                onChange={(event) =>
+                                  setAreaPreferences((prev) => ({
+                                    ...prev,
+                                    second: event.target.value,
+                                  }))
+                                }
+                                className="form-input"
+                              >
+                                <option value="">Seleziona area</option>
+                                {AREA_OPTIONS.map((area) => (
+                                  <option
+                                    key={area}
+                                    value={area}
+                                    disabled={
+                                      area === areaPreferences.first ||
+                                      area === areaPreferences.third
+                                    }
+                                  >
+                                    {area}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
+                                3ª preferenza
+                              </label>
+                              <select
+                                value={areaPreferences.third}
+                                onChange={(event) =>
+                                  setAreaPreferences((prev) => ({
+                                    ...prev,
+                                    third: event.target.value,
+                                  }))
+                                }
+                                className="form-input"
+                              >
+                                <option value="">Seleziona area</option>
+                                {AREA_OPTIONS.map((area) => (
+                                  <option
+                                    key={area}
+                                    value={area}
+                                    disabled={
+                                      area === areaPreferences.first ||
+                                      area === areaPreferences.second
+                                    }
+                                  >
+                                    {area}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="alert alert-info">
@@ -755,7 +856,7 @@ export default function ReplicaRankPage() {
                           className="btn-primary"
                           style={{ marginTop: "1.5rem", width: "100%", justifyContent: "center" }}
                           onClick={submitRegistration}
-                          disabled={submitting || selectedSubjects.length === 0}
+                          disabled={submitting || selectedSubjects.length === 0 || !hasValidAreaPreferences}
                         >
                           {submitting ? "Registrazione..." : "Registrati a ReplicaRANK"}
                         </button>
@@ -768,7 +869,9 @@ export default function ReplicaRankPage() {
                   <div className="card">
                     <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Graduatoria pubblica</p>
                     <h2 className="display section-title">Graduatoria simulata</h2>
-                    <p className="muted">La graduatoria pubblica non mostra dati personali reali.</p>
+                    <p className="muted">
+                      La graduatoria pubblica non mostra dati personali reali. I posti sono 750 totali: 250 Chirurgica, 250 Clinica e 250 Ricerca.
+                    </p>
                     <div className="alert alert-warning">{DISCLAIMER}</div>
 
                     {!edition.is_ranking_published ? (
