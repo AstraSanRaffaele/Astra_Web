@@ -181,46 +181,61 @@ export default function AdminPage() {
                 <h2 className="sectionTitle">Strumenti admin</h2>
               </div>
 
-              <div className="quickGrid">
-                <div className="quickCard">
-                  <h3>Gestione convenzioni</h3>
-                  <p>Apri l’area dedicata per creare, modificare o eliminare le convenzioni visibili agli utenti registrati.</p>
-                  <a href="/admin/convenzioni" className="ctaButton primary">
-                    Vai alla gestione convenzioni
-                  </a>
-                </div>
-                <div className="quickCard">
-                  <h3>Gestione eventi</h3>
-                  <p>Apri l’area dedicata per creare, modificare o eliminare le convenzioni visibili agli utenti registrati.</p>
-                  <a href="/admin/eventi" className="ctaButton primary">
-                    Vai alla gestione eventi
-                  </a>
-                </div>
-                <div className="quickCard">
-                  <h3>Gestione utenti</h3>
-                  <p>Accedi all’area dedicata per visualizzare, cercare e gestire gli utenti registrati della piattaforma Astra.</p>
-                  <a href="/admin/utenti" className="ctaButton primary">
-                    Vai alla gestione utenti
-                  </a>
-                </div>
-                <div className="quickCard">
-                  <h3>Gestione RSVPs</h3>
-                  <p>Accedi all’area dedicata per visualizzare, cercare e gestire gli RSVPs degli eventi della piattaforma Astra.</p>
-                  <a href="/admin/rsvp" className="ctaButton primary">
-                    Vai alla gestione RSVPs
-                  </a>
-                </div>
-                <div className="quickCard">
-                  <h3>Adesioni convenzioni libri</h3>
-                  <p>
-                    Visualizza, cerca e gestisci l’elenco degli studenti che hanno aderito
-                    alle convenzioni libri.
-                  </p>
-                  <a href="/admin/convenzione-libri" className="ctaButton primary">
-                    Vai alle adesioni libri
-                  </a>
-                </div>
-              </div>
+              <nav className="adminMenu" aria-label="Strumenti amministratore">
+                <a href="/admin/convenzioni" className="adminMenuItem">
+                  <span className="adminMenuIcon">01</span>
+                  <span className="adminMenuText">
+                    <strong>Convenzioni</strong>
+                    <small>Crea e modifica le convenzioni</small>
+                  </span>
+                  <span className="adminMenuArrow">→</span>
+                </a>
+
+                <a href="/admin/eventi" className="adminMenuItem">
+                  <span className="adminMenuIcon">02</span>
+                  <span className="adminMenuText">
+                    <strong>Eventi</strong>
+                    <small>Crea e modifica gli eventi</small>
+                  </span>
+                  <span className="adminMenuArrow">→</span>
+                </a>
+
+                <a href="/admin/utenti" className="adminMenuItem">
+                  <span className="adminMenuIcon">03</span>
+                  <span className="adminMenuText">
+                    <strong>Utenti</strong>
+                    <small>Visualizza e gestisci gli utenti registrati</small>
+                  </span>
+                  <span className="adminMenuArrow">→</span>
+                </a>
+
+                <a href="/admin/rsvp" className="adminMenuItem">
+                  <span className="adminMenuIcon">04</span>
+                  <span className="adminMenuText">
+                    <strong>RSVP</strong>
+                    <small>Gestisci le adesioni agli eventi</small>
+                  </span>
+                  <span className="adminMenuArrow">→</span>
+                </a>
+
+                <a href="/admin/convenzione-libri" className="adminMenuItem">
+                  <span className="adminMenuIcon">05</span>
+                  <span className="adminMenuText">
+                    <strong>Adesioni libri</strong>
+                    <small>Consulta le adesioni alle convenzioni libri</small>
+                  </span>
+                  <span className="adminMenuArrow">→</span>
+                </a>
+
+                <a href="/admin/replicarank" className="adminMenuItem replicaRankMenuItem">
+                  <span className="adminMenuIcon">06</span>
+                  <span className="adminMenuText">
+                    <strong>ReplicaRANK</strong>
+                    <small>Edizioni, esami, partecipanti e graduatoria</small>
+                  </span>
+                  <span className="adminMenuArrow">→</span>
+                </a>
+              </nav>
             </div>
 
             <div className="card mobile-hide">
@@ -469,31 +484,88 @@ const styles = `
     word-break: break-word;
   }
 
-  .quickGrid {
+  .adminMenu {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+  }
+
+  .adminMenuItem {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-
-  .quickCard {
-    border: 1px solid rgba(14,31,107,.08);
-    background: rgba(248,250,255,.95);
-    border-radius: 22px;
-    padding: 1.1rem;
-  }
-
-  .quickCard h3 {
-    margin: 0 0 .55rem;
-    font-size: 1.05rem;
-    font-weight: 800;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .9rem;
+    text-decoration: none;
     color: #0f172a;
+    border: 1px solid rgba(14,31,107,.08);
+    background: rgba(248,250,255,.82);
+    border-radius: 18px;
+    padding: .85rem 1rem;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
   }
 
-  .quickCard p {
-    margin: 0 0 1rem;
-    color: #475569;
-    line-height: 1.65;
-    font-size: .95rem;
+  .adminMenuItem:hover {
+    transform: translateX(3px);
+    border-color: rgba(14,31,107,.16);
+    box-shadow: 0 10px 22px rgba(15,23,42,.06);
+    background: white;
+  }
+
+  .adminMenuIcon {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(14,31,107,.07);
+    color: #0E1F6B;
+    font-size: .74rem;
+    font-weight: 900;
+    letter-spacing: .04em;
+  }
+
+  .adminMenuText {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .16rem;
+  }
+
+  .adminMenuText strong {
+    color: #0f172a;
+    font-size: .98rem;
+    font-weight: 900;
+    line-height: 1.15;
+  }
+
+  .adminMenuText small {
+    color: #64748b;
+    font-size: .84rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .adminMenuArrow {
+    color: rgba(14,31,107,.42);
+    font-weight: 900;
+    font-size: 1.05rem;
+  }
+
+  .replicaRankMenuItem {
+    background:
+      radial-gradient(circle at top right, rgba(39,67,180,.12), transparent 38%),
+      linear-gradient(180deg, rgba(232,237,251,.92) 0%, rgba(255,255,255,.96) 100%);
+    border-color: rgba(14,31,107,.16);
+  }
+
+  .replicaRankMenuItem .adminMenuIcon {
+    background: #0E1F6B;
+    color: white;
+  }
+
+  .replicaRankMenuItem .adminMenuText strong {
+    color: #0E1F6B;
   }
 
   .tableWrap {
@@ -668,8 +740,7 @@ const styles = `
 
   @media (max-width: 980px) {
     .hero,
-    .contentGrid,
-    .quickGrid {
+    .contentGrid {
       grid-template-columns: 1fr;
     }
 
@@ -733,6 +804,23 @@ const styles = `
 
     .mobile-hide {
       display: none;
+    }
+
+    .adminMenuItem {
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      padding: .78rem .85rem;
+      border-radius: 16px;
+      gap: .7rem;
+    }
+
+    .adminMenuIcon {
+      width: 32px;
+      height: 32px;
+      font-size: .7rem;
+    }
+
+    .adminMenuText small {
+      font-size: .78rem;
     }
   }
 

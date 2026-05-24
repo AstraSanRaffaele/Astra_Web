@@ -82,6 +82,7 @@ export default function Navbar() {
   const [mobileMenuTop, setMobileMenuTop] = useState(0);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [showReplicaRank, setShowReplicaRank] = useState(false);
 
   const navLinks: [string, string][] = [
     ["Chi siamo", "/#about"],
@@ -89,6 +90,40 @@ export default function Navbar() {
     ["Eventi", "/eventi"],
     ["Convenzioni", "/convenzioni"],
   ];
+
+  const navLinksWithReplicaRank: [string, string][] = showReplicaRank
+    ? [...navLinks, ["ReplicaRANK", "/replicarank"]]
+    : navLinks;
+  useEffect(() => {
+    let mounted = true;
+
+    const loadReplicaRankVisibility = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("replicarank_editions")
+          .select("is_page_visible")
+          .eq("is_current", true)
+          .maybeSingle();
+
+        if (!mounted) return;
+
+        if (error) {
+          setShowReplicaRank(false);
+          return;
+        }
+
+        setShowReplicaRank(data?.is_page_visible === true);
+      } catch {
+        if (mounted) setShowReplicaRank(false);
+      }
+    };
+
+    loadReplicaRankVisibility();
+
+    return () => {
+      mounted = false;
+    };
+  }, [supabase]);
 
   const toggleMenu = () => setMenuOpen((prev) => !prev);
   const closeMenu = () => setMenuOpen(false);
@@ -346,7 +381,7 @@ export default function Navbar() {
             border: "1px solid rgba(14,31,107,.08)",
           }}
         >
-          {navLinks.map(([label, href]) => {
+          {navLinksWithReplicaRank.map(([label, href]) => {
             const active = isLinkActive(pathname, href);
             return (
               <li key={label}>
@@ -355,13 +390,18 @@ export default function Navbar() {
                   className={`nav-pill${active ? " nav-pill-active" : ""}`}
                   style={{
                     textDecoration: "none",
-                    color: active ? "#fff" : "var(--muted)",
+                    color: active || label === "ReplicaRANK" ? "#fff" : "var(--muted)",
                     fontSize: ".84rem",
-                    fontWeight: active ? 700 : 600,
-                    padding: ".42rem 1.05rem",
+                    fontWeight: active || label === "ReplicaRANK" ? 800 : 600,
+                    padding: label === "ReplicaRANK" ? ".48rem 1.15rem" : ".42rem 1.05rem",
                     borderRadius: "999px",
                     display: "inline-block",
-                    background: active ? "var(--blue)" : "transparent",
+                    background: active
+                      ? "var(--blue)"
+                      : label === "ReplicaRANK"
+                        ? "linear-gradient(135deg, #08102A, #1A3399)"
+                        : "transparent",
+                    boxShadow: label === "ReplicaRANK" ? "0 6px 18px rgba(14,31,107,.18)" : "none",
                     transition: "background .18s, color .18s",
                     whiteSpace: "nowrap",
                   }}
@@ -661,7 +701,7 @@ export default function Navbar() {
             }}
           >
             <div style={{ padding: "10px 10px 6px" }}>
-              {navLinks.map(([label, href]) => {
+              {navLinksWithReplicaRank.map(([label, href]) => {
                 const active = isLinkActive(pathname, href);
                 return (
                   <a
@@ -671,12 +711,12 @@ export default function Navbar() {
                     className="mobile-nav-link"
                     style={{
                       textDecoration: "none",
-                      color: active ? "var(--blue)" : "var(--text)",
-                      fontWeight: active ? 700 : 500,
+                      color: active || label === "ReplicaRANK" ? "var(--blue)" : "var(--text)",
+                      fontWeight: active || label === "ReplicaRANK" ? 800 : 500,
                       fontSize: "1.05rem",
                       padding: "1rem 1.2rem",
                       borderRadius: "18px",
-                      background: active ? "var(--blue-light)" : "transparent",
+                      background: active || label === "ReplicaRANK" ? "var(--blue-light)" : "transparent",
                       transition: "background .15s",
                       display: "flex",
                       alignItems: "center",
@@ -912,6 +952,11 @@ export default function Navbar() {
         .nav-pill:hover:not(.nav-pill-active) {
           background: rgba(14,31,107,.07) !important;
           color: var(--blue) !important;
+        }
+        .nav-pill[href="/replicarank"]:hover {
+          background: linear-gradient(135deg, #08102A, #1A3399) !important;
+          color: #fff !important;
+          transform: translateY(-1px);
         }
 
         .btn-ghost{
