@@ -426,9 +426,6 @@ export async function POST(req: NextRequest) {
       fakeMatricola = generateFakeMatricola(Number(edition.cohort_year));
     }
 
-    const orderedPreferences = preferences
-      .sort((a, b) => a.preference_order - b.preference_order)
-      .map((preference) => preference.group_name);
 
     const { data: participant, error: participantError } = await supabase
       .from("replicarank_participants")
@@ -445,9 +442,6 @@ export async function POST(req: NextRequest) {
         weighted_average: weightedAverage,
         final_score: 0,
         assignment_status: "non_assegnato",
-        first_choice: orderedPreferences[0],
-        second_choice: orderedPreferences[1],
-        third_choice: orderedPreferences[2],
       })
       .select("*")
       .single();
