@@ -612,12 +612,8 @@ export default function ReplicaRankPage() {
               <h1 className="display hero-title">{edition?.name ?? "ReplicaRANK"}</h1>
 
               <p className="hero-subtitle">
-                Una simulazione moderna della graduatoria universitaria basata sugli stessi criteri pubblici utilizzati dalla graduatoria originale.
+                Una simulazione indipendente pensata per aiutarti a orientarti: confronta media, CFU e preferenze usando criteri pubblici, senza sostituire in alcun modo la graduatoria ufficiale.
               </p>
-
-              <div className="disclaimer">
-                <strong>Avviso importante:</strong> {DISCLAIMER}
-              </div>
 
               <div className="hero-actions">
                 <a href="#partecipa" className="btn-primary">Partecipa ora</a>
@@ -629,7 +625,6 @@ export default function ReplicaRankPage() {
                 <div className="stat-card"><strong>250</strong><span>chirurgica</span></div>
                 <div className="stat-card"><strong>250</strong><span>clinica</span></div>
                 <div className="stat-card"><strong>250</strong><span>ricerca</span></div>
-                <div className="stat-card"><strong>{ranking.length}</strong><span>in graduatoria</span></div>
               </div>
             </section>
 
@@ -655,13 +650,6 @@ export default function ReplicaRankPage() {
                       ReplicaRANK raccoglie i dati inseriti dagli studenti registrati, calcola media ponderata, CFU e punteggio finale, poi assegna progressivamente i posti nelle tre aree: Chirurgica, Clinica e Ricerca, con massimo 250 persone per area.
                     </p>
 
-                    <div className="alert alert-warning">{DISCLAIMER}</div>
-
-                    <div className="status-grid">
-                      <div className="status-row"><strong>Pagina ReplicaRANK</strong><span className="badge badge-ok">Attiva</span></div>
-                      <div className="status-row"><strong>Registrazioni</strong><span className={`badge ${edition.are_registrations_open ? "badge-ok" : "badge-closed"}`}>{edition.are_registrations_open ? "Aperte" : "Chiuse"}</span></div>
-                      <div className="status-row"><strong>Graduatoria pubblica</strong><span className={`badge ${edition.is_ranking_published ? "badge-ok" : "badge-idle"}`}>{edition.is_ranking_published ? "Pubblicata" : "Non pubblicata"}</span></div>
-                    </div>
                   </div>
 
                   <aside className="card" id="partecipa">
