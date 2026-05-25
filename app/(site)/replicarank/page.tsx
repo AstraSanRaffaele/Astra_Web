@@ -24,6 +24,7 @@ type Subject = {
   semester_label: string | null;
   category: string | null;
   sort_order: number;
+  is_eligibility: boolean;
 };
 
 type RankingRow = {
@@ -60,11 +61,12 @@ type Participant = {
 
 type SelectedSubject = {
   subject_id: string;
-  grade: number;
+  grade: string;
   has_honors: boolean;
+  is_passed: boolean;
 };
 
-const AREA_OPTIONS = ["Chirurgica", "Clinica", "Ricerca"] as const;
+const AREA_OPTIONS = ["Chirurgia", "Clinica", "Ricerca"] as const;
 
 const DISCLAIMER =
   "Questa NON è una graduatoria ufficiale dell’Università. È una simulazione/previsione indipendente basata sugli stessi criteri pubblici della graduatoria originale.";
@@ -95,20 +97,39 @@ export default function ReplicaRankPage() {
   const totalCfu = useMemo(() => {
     return selectedSubjects.reduce((sum, item) => {
       const subject = subjects.find((subjectItem) => subjectItem.id === item.subject_id);
-      return sum + (subject?.cfu ?? 0);
+      if (!subject) return sum;
+
+      if (subject.is_eligibility && !item.is_passed) {
+        return sum;
+      }
+
+      return sum + subject.cfu;
+    }, 0);
+  }, [selectedSubjects, subjects]);
+
+  const gradedTotalCfu = useMemo(() => {
+    return selectedSubjects.reduce((sum, item) => {
+      const subject = subjects.find((subjectItem) => subjectItem.id === item.subject_id);
+      if (!subject || subject.is_eligibility) return sum;
+
+      return sum + subject.cfu;
     }, 0);
   }, [selectedSubjects, subjects]);
 
   const weightedAverage = useMemo(() => {
     const totalWeight = selectedSubjects.reduce((sum, item) => {
       const subject = subjects.find((subjectItem) => subjectItem.id === item.subject_id);
-      if (!subject) return sum;
-      return sum + item.grade * subject.cfu;
+      if (!subject || subject.is_eligibility) return sum;
+
+      const numericGrade = Number(item.grade);
+      if (!Number.isFinite(numericGrade)) return sum;
+
+      return sum + numericGrade * subject.cfu;
     }, 0);
 
-    if (totalCfu === 0) return 0;
-    return totalWeight / totalCfu;
-  }, [selectedSubjects, subjects, totalCfu]);
+    if (gradedTotalCfu === 0) return 0;
+    return totalWeight / gradedTotalCfu;
+  }, [selectedSubjects, subjects, gradedTotalCfu]);
 
   const filteredRanking = useMemo(() => {
     const search = matricolaSearch.trim().toLowerCase();
@@ -177,29 +198,49 @@ export default function ReplicaRankPage() {
         return prev.filter((item) => item.subject_id !== subjectId);
       }
 
+      const subject = subjects.find((subjectItem) => subjectItem.id === subjectId);
+
       return [
         ...prev,
         {
           subject_id: subjectId,
-          grade: 18,
+          grade: subject?.is_eligibility ? "" : "18",
           has_honors: false,
+          is_passed: true,
         },
       ];
     });
   }
 
-  function updateSubjectGrade(subjectId: string, grade: number) {
-    const cleanGrade = Math.max(18, Math.min(30, Number(grade) || 18));
+
+  function updateSubjectGrade(subjectId: string, grade: string) {
+    const onlyNumbers = grade.replace(/\D/g, "");
 
     setSelectedSubjects((prev) =>
       prev.map((item) =>
         item.subject_id === subjectId
           ? {
-              ...item,
-              grade: cleanGrade,
-            }
+            ...item,
+            grade: onlyNumbers,
+          }
           : item
       )
+    );
+  }
+
+  function normalizeSubjectGrade(subjectId: string) {
+    setSelectedSubjects((prev) =>
+      prev.map((item) => {
+        if (item.subject_id !== subjectId) return item;
+
+        const numericGrade = Number(item.grade);
+        const cleanGrade = Math.max(18, Math.min(30, Number.isFinite(numericGrade) && item.grade !== "" ? numericGrade : 18));
+
+        return {
+          ...item,
+          grade: String(cleanGrade),
+        };
+      })
     );
   }
 
@@ -208,9 +249,22 @@ export default function ReplicaRankPage() {
       prev.map((item) =>
         item.subject_id === subjectId
           ? {
-              ...item,
-              has_honors: hasHonors,
-            }
+            ...item,
+            has_honors: hasHonors,
+          }
+          : item
+      )
+    );
+  }
+
+  function updateSubjectPassed(subjectId: string, isPassed: boolean) {
+    setSelectedSubjects((prev) =>
+      prev.map((item) =>
+        item.subject_id === subjectId
+          ? {
+            ...item,
+            is_passed: isPassed,
+          }
           : item
       )
     );
@@ -231,6 +285,22 @@ export default function ReplicaRankPage() {
 
     if (selectedSubjects.length === 0) {
       setError("Seleziona almeno un esame sostenuto.");
+      return;
+    }
+
+    const hasInvalidGrades = selectedSubjects.some((item) => {
+      const subject = subjects.find((subjectItem) => subjectItem.id === item.subject_id);
+
+      if (subject?.is_eligibility) {
+        return false;
+      }
+
+      const numericGrade = Number(item.grade);
+      return item.grade === "" || !Number.isFinite(numericGrade) || numericGrade < 18 || numericGrade > 30;
+    });
+
+    if (hasInvalidGrades) {
+      setError("Inserisci un voto valido tra 18 e 30 per ogni esame selezionato.");
       return;
     }
 
@@ -393,6 +463,36 @@ export default function ReplicaRankPage() {
           font-weight: 700;
           background: transparent;
         }
+
+        .btn-submit-rank {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+  width: 100%;
+  margin-top: 1.5rem;
+  background: linear-gradient(135deg, var(--blue), var(--blue-mid));
+  color: white;
+  border: none;
+  border-radius: 999px;
+  padding: 1.05rem 2rem;
+  font-weight: 900;
+  letter-spacing: .02em;
+  box-shadow: 0 14px 30px rgba(14,31,107,.28);
+  cursor: pointer;
+  transition: .2s ease;
+}
+
+.btn-submit-rank:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 38px rgba(14,31,107,.34);
+}
+
+.btn-submit-rank:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 
         .stats {
           display: grid;
@@ -647,7 +747,7 @@ export default function ReplicaRankPage() {
                     <h2 className="display section-title">Una previsione chiara, non ufficiale</h2>
 
                     <p className="muted">
-                      ReplicaRANK raccoglie i dati inseriti dagli studenti registrati, calcola media ponderata, CFU e punteggio finale, poi assegna progressivamente i posti nelle tre aree: Chirurgica, Clinica e Ricerca, con massimo 250 persone per area.
+                      ReplicaRANK raccoglie i dati inseriti dagli studenti registrati, calcola media ponderata, CFU e punteggio finale, poi assegna progressivamente i posti nelle tre aree: Chirurgia, Clinica e Ricerca, con massimo 250 persone per area.
                     </p>
 
                   </div>
@@ -658,7 +758,24 @@ export default function ReplicaRankPage() {
                     <h2 className="display section-title">Registrazione</h2>
 
                     {!isAuthenticated ? (
-                      <div className="alert alert-info">Devi effettuare l’accesso per partecipare a ReplicaRANK.</div>
+                      <div>
+                        <div className="alert alert-info">
+                          Devi effettuare l’accesso per partecipare a ReplicaRANK.
+                        </div>
+
+                        <a
+                          href="/login?redirect=/replicarank"
+                          className="btn-primary"
+                          style={{
+                            display: "inline-flex",
+                            marginTop: "1rem",
+                            width: "100%",
+                            justifyContent: "center",
+                          }}
+                        >
+                          Accedi per partecipare
+                        </a>
+                      </div>
                     ) : participant ? (
                       <div className="alert alert-info">
                         <strong>Risulti già registrato.</strong><br />
@@ -694,7 +811,9 @@ export default function ReplicaRankPage() {
                                       />
                                       {subject.name}
                                     </label>
-                                    <span className="badge badge-ok">{subject.cfu} CFU</span>
+                                    <span className="badge badge-ok">
+                                      {subject.cfu} CFU{subject.is_eligibility ? " · Idoneità" : ""}
+                                    </span>
                                   </div>
 
                                   <p className="muted" style={{ fontSize: ".9rem" }}>
@@ -705,24 +824,63 @@ export default function ReplicaRankPage() {
 
                                   {selected && (
                                     <div style={{ width: "100%", marginTop: "1rem" }}>
-                                      <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>Voto</label>
-                                      <input
-                                        type="number"
-                                        min={18}
-                                        max={30}
-                                        value={selected.grade}
-                                        onChange={(event) => updateSubjectGrade(subject.id, Number(event.target.value))}
-                                        className="form-input"
-                                      />
+                                      {subject.is_eligibility ? (
+                                        <div>
+                                          <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
+                                            Esito
+                                          </label>
 
-                                      <label style={{ display: "flex", alignItems: "center", gap: ".6rem", marginTop: ".9rem" }}>
-                                        <input
-                                          type="checkbox"
-                                          checked={selected.has_honors}
-                                          onChange={(event) => updateSubjectHonors(subject.id, event.target.checked)}
-                                        />
-                                        Con lode
-                                      </label>
+                                          <select
+                                            value={selected.is_passed ? "passed" : "not_passed"}
+                                            onChange={(event) =>
+                                              updateSubjectPassed(subject.id, event.target.value === "passed")
+                                            }
+                                            className="form-input"
+                                          >
+                                            <option value="passed">Superato</option>
+                                            <option value="not_passed">Non superato</option>
+                                          </select>
+
+                                          <p className="muted" style={{ fontSize: ".85rem", marginTop: ".55rem" }}>
+                                            Se selezioni “Superato”, i CFU vengono conteggiati. Questo esame non entra
+                                            nel calcolo della media ponderata.
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
+                                            Voto
+                                          </label>
+
+                                          <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
+                                            minLength={0}
+                                            maxLength={2}
+                                            value={selected.grade}
+                                            onChange={(event) => updateSubjectGrade(subject.id, event.target.value)}
+                                            onBlur={() => normalizeSubjectGrade(subject.id)}
+                                            className="form-input"
+                                          />
+
+                                          <label
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: ".6rem",
+                                              marginTop: ".9rem",
+                                            }}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={selected.has_honors}
+                                              onChange={(event) => updateSubjectHonors(subject.id, event.target.checked)}
+                                            />
+                                            Con lode
+                                          </label>
+                                        </>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -841,8 +999,7 @@ export default function ReplicaRankPage() {
 
                         <button
                           type="button"
-                          className="btn-primary"
-                          style={{ marginTop: "1.5rem", width: "100%", justifyContent: "center" }}
+                          className="btn-submit-rank"
                           onClick={submitRegistration}
                           disabled={submitting || selectedSubjects.length === 0 || !hasValidAreaPreferences}
                         >
@@ -858,7 +1015,7 @@ export default function ReplicaRankPage() {
                     <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Graduatoria pubblica</p>
                     <h2 className="display section-title">Graduatoria simulata</h2>
                     <p className="muted">
-                      La graduatoria pubblica non mostra dati personali reali. I posti sono 750 totali: 250 Chirurgica, 250 Clinica e 250 Ricerca.
+                      La graduatoria pubblica non mostra dati personali reali. I posti sono 750 totali: 250 Chirurgia, 250 Clinica e 250 Ricerca.
                     </p>
                     <div className="alert alert-warning">{DISCLAIMER}</div>
 

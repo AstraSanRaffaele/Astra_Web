@@ -235,15 +235,32 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    const maxWeightedAverage = Math.max(...rows.map((row) => row.weightedAverage), 0);
-    const maxCfu = Math.max(...rows.map((row) => row.totalCfu), 0);
+    // I massimi della formula devono essere calcolati sulla coorte effettiva,
+    // cioè sui partecipanti iscritti a questa specifica edizione/graduatoria.
+    const cohortWeightedAverages = rows
+      .map((row) => row.weightedAverage)
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    const cohortCfuValues = rows
+      .map((row) => row.totalCfu)
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    const maxWeightedAverage = cohortWeightedAverages.length > 0
+      ? Math.max(...cohortWeightedAverages)
+      : 0;
+
+    const maxCfu = cohortCfuValues.length > 0
+      ? Math.max(...cohortCfuValues)
+      : 0;
 
     const scoredRows = rows.map((row) => {
-      const mediaScore =
-        maxWeightedAverage > 0 ? (row.weightedAverage * 500) / maxWeightedAverage : 0;
+      const mediaScore = maxWeightedAverage > 0
+        ? (row.weightedAverage * 500) / maxWeightedAverage
+        : 0;
 
-      const cfuScore =
-        maxCfu > 0 ? (row.totalCfu * 500) / maxCfu : 0;
+      const cfuScore = maxCfu > 0
+        ? (row.totalCfu * 500) / maxCfu
+        : 0;
 
       return {
         ...row,

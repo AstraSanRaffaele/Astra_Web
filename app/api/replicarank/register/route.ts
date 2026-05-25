@@ -16,7 +16,7 @@ type Preference = {
   preference_order?: unknown;
 };
 
-const VALID_AREAS = ["Chirurgica", "Clinica", "Ricerca"] as const;
+const VALID_AREAS = ["Chirurgia", "Clinica", "Ricerca"] as const;
 type ValidArea = (typeof VALID_AREAS)[number];
 
 function getAdminClient() {
@@ -107,7 +107,7 @@ function normalizePreferences(value: unknown) {
     .sort((a, b) => a.preference_order - b.preference_order);
 
   if (normalized.length !== 3) {
-    throw new Error("Devi indicare esattamente 3 preferenze: Chirurgica, Clinica e Ricerca.");
+    throw new Error("Devi indicare esattamente 3 preferenze: Chirurgia, Clinica e Ricerca.");
   }
 
   const areaNames = normalized.map((preference) => preference.group_name);
@@ -117,7 +117,7 @@ function normalizePreferences(value: unknown) {
   );
 
   if (!allValid) {
-    throw new Error("Le preferenze devono essere solo: Chirurgica, Clinica e Ricerca.");
+    throw new Error("Le preferenze devono essere solo: Chirurgia, Clinica e Ricerca.");
   }
 
   if (new Set(areaNames).size !== 3) {

@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-type AreaName = "Chirurgica" | "Clinica" | "Ricerca";
+type AreaName = "Chirurgia" | "Clinica" | "Ricerca";
 
 type ParticipantRow = {
   id: string;
@@ -29,7 +29,7 @@ type RankedParticipant = ParticipantRow & {
 };
 
 const AREA_CAPACITY: Record<AreaName, number> = {
-  Chirurgica: 250,
+  Chirurgia: 250,
   Clinica: 250,
   Ricerca: 250,
 };
@@ -288,7 +288,7 @@ export async function POST(req: NextRequest) {
     const preferenceMap = buildPreferenceMap((preferences ?? []) as PreferenceRow[]);
 
     const areaCounts: Record<AreaName, number> = {
-      Chirurgica: 0,
+      Chirurgia: 0,
       Clinica: 0,
       Ricerca: 0,
     };

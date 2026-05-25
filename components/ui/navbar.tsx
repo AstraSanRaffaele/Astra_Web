@@ -84,6 +84,9 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [showReplicaRank, setShowReplicaRank] = useState(false);
   const [replicaRankLabel, setReplicaRankLabel] = useState("ReplicaRANK");
+  const [isReplicaRankPageVisible, setIsReplicaRankPageVisible] = useState(false);
+  const [replicaRankCohortYear, setReplicaRankCohortYear] = useState("");
+  const [userCohortYear, setUserCohortYear] = useState("");
 
   const navLinks: [string, string][] = [
     ["Chi siamo", "/#about"],
@@ -109,25 +112,24 @@ export default function Navbar() {
         if (!mounted) return;
 
         if (error) {
-          setShowReplicaRank(false);
+          setIsReplicaRankPageVisible(false);
+          setReplicaRankCohortYear("");
           setReplicaRankLabel("ReplicaRANK");
           return;
         }
 
         const isVisible = data?.is_page_visible === true;
-        setShowReplicaRank(isVisible);
+        const yearFromCohort = data?.cohort_year ? String(data.cohort_year) : "";
+        const yearFromName = typeof data?.name === "string" ? data.name.match(/\d{4}/)?.[0] ?? "" : "";
+        const year = yearFromCohort || yearFromName;
 
-        if (isVisible) {
-          const yearFromCohort = data?.cohort_year ? String(data.cohort_year) : "";
-          const yearFromName = typeof data?.name === "string" ? data.name.match(/\d{4}/)?.[0] ?? "" : "";
-          const year = yearFromCohort || yearFromName;
-          setReplicaRankLabel(year ? `ReplicaRANK ${year}` : "ReplicaRANK");
-        } else {
-          setReplicaRankLabel("ReplicaRANK");
-        }
+        setIsReplicaRankPageVisible(isVisible);
+        setReplicaRankCohortYear(year);
+        setReplicaRankLabel(isVisible && year ? `ReplicaRANK ${year}` : "ReplicaRANK");
       } catch {
         if (mounted) {
-          setShowReplicaRank(false);
+          setIsReplicaRankPageVisible(false);
+          setReplicaRankCohortYear("");
           setReplicaRankLabel("ReplicaRANK");
         }
       }
@@ -139,6 +141,17 @@ export default function Navbar() {
       mounted = false;
     };
   }, [supabase]);
+
+  useEffect(() => {
+    const isEligibleCohort = Boolean(
+      isLoggedIn &&
+      userCohortYear &&
+      replicaRankCohortYear &&
+      userCohortYear === replicaRankCohortYear
+    );
+
+    setShowReplicaRank(isReplicaRankPageVisible && (isAdmin || isEligibleCohort));
+  }, [isReplicaRankPageVisible, isAdmin, isLoggedIn, userCohortYear, replicaRankCohortYear]);
 
   const toggleMenu = () => setMenuOpen((prev) => !prev);
   const closeMenu = () => setMenuOpen(false);
@@ -156,6 +169,7 @@ export default function Navbar() {
       setIsLoggedIn(false);
       setProfileName("");
       setIsAdmin(false);
+      setUserCohortYear("");
       setAuthReady(true);
 
       hasResolvedInitialAuthRef.current = true;
@@ -229,12 +243,13 @@ export default function Navbar() {
           setIsLoggedIn(false);
           setProfileName("");
           setIsAdmin(false);
+          setUserCohortYear("");
           setAuthReady(true);
           return;
         }
         const { data: profile } = await supabase
           .from("profiles")
-          .select("role")
+          .select("*")
           .eq("id", user.id)
           .maybeSingle();
         if (!mounted) return;
@@ -244,6 +259,17 @@ export default function Navbar() {
           .trim();
         setIsLoggedIn(true);
         setIsAdmin(profile?.role === "admin");
+        setUserCohortYear(
+          String(
+            profile?.cohort_year ||
+            profile?.classe ||
+            profile?.class_year ||
+            profile?.graduation_year ||
+            user.user_metadata?.cohort_year ||
+            user.user_metadata?.classe ||
+            ""
+          ).match(/\d{4}/)?.[0] ?? ""
+        );
         setProfileName(fullName || user.email || "Profilo");
         setAuthReady(true);
       } catch {
@@ -251,6 +277,7 @@ export default function Navbar() {
         setIsLoggedIn(false);
         setProfileName("");
         setIsAdmin(false);
+        setUserCohortYear("");
         setAuthReady(true);
       } finally {
         if (mounted) hasResolvedInitialAuthRef.current = true;
@@ -271,6 +298,7 @@ export default function Navbar() {
           setIsLoggedIn(false);
           setProfileName("");
           setIsAdmin(false);
+          setUserCohortYear("");
           setAuthReady(true);
           if (typeof window !== "undefined") {
             window.sessionStorage.removeItem("navbar-auth-cache");
@@ -279,7 +307,7 @@ export default function Navbar() {
         }
         const { data: profile } = await supabase
           .from("profiles")
-          .select("role")
+          .select("*")
           .eq("id", user.id)
           .maybeSingle();
         if (!mounted) return;
@@ -289,6 +317,17 @@ export default function Navbar() {
           .trim();
         setIsLoggedIn(true);
         setIsAdmin(profile?.role === "admin");
+        setUserCohortYear(
+          String(
+            profile?.cohort_year ||
+            profile?.classe ||
+            profile?.class_year ||
+            profile?.graduation_year ||
+            user.user_metadata?.cohort_year ||
+            user.user_metadata?.classe ||
+            ""
+          ).match(/\d{4}/)?.[0] ?? ""
+        );
         setProfileName(fullName || user.email || "Profilo");
         setAuthReady(true);
       } catch {
@@ -296,6 +335,7 @@ export default function Navbar() {
         setIsLoggedIn(false);
         setProfileName("");
         setIsAdmin(false);
+        setUserCohortYear("");
         setAuthReady(true);
       }
     });

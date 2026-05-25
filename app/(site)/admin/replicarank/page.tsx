@@ -43,6 +43,7 @@ type Subject = {
   semester_label: string | null;
   category: string | null;
   sort_order: number;
+  is_eligibility: boolean;
 };
 
 type RankingRow = {
@@ -72,7 +73,7 @@ const DISCLAIMER =
 
 const DEFAULT_AREA_STATS: AreaStat[] = [
   {
-    area: "Chirurgica",
+    area: "Chirurgia",
     assigned_count: 0,
     capacity: 250,
     remaining_places: 250,
@@ -137,6 +138,7 @@ export default function AdminReplicaRankPage() {
     semester_label: "",
     category: "",
     sort_order: 0,
+    is_eligibility: false,
   });
 
   const selectedEdition = useMemo(
@@ -174,6 +176,7 @@ export default function AdminReplicaRankPage() {
       semester_label: "",
       category: "",
       sort_order: subjects.length,
+      is_eligibility: false,
     });
   }
 
@@ -368,6 +371,7 @@ export default function AdminReplicaRankPage() {
           semester_label: subjectForm.semester_label.trim() || null,
           category: subjectForm.category.trim() || null,
           sort_order: Number(subjectForm.sort_order) || 0,
+          is_eligibility: subjectForm.is_eligibility,
         }),
       });
 
@@ -380,6 +384,39 @@ export default function AdminReplicaRankPage() {
       setMessage(data.message || "Esame salvato correttamente.");
       resetSubjectForm();
       await loadSubjects(selectedEdition.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteParticipant(participant: Participant) {
+    const confirmed = window.confirm(
+      `Vuoi eliminare il partecipante ${participant.nome} ${participant.cognome} (${participant.fake_matricola})?`
+    );
+
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/admin/replicarank/participants", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: participant.id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Errore durante l’eliminazione del partecipante.");
+      }
+
+      setMessage(data.message || "Partecipante eliminato correttamente.");
+      if (selectedEdition) await loadData(selectedEdition.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto.");
     } finally {
@@ -427,6 +464,7 @@ export default function AdminReplicaRankPage() {
       semester_label: subject.semester_label ?? "",
       category: subject.category ?? "",
       sort_order: subject.sort_order ?? 0,
+      is_eligibility: subject.is_eligibility ?? false,
     });
   }
 
@@ -1143,6 +1181,20 @@ export default function AdminReplicaRankPage() {
                     <Field label="Categoria">
                       <input value={subjectForm.category} onChange={(event) => setSubjectForm((prev) => ({ ...prev, category: event.target.value }))} placeholder="Base, Clinico..." className="replicarank-input" />
                     </Field>
+
+                    <label className="replicarank-switch-row" style={{ cursor: "pointer" }}>
+                      <div>
+                        <p className="replicarank-switch-title">Esame a idoneità</p>
+                        <p className="replicarank-switch-description">Attiva questa opzione se l’esame non prevede voto numerico ma solo idoneità/superato.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={subjectForm.is_eligibility}
+                        onChange={(event) => setSubjectForm((prev) => ({ ...prev, is_eligibility: event.target.checked }))}
+                        style={{ width: "20px", height: "20px", flexShrink: 0 }}
+                      />
+                    </label>
+
                     <div className="replicarank-actions">
                       <button type="button" onClick={saveSubject} disabled={saving || !selectedEdition} className="btn-dark">
                         {subjectForm.id ? "Salva esame" : "Aggiungi esame"}
@@ -1159,7 +1211,7 @@ export default function AdminReplicaRankPage() {
                         <div key={subject.id} className="replicarank-row">
                           <div>
                             <h3>{subject.name}</h3>
-                            <p>{subject.cfu} CFU{subject.year_label ? ` · ${subject.year_label}` : ""}{subject.semester_label ? ` · ${subject.semester_label}` : ""}{subject.category ? ` · ${subject.category}` : ""}</p>
+                            <p>{subject.cfu} CFU{subject.is_eligibility ? " · Idoneità" : ""}{subject.year_label ? ` · ${subject.year_label}` : ""}{subject.semester_label ? ` · ${subject.semester_label}` : ""}{subject.category ? ` · ${subject.category}` : ""}</p>
                           </div>
                           <div className="replicarank-row-actions">
                             <button type="button" onClick={() => editSubject(subject)} className="replicarank-mini-button">Modifica</button>
@@ -1203,6 +1255,16 @@ export default function AdminReplicaRankPage() {
                           <h3>{participant.nome} {participant.cognome}</h3>
                           <p>{participant.fake_matricola} · {participant.total_cfu} CFU · Media {Number(participant.weighted_average).toFixed(2)} · Punteggio {Number(participant.final_score).toFixed(2)} · {participant.assigned_group ?? "Non assegnato"}</p>
                         </div>
+                        <div className="replicarank-row-actions">
+                          <button
+                            type="button"
+                            onClick={() => deleteParticipant(participant)}
+                            disabled={saving}
+                            className="replicarank-mini-button danger"
+                          >
+                            Elimina
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
@@ -1217,7 +1279,7 @@ export default function AdminReplicaRankPage() {
                     <p className="eyebrow">Graduatoria</p>
                     <h2 className="display replicarank-section-title">Anteprima graduatoria</h2>
                     <p className="replicarank-muted">
-                      Genera e controlla la graduatoria interna. I posti sono 750 totali: 250 Chirurgica, 250 Clinica e 250 Ricerca.
+                      Genera e controlla la graduatoria interna. I posti sono 750 totali: 250 Chirurgia, 250 Clinica e 250 Ricerca.
                     </p>
                   </div>
                   <button type="button" onClick={generateRanking} className="btn-dark" disabled={saving || !selectedEdition}>Genera graduatoria</button>
