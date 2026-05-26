@@ -196,6 +196,12 @@ export default function ReplicaRankPage() {
     loadReplicaRank();
   }, []);
 
+  useEffect(() => {
+    if (!loading && edition && !isAuthenticated) {
+      window.location.replace("/login?redirect=/replicarank");
+    }
+  }, [loading, edition, isAuthenticated]);
+
   function toggleSubject(subjectId: string) {
     setSelectedSubjects((prev) => {
       const exists = prev.find((item) => item.subject_id === subjectId);
@@ -710,29 +716,8 @@ export default function ReplicaRankPage() {
           </div>
         </main>
       ) : !isAuthenticated ? (
-        <main className="replicarank-page">
-          <div className="replicarank-inner">
-            <section className="section">
-              <div className="card">
-                <h1 className="display section-title">Accesso richiesto</h1>
-                <p className="muted">
-                  Devi effettuare l’accesso per visualizzare ReplicaRANK {edition.cohort_year}.
-                </p>
-
-                <a
-                  href="/login?redirect=/replicarank"
-                  className="btn-primary"
-                  style={{
-                    display: "inline-flex",
-                    marginTop: "1rem",
-                    justifyContent: "center",
-                  }}
-                >
-                  Accedi
-                </a>
-              </div>
-            </section>
-          </div>
+        <main className="loading-page">
+          <div className="replicarank-inner">Reindirizzamento al login...</div>
         </main>
       ) : !canAccessReplicaRank ? (
         <main className="replicarank-page">
