@@ -71,6 +71,10 @@ const AREA_OPTIONS = ["Chirurgia", "Clinica", "Ricerca"] as const;
 const DISCLAIMER =
   "Questa NON è una graduatoria ufficiale dell’Università. È una simulazione/previsione indipendente basata sugli stessi criteri pubblici della graduatoria originale.";
 
+function isEligibilitySubject(subject: Subject | undefined) {
+  return Boolean(subject?.is_eligibility);
+}
+
 export default function ReplicaRankPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -99,7 +103,7 @@ export default function ReplicaRankPage() {
       const subject = subjects.find((subjectItem) => subjectItem.id === item.subject_id);
       if (!subject) return sum;
 
-      if (subject.is_eligibility && !item.is_passed) {
+      if (isEligibilitySubject(subject) && !item.is_passed) {
         return sum;
       }
 
@@ -110,7 +114,7 @@ export default function ReplicaRankPage() {
   const gradedTotalCfu = useMemo(() => {
     return selectedSubjects.reduce((sum, item) => {
       const subject = subjects.find((subjectItem) => subjectItem.id === item.subject_id);
-      if (!subject || subject.is_eligibility) return sum;
+      if (!subject || isEligibilitySubject(subject)) return sum;
 
       return sum + subject.cfu;
     }, 0);
@@ -119,7 +123,7 @@ export default function ReplicaRankPage() {
   const weightedAverage = useMemo(() => {
     const totalWeight = selectedSubjects.reduce((sum, item) => {
       const subject = subjects.find((subjectItem) => subjectItem.id === item.subject_id);
-      if (!subject || subject.is_eligibility) return sum;
+      if (!subject || isEligibilitySubject(subject)) return sum;
 
       const numericGrade = Number(item.grade);
       if (!Number.isFinite(numericGrade)) return sum;
@@ -204,7 +208,7 @@ export default function ReplicaRankPage() {
         ...prev,
         {
           subject_id: subjectId,
-          grade: subject?.is_eligibility ? "" : "18",
+          grade: isEligibilitySubject(subject) ? "" : "18",
           has_honors: false,
           is_passed: true,
         },
@@ -225,22 +229,6 @@ export default function ReplicaRankPage() {
           }
           : item
       )
-    );
-  }
-
-  function normalizeSubjectGrade(subjectId: string) {
-    setSelectedSubjects((prev) =>
-      prev.map((item) => {
-        if (item.subject_id !== subjectId) return item;
-
-        const numericGrade = Number(item.grade);
-        const cleanGrade = Math.max(18, Math.min(30, Number.isFinite(numericGrade) && item.grade !== "" ? numericGrade : 18));
-
-        return {
-          ...item,
-          grade: String(cleanGrade),
-        };
-      })
     );
   }
 
@@ -291,7 +279,7 @@ export default function ReplicaRankPage() {
     const hasInvalidGrades = selectedSubjects.some((item) => {
       const subject = subjects.find((subjectItem) => subjectItem.id === item.subject_id);
 
-      if (subject?.is_eligibility) {
+      if (isEligibilitySubject(subject)) {
         return false;
       }
 
@@ -791,6 +779,10 @@ export default function ReplicaRankPage() {
                           Seleziona gli esami sostenuti, inserisci il voto e ordina obbligatoriamente le aree in base alle tue preferenze.
                         </p>
 
+                        <div className="alert alert-info">
+                          In questa simulazione non verranno presi in considerazione gli esami della sessione estiva corrente. Verranno conteggiati solo gli esami presenti in questa pagina, già suddivisi in parziali quando necessario.
+                        </div>
+
                         <div className="alert alert-warning">{DISCLAIMER}</div>
 
                         <div className="status-grid" style={{ marginTop: "1.2rem" }}>
@@ -812,7 +804,7 @@ export default function ReplicaRankPage() {
                                       {subject.name}
                                     </label>
                                     <span className="badge badge-ok">
-                                      {subject.cfu} CFU{subject.is_eligibility ? " · Idoneità" : ""}
+                                      {subject.cfu} CFU{isEligibilitySubject(subject) ? " · Idoneità" : ""}
                                     </span>
                                   </div>
 
@@ -824,7 +816,7 @@ export default function ReplicaRankPage() {
 
                                   {selected && (
                                     <div style={{ width: "100%", marginTop: "1rem" }}>
-                                      {subject.is_eligibility ? (
+                                      {isEligibilitySubject(subject) ? (
                                         <div>
                                           <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
                                             Esito
@@ -852,17 +844,17 @@ export default function ReplicaRankPage() {
                                             Voto
                                           </label>
 
-                                          <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            minLength={0}
-                                            maxLength={2}
+                                          <select
                                             value={selected.grade}
                                             onChange={(event) => updateSubjectGrade(subject.id, event.target.value)}
-                                            onBlur={() => normalizeSubjectGrade(subject.id)}
                                             className="form-input"
-                                          />
+                                          >
+                                            {Array.from({ length: 13 }, (_, index) => index + 18).map((grade) => (
+                                              <option key={grade} value={String(grade)}>
+                                                {grade}
+                                              </option>
+                                            ))}
+                                          </select>
 
                                           <label
                                             style={{

@@ -133,7 +133,7 @@ export default function AdminReplicaRankPage() {
   const [subjectForm, setSubjectForm] = useState({
     id: "",
     name: "",
-    cfu: 6,
+    cfu: "6",
     year_label: "",
     semester_label: "",
     category: "",
@@ -147,6 +147,10 @@ export default function AdminReplicaRankPage() {
   );
 
   const visibleAreaStats = areaStats.length > 0 ? areaStats : DEFAULT_AREA_STATS;
+
+  function parseDecimalInput(value: string) {
+    return Number(value.replace(",", "."));
+  }
 
   const filteredParticipants = useMemo(() => {
     const search = participantSearch.trim().toLowerCase();
@@ -171,7 +175,7 @@ export default function AdminReplicaRankPage() {
     setSubjectForm({
       id: "",
       name: "",
-      cfu: 6,
+      cfu: "6",
       year_label: "",
       semester_label: "",
       category: "",
@@ -348,8 +352,10 @@ export default function AdminReplicaRankPage() {
       return;
     }
 
-    if (!Number.isInteger(Number(subjectForm.cfu)) || Number(subjectForm.cfu) <= 0) {
-      setError("Inserisci CFU validi.");
+    const parsedCfu = parseDecimalInput(String(subjectForm.cfu));
+
+    if (!Number.isFinite(parsedCfu) || parsedCfu <= 0) {
+      setError("Inserisci CFU validi. Puoi usare anche numeri con la virgola, ad esempio 2,5.");
       return;
     }
 
@@ -366,7 +372,7 @@ export default function AdminReplicaRankPage() {
           id: subjectForm.id || undefined,
           edition_id: selectedEdition.id,
           name,
-          cfu: Number(subjectForm.cfu),
+          cfu: parsedCfu,
           year_label: subjectForm.year_label.trim() || null,
           semester_label: subjectForm.semester_label.trim() || null,
           category: subjectForm.category.trim() || null,
@@ -459,7 +465,7 @@ export default function AdminReplicaRankPage() {
     setSubjectForm({
       id: subject.id,
       name: subject.name,
-      cfu: subject.cfu,
+      cfu: String(subject.cfu).replace(".", ","),
       year_label: subject.year_label ?? "",
       semester_label: subject.semester_label ?? "",
       category: subject.category ?? "",
@@ -1164,7 +1170,14 @@ export default function AdminReplicaRankPage() {
                     </Field>
                     <div className="replicarank-input-grid">
                       <Field label="CFU">
-                        <input type="number" value={subjectForm.cfu} onChange={(event) => setSubjectForm((prev) => ({ ...prev, cfu: Number(event.target.value) }))} className="replicarank-input" />
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={subjectForm.cfu}
+                          onChange={(event) => setSubjectForm((prev) => ({ ...prev, cfu: event.target.value }))}
+                          placeholder="Es. 6 oppure 2,5"
+                          className="replicarank-input"
+                        />
                       </Field>
                       <Field label="Ordine">
                         <input type="number" value={subjectForm.sort_order} onChange={(event) => setSubjectForm((prev) => ({ ...prev, sort_order: Number(event.target.value) }))} className="replicarank-input" />
