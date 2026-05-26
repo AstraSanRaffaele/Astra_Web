@@ -54,9 +54,10 @@ function cleanString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function parsePositiveInteger(value: unknown) {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) return null;
+function parsePositiveDecimal(value: unknown) {
+  const normalized = typeof value === "string" ? value.trim().replace(/,/g, ".") : value;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
   return parsed;
 }
 
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
 
   const editionId = cleanString(body.edition_id);
   const name = cleanString(body.name);
-  const cfu = parsePositiveInteger(body.cfu);
+  const cfu = parsePositiveDecimal(body.cfu);
   const sortOrder = parseInteger(body.sort_order) ?? 0;
 
   if (!editionId) {
@@ -211,7 +212,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   if ("cfu" in body) {
-    const cfu = parsePositiveInteger(body.cfu);
+    const cfu = parsePositiveDecimal(body.cfu);
     if (!cfu) return NextResponse.json({ error: "CFU non validi." }, { status: 400 });
     updates.cfu = cfu;
   }
