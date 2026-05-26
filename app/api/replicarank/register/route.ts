@@ -351,7 +351,7 @@ export async function POST(req: NextRequest) {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, nome, cognome, email_istituzionale, numero_telefono, data_di_nascita, anno_di_laurea")
+      .select("id, nome, cognome, email_istituzionale, numero_telefono, data_di_nascita, anno_di_laurea, role")
       .eq("id", userId)
       .single();
 
@@ -372,7 +372,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (Number(profile.anno_di_laurea) !== Number(edition.cohort_year)) {
+    const isAdmin = profile.role === "admin";
+
+    if (!isAdmin && Number(profile.anno_di_laurea) !== Number(edition.cohort_year)) {
       return NextResponse.json(
         {
           error: `ReplicaRANK ${edition.cohort_year} è riservato agli utenti con anno di laurea ${edition.cohort_year}.`,

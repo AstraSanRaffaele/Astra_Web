@@ -75,6 +75,7 @@ export async function GET(req: NextRequest) {
         participant: null,
         isAuthenticated: Boolean(userId),
         canAccessReplicaRank: false,
+        isAdmin: false,
         profileCohortYear: null,
         message: "Pagina ReplicaRANK non disponibile.",
       });
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
     const { data: profile, error: profileError } = userId
       ? await supabase
           .from("profiles")
-          .select("anno_di_laurea")
+          .select("anno_di_laurea, role")
           .eq("id", userId)
           .maybeSingle()
       : { data: null, error: null };
@@ -92,9 +93,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: profileError.message }, { status: 500 });
     }
 
+    const isAdmin = profile?.role === "admin";
+
     const canAccessReplicaRank =
       Boolean(userId) &&
-      Number(profile?.anno_di_laurea) === Number(edition.cohort_year);
+      (isAdmin || Number(profile?.anno_di_laurea) === Number(edition.cohort_year));
 
     const [
       subjectsResult,
@@ -197,6 +200,7 @@ export async function GET(req: NextRequest) {
       participant: participantResult.data ?? null,
       isAuthenticated: Boolean(userId),
       canAccessReplicaRank,
+      isAdmin,
       profileCohortYear: profile?.anno_di_laurea ?? null,
     });
   } catch (error) {

@@ -166,16 +166,17 @@ export default function ProfilePage() {
     if (!profile) return;
     setSaving(true); setError(""); setSuccess("");
     const n = nome.trim(), c = cognome.trim(), t = numeroTelefono.trim();
-    if (!n || !c || !t || !facolta || !corsoDiLaurea || !annoLaurea || !dataDiNascita) {
+    const nextAnnoLaurea = isAdmin ? annoLaurea : String(profile.anno_di_laurea);
+    if (!n || !c || !t || !facolta || !corsoDiLaurea || !nextAnnoLaurea || !dataDiNascita) {
       setError("Compila tutti i campi richiesti."); setSaving(false); return;
     }
     const { error: updateError } = await supabase.from("profiles").update({
       nome: n, cognome: c, numero_telefono: t, facolta, corso_di_laurea: corsoDiLaurea,
-      anno_di_laurea: Number(annoLaurea), data_di_nascita: dataDiNascita,
+      anno_di_laurea: Number(nextAnnoLaurea),
     }).eq("id", profile.id);
     if (updateError) { setError(updateError.message || "Impossibile aggiornare il profilo."); setSaving(false); return; }
-    const next: Profile = { ...profile, nome: n, cognome: c, numero_telefono: t, facolta: facolta as Facolta, corso_di_laurea: corsoDiLaurea, anno_di_laurea: Number(annoLaurea), data_di_nascita: dataDiNascita, updated_at: new Date().toISOString() };
-    setProfile(next); setNome(n); setCognome(c); setNumeroTelefono(t);
+    const next: Profile = { ...profile, nome: n, cognome: c, numero_telefono: t, facolta: facolta as Facolta, corso_di_laurea: corsoDiLaurea, anno_di_laurea: Number(nextAnnoLaurea), data_di_nascita: dataDiNascita, updated_at: new Date().toISOString() };
+    setProfile(next); setNome(n); setCognome(c); setNumeroTelefono(t); setAnnoLaurea(String(next.anno_di_laurea));
     setSuccess("Profilo aggiornato con successo."); setIsEditing(false); setSaving(false);
   }
 
@@ -376,7 +377,14 @@ export default function ProfilePage() {
                 {/* Facoltà + Anno */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }} className="form-row">
                   <SelectField label="Facoltà" id="facolta" value={facolta} onChange={(v) => { setFacolta(v); setCorsoDiLaurea(""); }} disabled={!isEditing} options={[{ value: "", label: "Seleziona facoltà" }, ...facultyOptions]} />
-                  <SelectField label="Anno di laurea" id="anno" value={annoLaurea} onChange={setAnnoLaurea} disabled={!isEditing} options={[{ value: "", label: "Seleziona anno" }, ...graduationYearOptions]} />
+                  <SelectField
+                    label="Anno di laurea"
+                    id="anno"
+                    value={annoLaurea}
+                    onChange={setAnnoLaurea}
+                    disabled={!isEditing || !isAdmin}
+                    options={[{ value: "", label: "Seleziona anno" }, ...graduationYearOptions]}
+                  />
                 </div>
 
                 {/* Corso */}
