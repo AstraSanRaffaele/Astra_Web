@@ -148,11 +148,11 @@ export default function AdminReplicaRankPage() {
 
   const visibleAreaStats = areaStats.length > 0 ? areaStats : DEFAULT_AREA_STATS;
 
-function parseDecimalInput(value: string) {
-  const normalized = value.trim().replace(/,/g, ".");
-  if (!/^\d+(\.\d+)?$/.test(normalized)) return Number.NaN;
-  return Number(normalized);
-}
+  function parseDecimalInput(value: string) {
+    const normalized = value.trim().replace(/,/g, ".");
+    if (!/^\d+(\.\d+)?$/.test(normalized)) return Number.NaN;
+    return Number(normalized);
+  }
 
   function normalizeDecimalText(value: string) {
     const cleaned = value.replace(/[^0-9,.]/g, "");

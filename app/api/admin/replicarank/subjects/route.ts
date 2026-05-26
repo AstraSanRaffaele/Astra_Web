@@ -156,6 +156,7 @@ export async function POST(req: NextRequest) {
         semester_label: cleanString(body.semester_label) || null,
         category: cleanString(body.category) || null,
         sort_order: sortOrder,
+        is_eligibility: Boolean(body.is_eligibility),
       })
       .select("*")
       .single();
@@ -221,6 +222,7 @@ export async function PATCH(req: NextRequest) {
   if ("semester_label" in body) updates.semester_label = cleanString(body.semester_label) || null;
   if ("category" in body) updates.category = cleanString(body.category) || null;
   if ("sort_order" in body) updates.sort_order = parseInteger(body.sort_order) ?? 0;
+  if ("is_eligibility" in body) updates.is_eligibility = Boolean(body.is_eligibility);
 
   try {
     const supabase = getAdminClient();
