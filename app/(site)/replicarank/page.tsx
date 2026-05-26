@@ -331,7 +331,12 @@ export default function ReplicaRankPage() {
         },
         body: JSON.stringify({
           edition_id: edition.id,
-          selected_subjects: selectedSubjects,
+          selected_subjects: selectedSubjects.map((item) => ({
+            subject_id: item.subject_id,
+            grade: item.grade,
+            has_honors: item.has_honors,
+            passed: item.is_passed,
+          })),
           preferences: preferenceRows,
         }),
       });
