@@ -85,6 +85,7 @@ export default function ReplicaRankPage() {
   const [archives, setArchives] = useState<ArchiveEdition[]>([]);
   const [participant, setParticipant] = useState<Participant>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [canAccessReplicaRank, setCanAccessReplicaRank] = useState(false);
 
   const [selectedSubjects, setSelectedSubjects] = useState<SelectedSubject[]>([]);
   const [areaPreferences, setAreaPreferences] = useState({
@@ -183,6 +184,7 @@ export default function ReplicaRankPage() {
       setArchives(data.archives ?? []);
       setParticipant(data.participant ?? null);
       setIsAuthenticated(Boolean(data.isAuthenticated));
+      setCanAccessReplicaRank(Boolean(data.canAccessReplicaRank));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto.");
     } finally {
@@ -263,6 +265,11 @@ export default function ReplicaRankPage() {
 
     if (!isAuthenticated) {
       setError("Devi effettuare l’accesso per partecipare a ReplicaRANK.");
+      return;
+    }
+
+    if (!canAccessReplicaRank) {
+      setError(`ReplicaRANK è riservato agli utenti con anno di laurea ${edition.cohort_year}.`);
       return;
     }
 
@@ -691,6 +698,58 @@ export default function ReplicaRankPage() {
         <main className="loading-page">
           <div className="replicarank-inner">Caricamento ReplicaRANK...</div>
         </main>
+      ) : !edition ? (
+        <main className="replicarank-page">
+          <div className="replicarank-inner">
+            <section className="section">
+              <div className="card">
+                <h1 className="display section-title">ReplicaRANK non disponibile</h1>
+                <p className="muted">Al momento non è presente un’edizione attiva di ReplicaRANK.</p>
+              </div>
+            </section>
+          </div>
+        </main>
+      ) : !isAuthenticated ? (
+        <main className="replicarank-page">
+          <div className="replicarank-inner">
+            <section className="section">
+              <div className="card">
+                <h1 className="display section-title">Accesso richiesto</h1>
+                <p className="muted">
+                  Devi effettuare l’accesso per visualizzare ReplicaRANK {edition.cohort_year}.
+                </p>
+
+                <a
+                  href="/login?redirect=/replicarank"
+                  className="btn-primary"
+                  style={{
+                    display: "inline-flex",
+                    marginTop: "1rem",
+                    justifyContent: "center",
+                  }}
+                >
+                  Accedi
+                </a>
+              </div>
+            </section>
+          </div>
+        </main>
+      ) : !canAccessReplicaRank ? (
+        <main className="replicarank-page">
+          <div className="replicarank-inner">
+            <section className="section">
+              <div className="card">
+                <h1 className="display section-title">Accesso non autorizzato</h1>
+
+                <div className="alert alert-warning">
+                  ReplicaRANK {edition.cohort_year} è riservato agli utenti con anno di laurea{" "}
+                  {edition.cohort_year}. Se pensi che ci sia un errore, controlla il tuo profilo o
+                  contatta gli amministratori.
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
       ) : (
         <main className="replicarank-page">
           <div className="replicarank-inner">
@@ -719,372 +778,344 @@ export default function ReplicaRankPage() {
             {error && <div className="alert alert-warning">{error}</div>}
             {message && <div className="alert alert-success">{message}</div>}
 
-            {!edition ? (
-              <section className="section">
+            <>
+              <section className="section grid">
                 <div className="card">
-                  <h2 className="display section-title">Pagina non disponibile</h2>
-                  <p className="muted">Al momento ReplicaRANK non è attivo.</p>
+                  <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Come funziona</p>
+
+                  <h2 className="display section-title">Una previsione chiara, non ufficiale</h2>
+
+                  <p className="muted">
+                    ReplicaRANK raccoglie i dati inseriti dagli studenti registrati, calcola media ponderata, CFU e punteggio finale, poi assegna progressivamente i posti nelle tre aree: Chirurgia, Clinica e Ricerca, con massimo 250 persone per area.
+                  </p>
+
                 </div>
-              </section>
-            ) : (
-              <>
-                <section className="section grid">
-                  <div className="card">
-                    <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Come funziona</p>
 
-                    <h2 className="display section-title">Una previsione chiara, non ufficiale</h2>
+                <aside className="card" id="partecipa">
+                  <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Partecipa</p>
 
-                    <p className="muted">
-                      ReplicaRANK raccoglie i dati inseriti dagli studenti registrati, calcola media ponderata, CFU e punteggio finale, poi assegna progressivamente i posti nelle tre aree: Chirurgia, Clinica e Ricerca, con massimo 250 persone per area.
-                    </p>
+                  <h2 className="display section-title">Registrazione</h2>
 
-                  </div>
+                  {participant ? (
+                    <div className="alert alert-info">
+                      <strong>Risulti già registrato.</strong><br />
+                      Matricola ReplicaRANK: {participant.fake_matricola}<br />
+                      CFU: {participant.total_cfu}<br />
+                      Media ponderata: {Number(participant.weighted_average).toFixed(2)}
+                    </div>
+                  ) : !edition.are_registrations_open ? (
+                    <div className="alert alert-warning">Registrazioni chiuse.</div>
+                  ) : (
+                    <>
+                      <p className="muted">
+                        Seleziona gli esami sostenuti, inserisci il voto e ordina obbligatoriamente le aree in base alle tue preferenze.
+                      </p>
 
-                  <aside className="card" id="partecipa">
-                    <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Partecipa</p>
-
-                    <h2 className="display section-title">Registrazione</h2>
-
-                    {!isAuthenticated ? (
-                      <div>
-                        <div className="alert alert-info">
-                          Devi effettuare l’accesso per partecipare a ReplicaRANK.
-                        </div>
-
-                        <a
-                          href="/login?redirect=/replicarank"
-                          className="btn-primary"
-                          style={{
-                            display: "inline-flex",
-                            marginTop: "1rem",
-                            width: "100%",
-                            justifyContent: "center",
-                          }}
-                        >
-                          Accedi per partecipare
-                        </a>
-                      </div>
-                    ) : participant ? (
                       <div className="alert alert-info">
-                        <strong>Risulti già registrato.</strong><br />
-                        Matricola ReplicaRANK: {participant.fake_matricola}<br />
-                        CFU: {participant.total_cfu}<br />
-                        Media ponderata: {Number(participant.weighted_average).toFixed(2)}
+                        In questa simulazione non verranno presi in considerazione gli esami della sessione estiva corrente. Verranno conteggiati solo gli esami presenti in questa pagina, già suddivisi in parziali quando necessario.
                       </div>
-                    ) : !edition.are_registrations_open ? (
-                      <div className="alert alert-warning">Registrazioni chiuse.</div>
-                    ) : (
-                      <>
-                        <p className="muted">
-                          Seleziona gli esami sostenuti, inserisci il voto e ordina obbligatoriamente le aree in base alle tue preferenze.
+
+                      <div className="alert alert-warning">{DISCLAIMER}</div>
+
+                      <div className="status-grid" style={{ marginTop: "1.2rem" }}>
+                        {subjects.length === 0 ? (
+                          <div className="empty-box">Nessun esame disponibile. Attendi che gli admin li inseriscano.</div>
+                        ) : (
+                          subjects.map((subject) => {
+                            const selected = selectedSubjects.find((item) => item.subject_id === subject.id);
+
+                            return (
+                              <div key={subject.id} className="status-row subject-card">
+                                <div className="subject-head">
+                                  <label className="subject-check">
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(selected)}
+                                      onChange={() => toggleSubject(subject.id)}
+                                    />
+                                    {subject.name}
+                                  </label>
+                                  <span className="badge badge-ok">
+                                    {subject.cfu} CFU{isEligibilitySubject(subject) ? " · Idoneità" : ""}
+                                  </span>
+                                </div>
+
+                                <p className="muted" style={{ fontSize: ".9rem" }}>
+                                  {subject.year_label ? `${subject.year_label}` : ""}
+                                  {subject.semester_label ? ` · ${subject.semester_label}` : ""}
+                                  {subject.category ? ` · ${subject.category}` : ""}
+                                </p>
+
+                                {selected && (
+                                  <div style={{ width: "100%", marginTop: "1rem" }}>
+                                    {isEligibilitySubject(subject) ? (
+                                      <div>
+                                        <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
+                                          Esito
+                                        </label>
+
+                                        <select
+                                          value={selected.is_passed ? "passed" : "not_passed"}
+                                          onChange={(event) =>
+                                            updateSubjectPassed(subject.id, event.target.value === "passed")
+                                          }
+                                          className="form-input"
+                                        >
+                                          <option value="passed">Superato</option>
+                                          <option value="not_passed">Non superato</option>
+                                        </select>
+
+                                        <p className="muted" style={{ fontSize: ".85rem", marginTop: ".55rem" }}>
+                                          Se selezioni “Superato”, i CFU vengono conteggiati. Questo esame non entra
+                                          nel calcolo della media ponderata.
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
+                                          Voto
+                                        </label>
+
+                                        <select
+                                          value={selected.grade}
+                                          onChange={(event) => updateSubjectGrade(subject.id, event.target.value)}
+                                          className="form-input"
+                                        >
+                                          {Array.from({ length: 13 }, (_, index) => index + 18).map((grade) => (
+                                            <option key={grade} value={String(grade)}>
+                                              {grade}
+                                            </option>
+                                          ))}
+                                        </select>
+
+                                        <label
+                                          style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: ".6rem",
+                                            marginTop: ".9rem",
+                                          }}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={selected.has_honors}
+                                            onChange={(event) => updateSubjectHonors(subject.id, event.target.checked)}
+                                          />
+                                          Con lode
+                                        </label>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+
+                      <div style={{ marginTop: "1.5rem" }}>
+                        <label style={{ display: "block", marginBottom: ".5rem", fontWeight: 700 }}>
+                          Ordine preferenze aree
+                        </label>
+
+                        <p className="muted" style={{ fontSize: ".92rem", marginBottom: ".9rem" }}>
+                          Devi ordinare tutte le aree. L’algoritmo proverà prima la tua 1ª scelta, poi la 2ª e infine la 3ª in base ai posti disponibili.
                         </p>
 
-                        <div className="alert alert-info">
-                          In questa simulazione non verranno presi in considerazione gli esami della sessione estiva corrente. Verranno conteggiati solo gli esami presenti in questa pagina, già suddivisi in parziali quando necessario.
+                        <div style={{ display: "grid", gap: ".9rem" }}>
+                          <div>
+                            <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
+                              1ª preferenza
+                            </label>
+                            <select
+                              value={areaPreferences.first}
+                              onChange={(event) =>
+                                setAreaPreferences((prev) => ({
+                                  ...prev,
+                                  first: event.target.value,
+                                }))
+                              }
+                              className="form-input"
+                            >
+                              <option value="">Seleziona area</option>
+                              {AREA_OPTIONS.map((area) => (
+                                <option
+                                  key={area}
+                                  value={area}
+                                  disabled={
+                                    area === areaPreferences.second ||
+                                    area === areaPreferences.third
+                                  }
+                                >
+                                  {area}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
+                              2ª preferenza
+                            </label>
+                            <select
+                              value={areaPreferences.second}
+                              onChange={(event) =>
+                                setAreaPreferences((prev) => ({
+                                  ...prev,
+                                  second: event.target.value,
+                                }))
+                              }
+                              className="form-input"
+                            >
+                              <option value="">Seleziona area</option>
+                              {AREA_OPTIONS.map((area) => (
+                                <option
+                                  key={area}
+                                  value={area}
+                                  disabled={
+                                    area === areaPreferences.first ||
+                                    area === areaPreferences.third
+                                  }
+                                >
+                                  {area}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
+                              3ª preferenza
+                            </label>
+                            <select
+                              value={areaPreferences.third}
+                              onChange={(event) =>
+                                setAreaPreferences((prev) => ({
+                                  ...prev,
+                                  third: event.target.value,
+                                }))
+                              }
+                              className="form-input"
+                            >
+                              <option value="">Seleziona area</option>
+                              {AREA_OPTIONS.map((area) => (
+                                <option
+                                  key={area}
+                                  value={area}
+                                  disabled={
+                                    area === areaPreferences.first ||
+                                    area === areaPreferences.second
+                                  }
+                                >
+                                  {area}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
+                      </div>
 
-                        <div className="alert alert-warning">{DISCLAIMER}</div>
+                      <div className="alert alert-info">
+                        <strong>CFU totali:</strong> {totalCfu}<br />
+                        <strong>Media ponderata:</strong> {weightedAverage.toFixed(2)}
+                      </div>
 
-                        <div className="status-grid" style={{ marginTop: "1.2rem" }}>
-                          {subjects.length === 0 ? (
-                            <div className="empty-box">Nessun esame disponibile. Attendi che gli admin li inseriscano.</div>
-                          ) : (
-                            subjects.map((subject) => {
-                              const selected = selectedSubjects.find((item) => item.subject_id === subject.id);
+                      <button
+                        type="button"
+                        className="btn-submit-rank"
+                        onClick={submitRegistration}
+                        disabled={submitting || !canAccessReplicaRank || selectedSubjects.length === 0 || !hasValidAreaPreferences}
+                      >
+                        {submitting ? "Registrazione..." : "Registrati a ReplicaRANK"}
+                      </button>
+                    </>
+                  )}
+                </aside>
+              </section>
 
-                              return (
-                                <div key={subject.id} className="status-row subject-card">
-                                  <div className="subject-head">
-                                    <label className="subject-check">
-                                      <input
-                                        type="checkbox"
-                                        checked={Boolean(selected)}
-                                        onChange={() => toggleSubject(subject.id)}
-                                      />
-                                      {subject.name}
-                                    </label>
-                                    <span className="badge badge-ok">
-                                      {subject.cfu} CFU{isEligibilitySubject(subject) ? " · Idoneità" : ""}
-                                    </span>
-                                  </div>
+              <section className="section" id="graduatoria">
+                <div className="card">
+                  <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Graduatoria pubblica</p>
+                  <h2 className="display section-title">Graduatoria simulata</h2>
+                  <p className="muted">
+                    La graduatoria pubblica non mostra dati personali reali. I posti sono 750 totali: 250 Chirurgia, 250 Clinica e 250 Ricerca.
+                  </p>
+                  <div className="alert alert-warning">{DISCLAIMER}</div>
 
-                                  <p className="muted" style={{ fontSize: ".9rem" }}>
-                                    {subject.year_label ? `${subject.year_label}` : ""}
-                                    {subject.semester_label ? ` · ${subject.semester_label}` : ""}
-                                    {subject.category ? ` · ${subject.category}` : ""}
-                                  </p>
+                  {!edition.is_ranking_published ? (
+                    <div className="empty-box">Graduatoria non ancora pubblicata.</div>
+                  ) : (
+                    <>
+                      <div className="ranking-tools">
+                        <input
+                          value={matricolaSearch}
+                          onChange={(event) => setMatricolaSearch(event.target.value)}
+                          placeholder="Cerca matricola ReplicaRANK"
+                          className="form-input"
+                        />
+                        <select value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)} className="form-input">
+                          <option value="all">Tutte le aree</option>
+                          {availableAreas.map((area) => (
+                            <option key={area} value={area}>{area}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                                  {selected && (
-                                    <div style={{ width: "100%", marginTop: "1rem" }}>
-                                      {isEligibilitySubject(subject) ? (
-                                        <div>
-                                          <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
-                                            Esito
-                                          </label>
+                      <div className="ranking-table-wrap">
+                        <table className="ranking-table">
+                          <thead>
+                            <tr>
+                              <th>Posizione</th>
+                              <th>Matricola</th>
+                              <th>Punteggio</th>
+                              <th>Area</th>
+                              <th>Stato</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredRanking.length === 0 ? (
+                              <tr><td colSpan={5}>Nessun risultato trovato.</td></tr>
+                            ) : (
+                              filteredRanking.map((row) => (
+                                <tr key={row.id} className={row.is_within_available_places ? "top-row" : ""}>
+                                  <td><span className="position">#{row.position}</span></td>
+                                  <td><span className="matricola">{row.fake_matricola}</span></td>
+                                  <td>{Number(row.final_score).toFixed(2)}</td>
+                                  <td>{row.assigned_group ?? "—"}</td>
+                                  <td><span className={`badge ${row.assignment_status === "assegnato" ? "badge-ok" : "badge-idle"}`}>{row.assignment_status === "assegnato" ? "Assegnato" : "Non assegnato"}</span></td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </section>
 
-                                          <select
-                                            value={selected.is_passed ? "passed" : "not_passed"}
-                                            onChange={(event) =>
-                                              updateSubjectPassed(subject.id, event.target.value === "passed")
-                                            }
-                                            className="form-input"
-                                          >
-                                            <option value="passed">Superato</option>
-                                            <option value="not_passed">Non superato</option>
-                                          </select>
-
-                                          <p className="muted" style={{ fontSize: ".85rem", marginTop: ".55rem" }}>
-                                            Se selezioni “Superato”, i CFU vengono conteggiati. Questo esame non entra
-                                            nel calcolo della media ponderata.
-                                          </p>
-                                        </div>
-                                      ) : (
-                                        <>
-                                          <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
-                                            Voto
-                                          </label>
-
-                                          <select
-                                            value={selected.grade}
-                                            onChange={(event) => updateSubjectGrade(subject.id, event.target.value)}
-                                            className="form-input"
-                                          >
-                                            {Array.from({ length: 13 }, (_, index) => index + 18).map((grade) => (
-                                              <option key={grade} value={String(grade)}>
-                                                {grade}
-                                              </option>
-                                            ))}
-                                          </select>
-
-                                          <label
-                                            style={{
-                                              display: "flex",
-                                              alignItems: "center",
-                                              gap: ".6rem",
-                                              marginTop: ".9rem",
-                                            }}
-                                          >
-                                            <input
-                                              type="checkbox"
-                                              checked={selected.has_honors}
-                                              onChange={(event) => updateSubjectHonors(subject.id, event.target.checked)}
-                                            />
-                                            Con lode
-                                          </label>
-                                        </>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })
+              {archives.length > 0 && (
+                <section className="section">
+                  <div className="card">
+                    <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Archivio</p>
+                    <h2 className="display section-title">Edizioni precedenti</h2>
+                    <p className="muted">Le vecchie edizioni resteranno consultabili con PDF scaricabili.</p>
+                    <div className="archive-grid">
+                      {archives.map((archive) => (
+                        <div key={archive.id} className="archive-card">
+                          <strong>{archive.name}</strong>
+                          <p className="muted">Coorte {archive.cohort_year}</p>
+                          {archive.archive_pdf_url && (
+                            <a href={archive.archive_pdf_url} target="_blank" className="btn-primary" style={{ display: "inline-flex", marginTop: ".8rem" }}>Scarica PDF</a>
                           )}
                         </div>
-
-
-                        <div style={{ marginTop: "1.5rem" }}>
-                          <label style={{ display: "block", marginBottom: ".5rem", fontWeight: 700 }}>
-                            Ordine preferenze aree
-                          </label>
-
-                          <p className="muted" style={{ fontSize: ".92rem", marginBottom: ".9rem" }}>
-                            Devi ordinare tutte le aree. L’algoritmo proverà prima la tua 1ª scelta, poi la 2ª e infine la 3ª in base ai posti disponibili.
-                          </p>
-
-                          <div style={{ display: "grid", gap: ".9rem" }}>
-                            <div>
-                              <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
-                                1ª preferenza
-                              </label>
-                              <select
-                                value={areaPreferences.first}
-                                onChange={(event) =>
-                                  setAreaPreferences((prev) => ({
-                                    ...prev,
-                                    first: event.target.value,
-                                  }))
-                                }
-                                className="form-input"
-                              >
-                                <option value="">Seleziona area</option>
-                                {AREA_OPTIONS.map((area) => (
-                                  <option
-                                    key={area}
-                                    value={area}
-                                    disabled={
-                                      area === areaPreferences.second ||
-                                      area === areaPreferences.third
-                                    }
-                                  >
-                                    {area}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div>
-                              <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
-                                2ª preferenza
-                              </label>
-                              <select
-                                value={areaPreferences.second}
-                                onChange={(event) =>
-                                  setAreaPreferences((prev) => ({
-                                    ...prev,
-                                    second: event.target.value,
-                                  }))
-                                }
-                                className="form-input"
-                              >
-                                <option value="">Seleziona area</option>
-                                {AREA_OPTIONS.map((area) => (
-                                  <option
-                                    key={area}
-                                    value={area}
-                                    disabled={
-                                      area === areaPreferences.first ||
-                                      area === areaPreferences.third
-                                    }
-                                  >
-                                    {area}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div>
-                              <label style={{ display: "block", marginBottom: ".45rem", fontWeight: 700 }}>
-                                3ª preferenza
-                              </label>
-                              <select
-                                value={areaPreferences.third}
-                                onChange={(event) =>
-                                  setAreaPreferences((prev) => ({
-                                    ...prev,
-                                    third: event.target.value,
-                                  }))
-                                }
-                                className="form-input"
-                              >
-                                <option value="">Seleziona area</option>
-                                {AREA_OPTIONS.map((area) => (
-                                  <option
-                                    key={area}
-                                    value={area}
-                                    disabled={
-                                      area === areaPreferences.first ||
-                                      area === areaPreferences.second
-                                    }
-                                  >
-                                    {area}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="alert alert-info">
-                          <strong>CFU totali:</strong> {totalCfu}<br />
-                          <strong>Media ponderata:</strong> {weightedAverage.toFixed(2)}
-                        </div>
-
-                        <button
-                          type="button"
-                          className="btn-submit-rank"
-                          onClick={submitRegistration}
-                          disabled={submitting || selectedSubjects.length === 0 || !hasValidAreaPreferences}
-                        >
-                          {submitting ? "Registrazione..." : "Registrati a ReplicaRANK"}
-                        </button>
-                      </>
-                    )}
-                  </aside>
-                </section>
-
-                <section className="section" id="graduatoria">
-                  <div className="card">
-                    <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Graduatoria pubblica</p>
-                    <h2 className="display section-title">Graduatoria simulata</h2>
-                    <p className="muted">
-                      La graduatoria pubblica non mostra dati personali reali. I posti sono 750 totali: 250 Chirurgia, 250 Clinica e 250 Ricerca.
-                    </p>
-                    <div className="alert alert-warning">{DISCLAIMER}</div>
-
-                    {!edition.is_ranking_published ? (
-                      <div className="empty-box">Graduatoria non ancora pubblicata.</div>
-                    ) : (
-                      <>
-                        <div className="ranking-tools">
-                          <input
-                            value={matricolaSearch}
-                            onChange={(event) => setMatricolaSearch(event.target.value)}
-                            placeholder="Cerca matricola ReplicaRANK"
-                            className="form-input"
-                          />
-                          <select value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)} className="form-input">
-                            <option value="all">Tutte le aree</option>
-                            {availableAreas.map((area) => (
-                              <option key={area} value={area}>{area}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="ranking-table-wrap">
-                          <table className="ranking-table">
-                            <thead>
-                              <tr>
-                                <th>Posizione</th>
-                                <th>Matricola</th>
-                                <th>Punteggio</th>
-                                <th>Area</th>
-                                <th>Stato</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {filteredRanking.length === 0 ? (
-                                <tr><td colSpan={5}>Nessun risultato trovato.</td></tr>
-                              ) : (
-                                filteredRanking.map((row) => (
-                                  <tr key={row.id} className={row.is_within_available_places ? "top-row" : ""}>
-                                    <td><span className="position">#{row.position}</span></td>
-                                    <td><span className="matricola">{row.fake_matricola}</span></td>
-                                    <td>{Number(row.final_score).toFixed(2)}</td>
-                                    <td>{row.assigned_group ?? "—"}</td>
-                                    <td><span className={`badge ${row.assignment_status === "assegnato" ? "badge-ok" : "badge-idle"}`}>{row.assignment_status === "assegnato" ? "Assegnato" : "Non assegnato"}</span></td>
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
-                    )}
+                      ))}
+                    </div>
                   </div>
                 </section>
-
-                {archives.length > 0 && (
-                  <section className="section">
-                    <div className="card">
-                      <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Archivio</p>
-                      <h2 className="display section-title">Edizioni precedenti</h2>
-                      <p className="muted">Le vecchie edizioni resteranno consultabili con PDF scaricabili.</p>
-                      <div className="archive-grid">
-                        {archives.map((archive) => (
-                          <div key={archive.id} className="archive-card">
-                            <strong>{archive.name}</strong>
-                            <p className="muted">Coorte {archive.cohort_year}</p>
-                            {archive.archive_pdf_url && (
-                              <a href={archive.archive_pdf_url} target="_blank" className="btn-primary" style={{ display: "inline-flex", marginTop: ".8rem" }}>Scarica PDF</a>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </section>
-                )}
-              </>
-            )}
+              )}
+            </>
           </div>
         </main>
       )}

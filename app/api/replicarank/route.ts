@@ -73,9 +73,28 @@ export async function GET(req: NextRequest) {
         ranking: [],
         archives: [],
         participant: null,
+        isAuthenticated: Boolean(userId),
+        canAccessReplicaRank: false,
+        profileCohortYear: null,
         message: "Pagina ReplicaRANK non disponibile.",
       });
     }
+
+    const { data: profile, error: profileError } = userId
+      ? await supabase
+          .from("profiles")
+          .select("anno_di_laurea")
+          .eq("id", userId)
+          .maybeSingle()
+      : { data: null, error: null };
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    const canAccessReplicaRank =
+      Boolean(userId) &&
+      Number(profile?.anno_di_laurea) === Number(edition.cohort_year);
 
     const [
       subjectsResult,
@@ -177,6 +196,8 @@ export async function GET(req: NextRequest) {
       archives: archivesResult.data ?? [],
       participant: participantResult.data ?? null,
       isAuthenticated: Boolean(userId),
+      canAccessReplicaRank,
+      profileCohortYear: profile?.anno_di_laurea ?? null,
     });
   } catch (error) {
     return NextResponse.json(

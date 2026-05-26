@@ -9,6 +9,7 @@ type SelectedSubject = {
   subject_id?: unknown;
   grade?: unknown;
   has_honors?: unknown;
+  passed?: unknown;
 };
 
 type Preference = {
@@ -71,19 +72,17 @@ function normalizeSelectedSubjects(value: unknown) {
     const subjectId = cleanString(subject.subject_id);
     const grade = parseInteger(subject.grade);
     const hasHonors = subject.has_honors === true;
+    const passed = subject.passed === true;
 
     if (!subjectId) {
       throw new Error("Esame non valido.");
-    }
-
-    if (!grade || grade < 18 || grade > 30) {
-      throw new Error("Ogni voto deve essere compreso tra 18 e 30.");
     }
 
     return {
       subject_id: subjectId,
       grade,
       has_honors: hasHonors,
+      passed,
     };
   });
 }
@@ -137,8 +136,8 @@ function normalizePreferences(value: unknown) {
 }
 
 function calculateWeightedAverage(
-  selectedSubjects: { subject_id: string; grade: number; has_honors: boolean }[],
-  subjectMap: Map<string, { cfu: number }>
+  selectedSubjects: { subject_id: string; grade: number | null; has_honors: boolean; passed: boolean }[],
+  subjectMap: Map<string, { cfu: number; is_eligibility: boolean }>
 ) {
   let totalCfu = 0;
   let weightedSum = 0;
@@ -151,7 +150,14 @@ function calculateWeightedAverage(
     }
 
     totalCfu += subject.cfu;
-    weightedSum += item.grade * subject.cfu;
+
+    if (!subject.is_eligibility) {
+      if (!item.grade || item.grade < 18 || item.grade > 30) {
+        throw new Error("Ogni voto deve essere compreso tra 18 e 30.");
+      }
+
+      weightedSum += item.grade * subject.cfu;
+    }
   }
 
   if (totalCfu === 0) {
@@ -345,7 +351,7 @@ export async function POST(req: NextRequest) {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, nome, cognome, email_istituzionale, numero_telefono, data_di_nascita")
+      .select("id, nome, cognome, email_istituzionale, numero_telefono, data_di_nascita, anno_di_laurea")
       .eq("id", userId)
       .single();
 
@@ -363,6 +369,15 @@ export async function POST(req: NextRequest) {
             "Profilo incompleto. Nome, cognome, telefono e data di nascita sono obbligatori.",
         },
         { status: 400 }
+      );
+    }
+
+    if (Number(profile.anno_di_laurea) !== Number(edition.cohort_year)) {
+      return NextResponse.json(
+        {
+          error: `ReplicaRANK ${edition.cohort_year} è riservato agli utenti con anno di laurea ${edition.cohort_year}.`,
+        },
+        { status: 403 }
       );
     }
 
@@ -384,7 +399,7 @@ export async function POST(req: NextRequest) {
 
     const { data: subjects, error: subjectsError } = await supabase
       .from("replicarank_subjects")
-      .select("id, cfu")
+      .select("id, cfu, is_eligibility")
       .eq("edition_id", editionId)
       .in("id", subjectIds);
 
@@ -402,9 +417,37 @@ export async function POST(req: NextRequest) {
     const subjectMap = new Map(
       subjects.map((subject) => [
         String(subject.id),
-        { cfu: Number(subject.cfu) },
+        {
+          cfu: Number(subject.cfu),
+          is_eligibility: subject.is_eligibility === true,
+        },
       ])
     );
+
+    for (const item of selectedSubjects) {
+      const subject = subjectMap.get(item.subject_id);
+
+      if (!subject) {
+        return NextResponse.json(
+          { error: "Uno o più esami selezionati non sono validi." },
+          { status: 400 }
+        );
+      }
+
+      if (subject.is_eligibility && !item.passed) {
+        return NextResponse.json(
+          { error: "Per gli esami a idoneità devi indicare se l’esame è stato superato." },
+          { status: 400 }
+        );
+      }
+
+      if (!subject.is_eligibility && (!item.grade || item.grade < 18 || item.grade > 30)) {
+        return NextResponse.json(
+          { error: "Inserisci un voto valido tra 18 e 30 per ogni esame selezionato." },
+          { status: 400 }
+        );
+      }
+    }
 
     const { totalCfu, weightedAverage } = calculateWeightedAverage(
       selectedSubjects,
@@ -459,8 +502,9 @@ export async function POST(req: NextRequest) {
       return {
         participant_id: participant.id,
         subject_id: item.subject_id,
-        grade: item.grade,
-        has_honors: item.has_honors,
+        grade: subject.is_eligibility ? null : item.grade,
+        has_honors: subject.is_eligibility ? false : item.has_honors,
+        passed: subject.is_eligibility ? item.passed : true,
         cfu: subject.cfu,
       };
     });
