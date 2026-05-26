@@ -149,7 +149,27 @@ export default function AdminReplicaRankPage() {
   const visibleAreaStats = areaStats.length > 0 ? areaStats : DEFAULT_AREA_STATS;
 
   function parseDecimalInput(value: string) {
-    return Number(value.replace(",", "."));
+    const normalized = value.trim().replace(",", ".");
+    return Number(normalized);
+  }
+
+  function normalizeDecimalText(value: string) {
+    const cleaned = value.replace(/[^0-9,.]/g, "");
+    const firstSeparatorIndex = cleaned.search(/[,.]/);
+
+    if (firstSeparatorIndex === -1) return cleaned;
+
+    const beforeSeparator = cleaned.slice(0, firstSeparatorIndex);
+    const separator = cleaned[firstSeparatorIndex];
+    const afterSeparator = cleaned
+      .slice(firstSeparatorIndex + 1)
+      .replace(/[,.]/g, "");
+
+    return `${beforeSeparator}${separator}${afterSeparator}`;
+  }
+
+  function formatCfu(value: number) {
+    return String(value).replace(".", ",");
   }
 
   const filteredParticipants = useMemo(() => {
@@ -465,7 +485,7 @@ export default function AdminReplicaRankPage() {
     setSubjectForm({
       id: subject.id,
       name: subject.name,
-      cfu: String(subject.cfu).replace(".", ","),
+      cfu: formatCfu(Number(subject.cfu)),
       year_label: subject.year_label ?? "",
       semester_label: subject.semester_label ?? "",
       category: subject.category ?? "",
@@ -748,7 +768,9 @@ export default function AdminReplicaRankPage() {
           gap: 1rem;
         }
 
-        .replicarank-field { display: grid; gap: .45rem; }
+        .replicarank-subject-form .replicarank-field {
+  gap: .3rem;
+}
 
         .replicarank-label {
           font-size: .78rem;
@@ -757,6 +779,20 @@ export default function AdminReplicaRankPage() {
           text-transform: uppercase;
           letter-spacing: .08em;
         }
+
+        .replicarank-subject-form .replicarank-label {
+  font-size: .72rem;
+}
+
+.replicarank-subject-form .replicarank-input {
+  border-radius: .85rem;
+  padding: .72rem .85rem;
+  min-height: 42px;
+}
+
+.replicarank-subject-form .replicarank-input-grid {
+  gap: .7rem;
+}
 
         .replicarank-switch-row {
           display: flex;
@@ -771,6 +807,21 @@ export default function AdminReplicaRankPage() {
 
         .replicarank-switch-title { font-weight: 800; margin-bottom: .25rem; }
         .replicarank-switch-description { font-size: .86rem; color: var(--mist); line-height: 1.4; }
+
+        .replicarank-subject-form .replicarank-switch-row {
+  border-radius: 1rem;
+  padding: .8rem;
+}
+
+.replicarank-subject-form .replicarank-switch-title {
+  font-size: .92rem;
+  margin-bottom: .15rem;
+}
+
+.replicarank-subject-form .replicarank-switch-description {
+  font-size: .8rem;
+  line-height: 1.35;
+}
 
         .replicarank-switch-button {
           width: 52px;
@@ -852,13 +903,14 @@ export default function AdminReplicaRankPage() {
         }
 
         .replicarank-subject-form {
-          display: grid;
-          gap: 1rem;
-          border-radius: 1.6rem;
-          background: var(--cream);
-          border: 1px solid rgba(8,16,42,.08);
-          padding: 1.3rem;
-        }
+  display: grid;
+  gap: .75rem;
+  border-radius: 1.35rem;
+  background: var(--cream);
+  border: 1px solid rgba(8,16,42,.08);
+  padding: 1rem;
+  align-content: start;
+}
 
         .replicarank-small-title { font-size: 1rem; font-weight: 800; }
         .replicarank-list { display: grid; gap: .85rem; }
@@ -1174,7 +1226,18 @@ export default function AdminReplicaRankPage() {
                           type="text"
                           inputMode="decimal"
                           value={subjectForm.cfu}
-                          onChange={(event) => setSubjectForm((prev) => ({ ...prev, cfu: event.target.value }))}
+                          onChange={(event) =>
+                            setSubjectForm((prev) => ({
+                              ...prev,
+                              cfu: normalizeDecimalText(event.target.value),
+                            }))
+                          }
+                          onBlur={() =>
+                            setSubjectForm((prev) => ({
+                              ...prev,
+                              cfu: prev.cfu.replace(".", ","),
+                            }))
+                          }
                           placeholder="Es. 6 oppure 2,5"
                           className="replicarank-input"
                         />
@@ -1198,13 +1261,15 @@ export default function AdminReplicaRankPage() {
                     <label className="replicarank-switch-row" style={{ cursor: "pointer" }}>
                       <div>
                         <p className="replicarank-switch-title">Esame a idoneità</p>
-                        <p className="replicarank-switch-description">Attiva questa opzione se l’esame non prevede voto numerico ma solo idoneità/superato.</p>
+                        <p className="replicarank-switch-description">
+                          Niente voto numerico: solo idoneità/superato.
+                        </p>
                       </div>
                       <input
                         type="checkbox"
                         checked={subjectForm.is_eligibility}
                         onChange={(event) => setSubjectForm((prev) => ({ ...prev, is_eligibility: event.target.checked }))}
-                        style={{ width: "20px", height: "20px", flexShrink: 0 }}
+                        style={{ width: "18px", height: "18px", flexShrink: 0 }}
                       />
                     </label>
 
