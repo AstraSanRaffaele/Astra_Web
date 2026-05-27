@@ -198,7 +198,7 @@ export default function ReplicaRankPage() {
 
   useEffect(() => {
     if (!loading && edition && !isAuthenticated) {
-      window.location.replace("/login?redirect=/replicarank");
+      window.location.replace("/login?next=/replicarank");
     }
   }, [loading, edition, isAuthenticated]);
 
