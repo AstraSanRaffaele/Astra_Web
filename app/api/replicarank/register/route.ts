@@ -72,7 +72,7 @@ function normalizeSelectedSubjects(value: unknown) {
     const subjectId = cleanString(subject.subject_id);
     const grade = parseInteger(subject.grade);
     const hasHonors = subject.has_honors === true;
-    const passed = subject.passed === true;
+    const passed = typeof subject.passed === "boolean" ? subject.passed : null;
 
     if (!subjectId) {
       throw new Error("Esame non valido.");
@@ -136,7 +136,7 @@ function normalizePreferences(value: unknown) {
 }
 
 function calculateWeightedAverage(
-  selectedSubjects: { subject_id: string; grade: number | null; has_honors: boolean; passed: boolean }[],
+  selectedSubjects: { subject_id: string; grade: number | null; has_honors: boolean; passed: boolean | null }[],
   subjectMap: Map<string, { cfu: number; is_eligibility: boolean }>
 ) {
   let totalCfu = 0;
@@ -149,15 +149,21 @@ function calculateWeightedAverage(
       throw new Error("Uno o più esami selezionati non sono validi.");
     }
 
-    totalCfu += subject.cfu;
-
-    if (!subject.is_eligibility) {
-      if (!item.grade || item.grade < 18 || item.grade > 30) {
-        throw new Error("Ogni voto deve essere compreso tra 18 e 30.");
+    if (subject.is_eligibility) {
+      if (item.passed) {
+        totalCfu += subject.cfu;
       }
 
-      weightedSum += item.grade * subject.cfu;
+      continue;
     }
+
+    totalCfu += subject.cfu;
+
+    if (!item.grade || item.grade < 18 || item.grade > 30) {
+      throw new Error("Ogni voto deve essere compreso tra 18 e 30.");
+    }
+
+    weightedSum += item.grade * subject.cfu;
   }
 
   if (totalCfu === 0) {
@@ -436,7 +442,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (subject.is_eligibility && !item.passed) {
+      if (subject.is_eligibility && typeof item.passed !== "boolean") {
         return NextResponse.json(
           { error: "Per gli esami a idoneità devi indicare se l’esame è stato superato." },
           { status: 400 }
@@ -506,7 +512,7 @@ export async function POST(req: NextRequest) {
         subject_id: item.subject_id,
         grade: subject.is_eligibility ? null : item.grade,
         has_honors: subject.is_eligibility ? false : item.has_honors,
-        passed: subject.is_eligibility ? item.passed : true,
+        passed: subject.is_eligibility ? item.passed === true : true,
         cfu: subject.cfu,
       };
     });
