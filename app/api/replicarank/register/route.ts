@@ -63,6 +63,12 @@ function parseInteger(value: unknown) {
   return parsed;
 }
 
+function parseDecimal(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+}
+
 function normalizeSelectedSubjects(value: unknown) {
   if (!Array.isArray(value)) return [];
 
@@ -140,6 +146,7 @@ function calculateWeightedAverage(
   subjectMap: Map<string, { cfu: number; is_eligibility: boolean }>
 ) {
   let totalCfu = 0;
+  let gradedCfu = 0;
   let weightedSum = 0;
 
   for (const item of selectedSubjects) {
@@ -147,6 +154,10 @@ function calculateWeightedAverage(
 
     if (!subject) {
       throw new Error("Uno o più esami selezionati non sono validi.");
+    }
+
+    if (!Number.isFinite(subject.cfu) || subject.cfu <= 0) {
+      throw new Error("Uno o più esami hanno CFU non validi.");
     }
 
     if (subject.is_eligibility) {
@@ -158,6 +169,7 @@ function calculateWeightedAverage(
     }
 
     totalCfu += subject.cfu;
+    gradedCfu += subject.cfu;
 
     if (!item.grade || item.grade < 18 || item.grade > 30) {
       throw new Error("Ogni voto deve essere compreso tra 18 e 30.");
@@ -166,16 +178,9 @@ function calculateWeightedAverage(
     weightedSum += item.grade * subject.cfu;
   }
 
-  if (totalCfu === 0) {
-    return {
-      totalCfu: 0,
-      weightedAverage: 0,
-    };
-  }
-
   return {
-    totalCfu,
-    weightedAverage: Number((weightedSum / totalCfu).toFixed(2)),
+    totalCfu: Number(totalCfu.toFixed(2)),
+    weightedAverage: gradedCfu > 0 ? Number((weightedSum / gradedCfu).toFixed(2)) : 0,
   };
 }
 
@@ -423,13 +428,17 @@ export async function POST(req: NextRequest) {
     }
 
     const subjectMap = new Map(
-      subjects.map((subject) => [
-        String(subject.id),
-        {
-          cfu: Number(subject.cfu),
-          is_eligibility: subject.is_eligibility === true,
-        },
-      ])
+      subjects.map((subject) => {
+        const cfu = parseDecimal(subject.cfu);
+
+        return [
+          String(subject.id),
+          {
+            cfu: cfu ?? 0,
+            is_eligibility: subject.is_eligibility === true,
+          },
+        ] as const;
+      })
     );
 
     for (const item of selectedSubjects) {
@@ -438,6 +447,13 @@ export async function POST(req: NextRequest) {
       if (!subject) {
         return NextResponse.json(
           { error: "Uno o più esami selezionati non sono validi." },
+          { status: 400 }
+        );
+      }
+
+      if (!Number.isFinite(subject.cfu) || subject.cfu <= 0) {
+        return NextResponse.json(
+          { error: "Uno o più esami hanno CFU non validi." },
           { status: 400 }
         );
       }
@@ -489,7 +505,7 @@ export async function POST(req: NextRequest) {
         email_istituzionale: profile.email_istituzionale,
         numero_telefono: profile.numero_telefono,
         data_di_nascita: profile.data_di_nascita,
-        total_cfu: totalCfu,
+        total_cfu: Number(totalCfu),
         weighted_average: weightedAverage,
         final_score: 0,
         assignment_status: "non_assegnato",
@@ -513,7 +529,7 @@ export async function POST(req: NextRequest) {
         grade: subject.is_eligibility ? null : item.grade,
         has_honors: subject.is_eligibility ? false : item.has_honors,
         passed: subject.is_eligibility ? item.passed === true : true,
-        cfu: subject.cfu,
+        cfu: Number(subject.cfu),
       };
     });
 
