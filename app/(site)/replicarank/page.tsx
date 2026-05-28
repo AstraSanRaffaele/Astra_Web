@@ -529,10 +529,10 @@ export default function ReplicaRankPage() {
         .section { margin-top: 1.5rem; }
 
         .grid {
-          display: grid;
-          grid-template-columns: minmax(0,1.1fr) minmax(320px,.9fr);
-          gap: 1.5rem;
-        }
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
 
         .card {
           border-radius: 2rem;
