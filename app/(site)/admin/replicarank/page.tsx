@@ -310,6 +310,7 @@ export default function AdminReplicaRankPage() {
         body: JSON.stringify({
           ...newEdition,
           slug: createSlug(newEdition.name),
+          copy_subjects_from_edition_id: selectedEdition?.id ?? null,
         }),
       });
 
@@ -1182,7 +1183,9 @@ export default function AdminReplicaRankPage() {
               <aside className="replicarank-side-card">
                 <p className="eyebrow">Nuova</p>
                 <h2 className="display replicarank-section-title">Edizione</h2>
-                <p className="replicarank-muted">Crea una nuova edizione annuale separata dalle precedenti.</p>
+                <p className="replicarank-muted">
+                  Crea una nuova edizione annuale. Gli esami validi verranno copiati automaticamente dall’edizione selezionata.
+                </p>
                 <div className="replicarank-new-form">
                   <input
                     value={newEdition.name}

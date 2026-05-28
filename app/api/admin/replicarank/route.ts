@@ -163,6 +163,7 @@ export async function POST(req: NextRequest) {
     are_registrations_open?: unknown;
     is_ranking_published?: unknown;
     archive_pdf_url?: unknown;
+    copy_subjects_from_edition_id?: unknown;
   } = {};
 
   try {
@@ -175,6 +176,7 @@ export async function POST(req: NextRequest) {
   const slug = cleanString(body.slug);
   const cohortYear = parsePositiveInteger(body.cohort_year);
   const availablePlaces = parsePositiveInteger(body.available_places) ?? 250;
+  const copySubjectsFromEditionId = cleanString(body.copy_subjects_from_edition_id);
 
   if (!name) {
     return NextResponse.json({ error: "Inserisci il nome dell'edizione." }, { status: 400 });
@@ -224,10 +226,55 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    let copiedSubjectsCount = 0;
+
+    if (copySubjectsFromEditionId && data?.id) {
+      const { data: subjectsToCopy, error: subjectsToCopyError } = await supabase
+        .from("replicarank_subjects")
+        .select("*")
+        .eq("edition_id", copySubjectsFromEditionId)
+        .order("sort_order", { ascending: true });
+
+      if (subjectsToCopyError) {
+        return NextResponse.json({ error: subjectsToCopyError.message }, { status: 500 });
+      }
+
+      if (subjectsToCopy?.length) {
+        const copiedSubjects = subjectsToCopy.map((subject) => {
+          const {
+            id: _id,
+            edition_id: _editionId,
+            created_at: _createdAt,
+            updated_at: _updatedAt,
+            ...subjectData
+          } = subject;
+
+          return {
+            ...subjectData,
+            edition_id: data.id,
+          };
+        });
+
+        const { error: copySubjectsError } = await supabase
+          .from("replicarank_subjects")
+          .insert(copiedSubjects);
+
+        if (copySubjectsError) {
+          return NextResponse.json({ error: copySubjectsError.message }, { status: 500 });
+        }
+
+        copiedSubjectsCount = copiedSubjects.length;
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       edition: data,
-      message: "Edizione ReplicaRANK creata correttamente.",
+      copiedSubjectsCount,
+      message:
+        copiedSubjectsCount > 0
+          ? `Edizione ReplicaRANK creata correttamente. Copiati ${copiedSubjectsCount} esami dall’edizione precedente.`
+          : "Edizione ReplicaRANK creata correttamente.",
     });
   } catch (error) {
     return NextResponse.json(
