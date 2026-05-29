@@ -73,14 +73,14 @@ const DISCLAIMER =
 
 const DEFAULT_AREA_STATS: AreaStat[] = [
   {
-    area: "Chirurgia",
+    area: "Clinica",
     assigned_count: 0,
     capacity: 250,
     remaining_places: 250,
     minimum_score: null,
   },
   {
-    area: "Clinica",
+    area: "Chirurgia",
     assigned_count: 0,
     capacity: 250,
     remaining_places: 250,
@@ -94,6 +94,18 @@ const DEFAULT_AREA_STATS: AreaStat[] = [
     minimum_score: null,
   },
 ];
+
+const AREA_ORDER = ["Clinica", "Chirurgia", "Ricerca"];
+
+function normalizeAreaName(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+
+  if (normalized.includes("clinic")) return "Clinica";
+  if (normalized.includes("chirurg")) return "Chirurgia";
+  if (normalized.includes("ricerc")) return "Ricerca";
+
+  return value ?? "";
+}
 
 function createSlug(value: string) {
   return value
@@ -146,7 +158,25 @@ export default function AdminReplicaRankPage() {
     [editions, selectedEditionId]
   );
 
-  const visibleAreaStats = areaStats.length > 0 ? areaStats : DEFAULT_AREA_STATS;
+  const visibleAreaStats = useMemo(() => {
+    const statsByArea = new Map<string, AreaStat>();
+
+    DEFAULT_AREA_STATS.forEach((stat) => {
+      statsByArea.set(stat.area, { ...stat });
+    });
+
+    areaStats.forEach((stat) => {
+      const area = normalizeAreaName(stat.area);
+      if (!AREA_ORDER.includes(area)) return;
+
+      statsByArea.set(area, {
+        ...stat,
+        area,
+      });
+    });
+
+    return AREA_ORDER.map((area) => statsByArea.get(area)).filter(Boolean) as AreaStat[];
+  }, [areaStats]);
 
   function parseDecimalInput(value: string) {
     const normalized = value.trim().replace(/,/g, ".");
@@ -1335,7 +1365,7 @@ export default function AdminReplicaRankPage() {
                       <div key={participant.id} className="replicarank-row">
                         <div>
                           <h3>{participant.nome} {participant.cognome}</h3>
-                          <p>{participant.fake_matricola} · {participant.total_cfu} CFU · Media {Number(participant.weighted_average).toFixed(2)} · Punteggio {Number(participant.final_score).toFixed(2)} · {participant.assigned_group ?? "Non assegnato"}</p>
+                          <p>{participant.fake_matricola} · {participant.total_cfu} CFU · Media {Number(participant.weighted_average).toFixed(2)} · Punteggio {Number(participant.final_score).toFixed(2)} · {normalizeAreaName(participant.assigned_group) || "Non assegnato"}</p>
                         </div>
                         <div className="replicarank-row-actions">
                           <button
@@ -1361,7 +1391,7 @@ export default function AdminReplicaRankPage() {
                     <p className="eyebrow">Graduatoria</p>
                     <h2 className="display replicarank-section-title">Anteprima graduatoria</h2>
                     <p className="replicarank-muted">
-                      Genera e controlla la graduatoria interna. I posti sono 750 totali: 250 Chirurgia, 250 Clinica e 250 Ricerca.
+                      Genera e controlla la graduatoria interna. I posti sono 750 totali: 250 Clinica, 250 Chirurgia e 250 Ricerca.
                     </p>
                   </div>
                   <button type="button" onClick={generateRanking} className="btn-dark" disabled={saving || !selectedEdition}>Genera graduatoria</button>
@@ -1388,7 +1418,7 @@ export default function AdminReplicaRankPage() {
                       <div key={`${row.participant_id}-${row.position}`} className="replicarank-row">
                         <div>
                           <h3>#{row.position} · {row.fake_matricola}</h3>
-                          <p>Punteggio {Number(row.final_score).toFixed(2)} · Media {Number(row.weighted_average).toFixed(2)} · {row.total_cfu} CFU · {row.assigned_group ?? "Non assegnato"}</p>
+                          <p>Punteggio {Number(row.final_score).toFixed(2)} · Media {Number(row.weighted_average).toFixed(2)} · {row.total_cfu} CFU · {normalizeAreaName(row.assigned_group) || "Non assegnato"}</p>
                         </div>
                       </div>
                     ))

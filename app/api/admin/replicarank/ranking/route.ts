@@ -64,6 +64,47 @@ type Preference = {
   preference_order: number;
 };
 
+type RankingRow = {
+  assigned_group: string | null;
+  final_score: number | string | null;
+  is_within_available_places: boolean | null;
+};
+
+const AREA_ORDER = ["Clinica", "Chirurgia", "Ricerca"];
+const AREA_CAPACITY = 250;
+
+function normalizeAreaName(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+
+  if (normalized.includes("clinic")) return "Clinica";
+  if (normalized.includes("chirurg")) return "Chirurgia";
+  if (normalized.includes("ricerc")) return "Ricerca";
+
+  return "";
+}
+
+function calculateAreaStats(rankingRows: RankingRow[]) {
+  return AREA_ORDER.map((area) => {
+    const assignedRows = rankingRows.filter((row) => {
+      return row.is_within_available_places && normalizeAreaName(row.assigned_group) === area;
+    });
+
+    const scores = assignedRows
+      .map((row) => Number(row.final_score))
+      .filter((score) => Number.isFinite(score));
+
+    const minimumScore = scores.length > 0 ? Math.min(...scores) : null;
+
+    return {
+      area,
+      assigned_count: assignedRows.length,
+      capacity: AREA_CAPACITY,
+      remaining_places: Math.max(AREA_CAPACITY - assignedRows.length, 0),
+      minimum_score: minimumScore === null ? null : Number(minimumScore.toFixed(2)),
+    };
+  });
+}
+
 type Participant = {
   id: string;
   edition_id: string;
@@ -94,17 +135,25 @@ function calculateWeightedAverage(subjects: ParticipantSubject[]) {
   };
 }
 
-function assignGroup(preferences: Preference[] | undefined, fallbackIndex: number) {
-  const orderedPreferences = [...(preferences ?? [])].sort(
-    (a, b) => a.preference_order - b.preference_order
-  );
+function assignGroup(
+  preferences: Preference[] | undefined,
+  areaCounters: Record<string, number>
+) {
+  const orderedPreferences = [...(preferences ?? [])]
+    .sort((a, b) => a.preference_order - b.preference_order)
+    .map((preference) => normalizeAreaName(preference.group_name))
+    .filter((area) => AREA_ORDER.includes(area));
 
-  if (orderedPreferences.length > 0) {
-    return orderedPreferences[0].group_name;
+  const areasToTry = orderedPreferences.length > 0 ? orderedPreferences : AREA_ORDER;
+
+  for (const area of areasToTry) {
+    if ((areaCounters[area] ?? 0) < AREA_CAPACITY) {
+      areaCounters[area] = (areaCounters[area] ?? 0) + 1;
+      return area;
+    }
   }
 
-  const automaticGroups = ["Gruppo A", "Gruppo B", "Gruppo C", "Gruppo D"];
-  return automaticGroups[fallbackIndex % automaticGroups.length];
+  return null;
 }
 
 export async function GET(req: NextRequest) {
@@ -146,9 +195,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const ranking = data ?? [];
+    const areaStats = calculateAreaStats(ranking as RankingRow[]);
+
     return NextResponse.json({
       ok: true,
-      ranking: data ?? [],
+      ranking,
+      areaStats,
     });
   } catch (error) {
     return NextResponse.json(
@@ -284,12 +337,16 @@ export async function POST(req: NextRequest) {
       return birthB - birthA;
     });
 
-    const availablePlaces = Number(edition.available_places || 250);
+    const availablePlaces = Number(edition.available_places || AREA_ORDER.length * AREA_CAPACITY);
+    const areaCounters = AREA_ORDER.reduce<Record<string, number>>((acc, area) => {
+      acc[area] = 0;
+      return acc;
+    }, {});
 
     const rankingRows = scoredRows.map((row, index) => {
       const isWithinAvailablePlaces = index < availablePlaces;
       const assignedGroup = isWithinAvailablePlaces
-        ? assignGroup(row.participant.replicarank_preferences, index)
+        ? assignGroup(row.participant.replicarank_preferences, areaCounters)
         : null;
 
       const assignmentStatus = isWithinAvailablePlaces ? "assegnato" : "non_assegnato";
@@ -348,9 +405,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const areaStats = calculateAreaStats(rankingRows);
+
     return NextResponse.json({
       ok: true,
       ranking: rankingRows,
+      areaStats,
       message: "Graduatoria ReplicaRANK generata correttamente.",
     });
   } catch (error) {

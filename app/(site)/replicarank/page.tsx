@@ -66,7 +66,7 @@ type SelectedSubject = {
   is_passed: boolean;
 };
 
-const AREA_OPTIONS = ["Chirurgia", "Clinica", "Ricerca"] as const;
+const AREA_OPTIONS = ["Clinica", "Chirurgia", "Ricerca"] as const;
 
 const DISCLAIMER =
   "Questa NON è una graduatoria ufficiale dell’Università. È una simulazione/previsione indipendente basata sugli stessi criteri pubblici della graduatoria originale.";
@@ -234,6 +234,7 @@ export default function ReplicaRankPage() {
           ? {
             ...item,
             grade: onlyNumbers,
+            has_honors: onlyNumbers === "30" ? item.has_honors : false,
           }
           : item
       )
@@ -759,8 +760,8 @@ export default function ReplicaRankPage() {
 
               <div className="stats">
                 <div className="stat-card"><strong>{edition?.available_places ?? 750}</strong><span>posti totali</span></div>
-                <div className="stat-card"><strong>250</strong><span>chirurgica</span></div>
                 <div className="stat-card"><strong>250</strong><span>clinica</span></div>
+                <div className="stat-card"><strong>250</strong><span>chirurgica</span></div>
                 <div className="stat-card"><strong>250</strong><span>ricerca</span></div>
               </div>
             </section>
@@ -776,7 +777,7 @@ export default function ReplicaRankPage() {
                   <h2 className="display section-title">Una previsione chiara, non ufficiale</h2>
 
                   <p className="muted">
-                    ReplicaRANK raccoglie i dati inseriti dagli studenti registrati, calcola media ponderata, CFU e punteggio finale, poi assegna progressivamente i posti nelle tre aree: Chirurgia, Clinica e Ricerca, con massimo 250 persone per area.
+                    ReplicaRANK raccoglie i dati inseriti dagli studenti registrati, calcola media ponderata, CFU e punteggio finale, poi assegna progressivamente i posti nelle tre aree: Clinica, Chirurgia e Ricerca, con massimo 250 persone per area.
                   </p>
 
                 </div>
@@ -888,11 +889,17 @@ export default function ReplicaRankPage() {
                                         >
                                           <input
                                             type="checkbox"
-                                            checked={selected.has_honors}
+                                            checked={selected.has_honors && selected.grade === "30"}
+                                            disabled={selected.grade !== "30"}
                                             onChange={(event) => updateSubjectHonors(subject.id, event.target.checked)}
                                           />
                                           Con lode
                                         </label>
+                                        {selected.grade !== "30" && (
+                                          <p className="muted" style={{ fontSize: ".85rem", marginTop: ".45rem" }}>
+                                            La lode può essere selezionata solo con voto 30.
+                                          </p>
+                                        )}
                                       </>
                                     )}
                                   </div>
@@ -1029,7 +1036,7 @@ export default function ReplicaRankPage() {
                   <p className="eyebrow" style={{ color: "var(--ink-soft)" }}>Graduatoria pubblica</p>
                   <h2 className="display section-title">Graduatoria simulata</h2>
                   <p className="muted">
-                    La graduatoria pubblica non mostra dati personali reali. I posti sono 750 totali: 250 Chirurgia, 250 Clinica e 250 Ricerca.
+                    La graduatoria pubblica non mostra dati personali reali. I posti sono 750 totali: 250 Clinica, 250 Chirurgia e 250 Ricerca.
                   </p>
                   <div className="alert alert-warning">{DISCLAIMER}</div>
 
