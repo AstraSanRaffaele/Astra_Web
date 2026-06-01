@@ -485,44 +485,6 @@ export default function AdminMatricolePage() {
                 Pannello admin
               </a>
             </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
-                gap: "1rem",
-              }}
-            >
-              {[
-                ["Pagina", settings?.isPageActive ? "Attiva" : "Disattiva"],
-                ["Banner home", settings?.homeBannerEnabled ? "Attivo" : "Disattivo"],
-                ["Corsi totali", FRESHERS_ALL_COURSES.length],
-                ["Corsi configurati", configuredCourses],
-              ].map(([label, value]) => (
-                <div
-                  key={String(label)}
-                  style={{
-                    background: "rgba(255,255,255,.1)",
-                    border: "1px solid rgba(255,255,255,.14)",
-                    borderRadius: "1.2rem",
-                    padding: ".9rem 1.1rem",
-                  }}
-                >
-                  <div style={{ fontSize: ".85rem", color: "rgba(255,255,255,.7)" }}>
-                    {label}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "1.5rem",
-                      fontWeight: 900,
-                      marginTop: ".2rem",
-                    }}
-                  >
-                    {value}
-                  </div>
-                </div>
-              ))}
-            </div>
           </section>
 
           {(error || success) && (
