@@ -547,13 +547,13 @@ function MatricoleCourseStyles() {
       }
 
       .hero {
-        border-radius: 2.8rem;
-        padding: clamp(2rem, 6vw, 4rem);
+        border-radius: 2rem;
+        padding: clamp(1.45rem, 3.5vw, 2.4rem);
         background:
-          radial-gradient(circle at top right, rgba(200,212,245,.22), transparent 35%),
+          radial-gradient(circle at top right, rgba(200,212,245,.18), transparent 35%),
           var(--ink);
         color: white;
-        box-shadow: 0 24px 70px rgba(8,16,42,.24);
+        box-shadow: 0 18px 48px rgba(8,16,42,.2);
         overflow: hidden;
         position: relative;
       }
@@ -561,12 +561,12 @@ function MatricoleCourseStyles() {
       .hero::after {
         content: "";
         position: absolute;
-        width: 360px;
-        height: 360px;
+        width: 260px;
+        height: 260px;
         border-radius: 50%;
-        border: 1px solid rgba(255,255,255,.08);
-        right: -80px;
-        top: -80px;
+        border: 1px solid rgba(255,255,255,.07);
+        right: -70px;
+        top: -90px;
         pointer-events: none;
       }
 
@@ -578,11 +578,11 @@ function MatricoleCourseStyles() {
 
       .back-link {
         display: inline-flex;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
         color: rgba(255,255,255,.74);
         text-decoration: none;
         font-weight: 800;
-        font-size: .92rem;
+        font-size: .88rem;
       }
 
       .back-link:hover {
@@ -590,12 +590,12 @@ function MatricoleCourseStyles() {
       }
 
       .eyebrow {
-        font-size: .72rem;
+        font-size: .68rem;
         font-weight: 800;
-        letter-spacing: .22em;
+        letter-spacing: .2em;
         text-transform: uppercase;
         color: var(--ink-soft);
-        margin-bottom: 1.2rem;
+        margin-bottom: .85rem;
       }
 
       .hero .eyebrow {
@@ -603,27 +603,29 @@ function MatricoleCourseStyles() {
       }
 
       .hero-title {
-        font-size: clamp(4rem, 10vw, 8rem);
-        line-height: .86;
-        letter-spacing: -.06em;
+        font-size: clamp(2.65rem, 6vw, 5rem);
+        line-height: .92;
+        letter-spacing: -.045em;
+        max-width: 980px;
       }
 
       .hero-subtitle {
-        margin-top: 1.5rem;
+        margin-top: 1rem;
         max-width: 760px;
-        color: rgba(255,255,255,.78);
-        line-height: 1.8;
-        font-size: 1.08rem;
+        color: rgba(255,255,255,.72);
+        line-height: 1.7;
+        font-size: .98rem;
       }
 
       .disclaimer {
-        margin-top: 1.5rem;
-        border-radius: 1.5rem;
-        border: 1px solid rgba(255,255,255,.14);
-        background: rgba(255,255,255,.06);
-        padding: 1rem 1.2rem;
-        color: rgba(255,255,255,.86);
-        line-height: 1.7;
+        margin-top: 1rem;
+        border-radius: 1.2rem;
+        border: 1px solid rgba(255,255,255,.12);
+        background: rgba(255,255,255,.055);
+        padding: .85rem 1rem;
+        color: rgba(255,255,255,.82);
+        line-height: 1.65;
+        font-size: .92rem;
       }
 
       .section {
@@ -915,8 +917,12 @@ function MatricoleCourseStyles() {
         .representative-card,
         .whatsapp-card,
         .empty-state {
-          padding: 1.5rem;
-          border-radius: 1.6rem;
+          padding: 1.25rem;
+          border-radius: 1.4rem;
+        }
+
+        .hero-title {
+          font-size: clamp(2.3rem, 12vw, 3.4rem);
         }
 
         .representative-card {

@@ -217,33 +217,13 @@ export default function MatricolePage() {
                   Scegli la tua facoltà
                 </a>
 
-                <a href="#info" className="btn-outline">
-                  Informazioni utili
+                <a href="#facolta" className="btn-outline">
+                  Vai ai percorsi
                 </a>
               </div>
             </div>
           </section>
 
-          <Reveal>
-            <section id="info" className="section">
-              <div className="section-head">
-                <p className="eyebrow">Primi passi</p>
-                <h2 className="display section-title">
-                  Tutto quello che ti serve per iniziare.
-                </h2>
-              </div>
-
-              <div className="info-grid">
-                {FRESHERS_PAGE.infoBoxes.map((box) => (
-                  <article key={box.title} className="card info-card">
-                    <span className="info-dot" />
-                    <h3>{box.title}</h3>
-                    <p>{box.description}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-          </Reveal>
 
           {activeCarouselItems.length > 0 && (
             <Reveal>
@@ -540,44 +520,6 @@ function MatricoleStyles() {
         max-width: 780px;
       }
 
-      .card {
-        border-radius: 2rem;
-        background: white;
-        border: 1px solid rgba(8,16,42,.08);
-        padding: 2rem;
-        box-shadow: 0 14px 40px rgba(8,16,42,.06);
-      }
-
-      .info-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 1rem;
-      }
-
-      .info-card {
-        min-height: 210px;
-      }
-
-      .info-dot {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        display: inline-flex;
-        background: linear-gradient(135deg, var(--sky), var(--sky-deep));
-        margin-bottom: 1.2rem;
-      }
-
-      .info-card h3 {
-        color: var(--ink);
-        font-size: 1.05rem;
-        margin-bottom: .8rem;
-      }
-
-      .info-card p {
-        color: var(--mist);
-        line-height: 1.7;
-        font-size: .92rem;
-      }
 
       .carousel-wrap {
         display: grid;
@@ -760,7 +702,6 @@ function MatricoleStyles() {
       }
 
       @media (max-width: 1000px) {
-        .info-grid,
         .faculty-grid {
           grid-template-columns: 1fr;
         }
@@ -772,7 +713,6 @@ function MatricoleStyles() {
         }
 
         .hero,
-        .card,
         .faculty-card,
         .empty-state {
           padding: 1.5rem;

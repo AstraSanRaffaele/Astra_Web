@@ -149,6 +149,7 @@ export default function AdminMatricolePage() {
   const [loading, setLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
   const [savingCourseSlug, setSavingCourseSlug] = useState<string | null>(null);
+  const [openCourseSlug, setOpenCourseSlug] = useState<string | null>(null);
 
   const [settings, setSettings] = useState<FreshersSettings | null>(null);
 
@@ -303,6 +304,10 @@ export default function AdminMatricolePage() {
         [key]: value,
       },
     }));
+  }
+
+  function toggleCourse(courseSlug: string) {
+    setOpenCourseSlug((current) => (current === courseSlug ? null : courseSlug));
   }
 
   async function saveCourse(courseSlug: string) {
@@ -563,15 +568,19 @@ export default function AdminMatricolePage() {
             </div>
           </section>
 
-          <section className="admin-card">
-            <div className="section-head">
+          <section className="admin-card compact-card">
+            <div className="section-head compact-head">
               <div>
                 <SectionLabel>Impostazioni corsi</SectionLabel>
                 <h2 className="section-title">Prima lezione e link WhatsApp</h2>
                 <p className="section-muted">
-                  I corsi sono fissi nel codice. Da qui modifichi solo data della prima lezione e link WhatsApp.
+                  Clicca su un corso per aprire la sezione e modificare solo i dati di quel CdL.
                 </p>
               </div>
+
+              <span className="courses-counter">
+                {configuredCourses}/{FRESHERS_ALL_COURSES.length} configurati
+              </span>
             </div>
 
             <div className="courses-list">
@@ -582,52 +591,66 @@ export default function AdminMatricolePage() {
                 };
 
                 const saving = savingCourseSlug === course.slug;
+                const isOpen = openCourseSlug === course.slug;
+                const isConfigured = Boolean(courseSettings[course.slug]);
 
                 return (
-                  <div key={course.slug} className="course-card">
-                    <div className="course-head">
-                      <div>
+                  <div
+                    key={course.slug}
+                    className={`course-row ${isOpen ? "course-row-open" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className="course-row-trigger"
+                      onClick={() => toggleCourse(course.slug)}
+                      aria-expanded={isOpen}
+                    >
+                      <div className="course-row-main">
                         <span className="faculty-badge">{course.facultyName}</span>
-                        <h3>{course.name}</h3>
-                        <p>
-                          Slug corso: <code>{course.slug}</code>
-                        </p>
+                        <strong>{course.name}</strong>
                       </div>
 
-                      {courseSettings[course.slug] && (
-                        <span className="configured-badge">Configurato</span>
-                      )}
-                    </div>
+                      <div className="course-row-meta">
+                        {isConfigured && (
+                          <span className="configured-badge">Configurato</span>
+                        )}
+                        <span className="course-chevron">{isOpen ? "↑" : "↓"}</span>
+                      </div>
+                    </button>
 
-                    <div className="course-fields">
-                      <Field
-                        label="Data e ora prima lezione"
-                        type="datetime-local"
-                        value={form.firstLessonAt}
-                        onChange={(value) =>
-                          updateCourseForm(course.slug, "firstLessonAt", value)
-                        }
-                      />
+                    {isOpen && (
+                      <div className="course-row-panel">
+                        <div className="course-fields">
+                          <Field
+                            label="Data e ora prima lezione"
+                            type="datetime-local"
+                            value={form.firstLessonAt}
+                            onChange={(value) =>
+                              updateCourseForm(course.slug, "firstLessonAt", value)
+                            }
+                          />
 
-                      <Field
-                        label="Link WhatsApp"
-                        value={form.whatsappUrl}
-                        onChange={(value) =>
-                          updateCourseForm(course.slug, "whatsappUrl", value)
-                        }
-                        placeholder="https://chat.whatsapp.com/..."
-                      />
-                    </div>
+                          <Field
+                            label="Link WhatsApp"
+                            value={form.whatsappUrl}
+                            onChange={(value) =>
+                              updateCourseForm(course.slug, "whatsappUrl", value)
+                            }
+                            placeholder="https://chat.whatsapp.com/..."
+                          />
+                        </div>
 
-                    <div className="course-actions">
-                      <button
-                        type="button"
-                        onClick={() => saveCourse(course.slug)}
-                        disabled={saving}
-                      >
-                        {saving ? "Salvataggio..." : "Salva corso"}
-                      </button>
-                    </div>
+                        <div className="course-actions">
+                          <button
+                            type="button"
+                            onClick={() => saveCourse(course.slug)}
+                            disabled={saving}
+                          >
+                            {saving ? "Salvataggio..." : "Salva dati corso"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -649,12 +672,20 @@ export default function AdminMatricolePage() {
           gap: 1.2rem;
         }
 
+        .compact-card {
+          gap: 1rem;
+        }
+
         .section-head {
           display: flex;
           justify-content: space-between;
           gap: 1rem;
           align-items: flex-start;
           flex-wrap: wrap;
+        }
+
+        .compact-head {
+          align-items: center;
         }
 
         .section-title {
@@ -670,6 +701,16 @@ export default function AdminMatricolePage() {
           color: #6b7280;
           line-height: 1.6;
           max-width: 760px;
+        }
+
+        .courses-counter {
+          border-radius: 999px;
+          background: rgba(15,47,110,.06);
+          color: #0f2f6e;
+          padding: .5rem .85rem;
+          font-size: .78rem;
+          font-weight: 900;
+          white-space: nowrap;
         }
 
         .settings-grid {
@@ -706,57 +747,95 @@ export default function AdminMatricolePage() {
         .courses-list {
           display: flex;
           flex-direction: column;
-          gap: .9rem;
+          gap: .55rem;
         }
 
-        .course-card {
+        .course-row {
           border: 1px solid rgba(15,47,110,.08);
           background: white;
-          border-radius: 1.4rem;
-          padding: 1.2rem;
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
+          border-radius: 1.15rem;
+          overflow: hidden;
+          box-shadow: 0 8px 22px rgba(15,47,110,.045);
         }
 
-        .course-head {
+        .course-row-open {
+          border-color: rgba(15,47,110,.16);
+          box-shadow: 0 14px 34px rgba(15,47,110,.075);
+        }
+
+        .course-row-trigger {
+          width: 100%;
+          border: none;
+          background: transparent;
+          padding: .82rem 1rem;
           display: flex;
+          align-items: center;
           justify-content: space-between;
-          align-items: flex-start;
           gap: 1rem;
-          flex-wrap: wrap;
+          cursor: pointer;
+          text-align: left;
+          font-family: inherit;
         }
 
-        .course-head h3 {
-          margin: .5rem 0 .25rem;
+        .course-row-trigger:hover {
+          background: rgba(15,47,110,.025);
+        }
+
+        .course-row-main {
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: .75rem;
+        }
+
+        .course-row-main strong {
           color: #08102A;
-          font-size: 1.1rem;
+          font-size: .98rem;
+          font-weight: 900;
+          line-height: 1.25;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .course-row-meta {
+          display: flex;
+          align-items: center;
+          gap: .55rem;
+          flex-shrink: 0;
+        }
+
+        .course-chevron {
+          width: 30px;
+          height: 30px;
+          border-radius: 999px;
+          background: rgba(15,47,110,.06);
+          color: #0f2f6e;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           font-weight: 900;
         }
 
-        .course-head p {
-          margin: 0;
-          color: #6b7280;
-          font-size: .88rem;
-        }
-
-        .course-head code {
-          background: rgba(15,47,110,.06);
-          color: #0f2f6e;
-          border-radius: .45rem;
-          padding: .15rem .35rem;
-          font-weight: 800;
+        .course-row-panel {
+          border-top: 1px solid rgba(15,47,110,.08);
+          background: rgba(15,47,110,.025);
+          padding: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
         }
 
         .faculty-badge,
         .configured-badge {
           display: inline-flex;
           border-radius: 999px;
-          padding: .28rem .7rem;
-          font-size: .68rem;
+          padding: .25rem .62rem;
+          font-size: .63rem;
           font-weight: 900;
           letter-spacing: .08em;
           text-transform: uppercase;
+          flex-shrink: 0;
         }
 
         .faculty-badge {
@@ -846,6 +925,25 @@ export default function AdminMatricolePage() {
 
           .course-actions button {
             width: 100%;
+          }
+
+          .course-row-trigger {
+            align-items: flex-start;
+          }
+
+          .course-row-main {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: .45rem;
+          }
+
+          .course-row-main strong {
+            white-space: normal;
+          }
+
+          .course-row-meta {
+            align-items: flex-end;
+            flex-direction: column;
           }
         }
       `}</style>
