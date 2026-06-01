@@ -3,6 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Navbar from "@/components/ui/navbar";
 
+type FreshersStatusResponse = {
+  ok?: boolean;
+  isPageActive?: boolean;
+  homeBannerEnabled?: boolean;
+  error?: string;
+};
+
 // ── Scroll Reveal Hook ───────────────────────────────────────────
 function useReveal(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
@@ -55,6 +62,7 @@ const stats = [["2.9k", "Followers"], ["30+", "Iniziative"], ["3", "Facoltà"]];
 export default function Home() {
   const [mouseX, setMouseX] = useState(50);
   const [mouseY, setMouseY] = useState(50);
+  const [showFreshersBanner, setShowFreshersBanner] = useState(false);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -63,6 +71,31 @@ export default function Home() {
     };
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  useEffect(() => {
+    async function loadFreshersStatus() {
+      try {
+        const res = await fetch("/api/matricole/status", {
+          cache: "no-store",
+        });
+
+        const json = (await res.json().catch(() => ({}))) as FreshersStatusResponse;
+
+        if (!res.ok) {
+          setShowFreshersBanner(false);
+          return;
+        }
+
+        setShowFreshersBanner(
+          Boolean(json.isPageActive) && Boolean(json.homeBannerEnabled),
+        );
+      } catch {
+        setShowFreshersBanner(false);
+      }
+    }
+
+    loadFreshersStatus();
   }, []);
 
   return (
@@ -176,6 +209,81 @@ export default function Home() {
         }
         .btn-outline:hover { border-color: var(--ink); background: rgba(8,16,42,.04); }
 
+        .freshers-home-banner {
+  margin: 7rem 3rem -5.5rem;
+  position: relative;
+  z-index: 5;
+  border-radius: 2rem;
+  background: var(--ink);
+  color: white;
+  padding: 1.5rem;
+  box-shadow: 0 20px 55px rgba(8,16,42,.18);
+  overflow: hidden;
+}
+
+.freshers-home-banner::after {
+  content: "";
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  right: -80px;
+  top: -120px;
+  background: rgba(200,212,245,.16);
+  pointer-events: none;
+}
+
+.freshers-home-banner-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.freshers-home-banner-kicker {
+  margin: 0 0 .45rem;
+  color: rgba(255,255,255,.58);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.freshers-home-banner h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  line-height: 1;
+  letter-spacing: -.04em;
+  color: white;
+}
+
+.freshers-home-banner p {
+  margin: .55rem 0 0;
+  color: rgba(255,255,255,.72);
+  line-height: 1.6;
+  max-width: 640px;
+}
+
+.freshers-home-banner-btn {
+  background: white;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: .9rem 1.4rem;
+  text-decoration: none;
+  font-weight: 900;
+  white-space: nowrap;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.freshers-home-banner-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0,0,0,.18);
+}
+
         .btn-dark {
           background: var(--ink);
           color: #fff;
@@ -248,17 +356,39 @@ export default function Home() {
           .contacts-box   { padding: 3rem 1.5rem !important; }
           .contacts-inner-grid { grid-template-columns: 1fr !important; gap: 3rem !important; }
           .hero-stats     { gap: 2.5rem !important; }
+          .freshers-home-banner { margin: 6rem 1.5rem -4.5rem !important; }
+          .freshers-home-banner-inner { flex-direction: column !important; align-items: flex-start !important; }
         }
         @media (max-width: 600px) {
           .chips-grid  { grid-template-columns: 1fr !important; }
           .hero-ctas   { flex-direction: column !important; }
           .hero-ctas a { text-align: center !important; }
+          .freshers-home-banner { margin: 5.5rem 1rem -4rem !important; padding: 1.25rem !important; border-radius: 1.5rem !important; }
+          .freshers-home-banner-btn { width: 100%; text-align: center; }
         }
       `}</style>
 
       <div style={{ fontFamily: "'DM Sans', sans-serif", background: "var(--cream)", color: "var(--ink)", overflowX: "hidden" }}>
 
         <Navbar />
+
+        {showFreshersBanner && (
+          <section className="freshers-home-banner">
+            <div className="freshers-home-banner-inner">
+              <div>
+                <p className="freshers-home-banner-kicker">Nuove matricole</p>
+                <h2 className="display">Benvenute matricole</h2>
+                <p>
+                  Testo demo: una guida rapida per scegliere la facoltà, trovare il corso corretto e accedere alle prime informazioni utili.
+                </p>
+              </div>
+
+              <a href="/matricole" className="freshers-home-banner-btn">
+                Vai alla pagina matricole
+              </a>
+            </div>
+          </section>
+        )}
 
         {/* ══ HERO ══ */}
         <section

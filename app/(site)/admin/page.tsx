@@ -235,6 +235,15 @@ export default function AdminPage() {
                   </span>
                   <span className="adminMenuArrow">→</span>
                 </a>
+
+                <a href="/admin/matricole" className="adminMenuItem">
+                  <span className="adminMenuIcon">07</span>
+                  <span className="adminMenuText">
+                    <strong>Matricole</strong>
+                    <small>Attiva la pagina, il banner e i link dei corsi</small>
+                  </span>
+                  <span className="adminMenuArrow">→</span>
+                </a>
               </nav>
             </div>
 
