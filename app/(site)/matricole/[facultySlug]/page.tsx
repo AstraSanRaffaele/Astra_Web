@@ -197,48 +197,38 @@ export default function MatricoleFacultyPage() {
                 {faculty.description}
               </p>
 
-              <div className="disclaimer">
-                Testo demo: qui verranno indicati i contatti utili e le prime informazioni per orientarsi nella facoltà.
-              </div>
             </div>
           </section>
 
           <Reveal>
-            <section className="section">
-              <div className="section-head">
-                <p className="eyebrow">Contatti utili</p>
-                <h2 className="display section-title">
-                  Rappresentanti di facoltà.
-                </h2>
-                <p className="muted">
-                  Testo demo: in questa sezione compariranno i rappresentanti di facoltà e i contatti principali.
-                </p>
+            <section className="section clean-section">
+              <div className="section-head compact-section-head">
+                <div>
+                  <p className="eyebrow">Contatti utili</p>
+                  <h2 className="display section-title">
+                    Rappresentanti di facoltà.
+                  </h2>
+                </div>
               </div>
 
-              <div className="representatives-grid">
+              <div className="representatives-list">
                 {faculty.representatives.map((representative) => (
                   <article
                     key={`${representative.firstName}-${representative.lastName}-${representative.email}`}
-                    className="representative-card"
+                    className="representative-row"
                   >
-                    <div className="avatar">
-                      {representative.firstName.charAt(0)}
-                      {representative.lastName.charAt(0)}
-                    </div>
-
                     <div>
                       <h3>
                         {representative.firstName} {representative.lastName}
                       </h3>
-
                       {representative.role && (
-                        <p className="role">{representative.role}</p>
+                        <p>{representative.role}</p>
                       )}
-
-                      <a href={`mailto:${representative.email}`}>
-                        {representative.email}
-                      </a>
                     </div>
+
+                    <a href={`mailto:${representative.email}`}>
+                      {representative.email}
+                    </a>
                   </article>
                 ))}
               </div>
@@ -246,34 +236,32 @@ export default function MatricoleFacultyPage() {
           </Reveal>
 
           <Reveal>
-            <section className="section">
-              <div className="section-head">
-                <p className="eyebrow">Corsi di laurea</p>
-                <h2 className="display section-title">
-                  Scegli il tuo corso.
-                </h2>
-                <p className="muted">
-                  Testo demo: seleziona il corso di laurea corretto per vedere informazioni, rappresentanti, countdown alla prima lezione e accesso protetto al gruppo WhatsApp.
-                </p>
+            <section className="section clean-section">
+              <div className="section-head compact-section-head">
+                <div>
+                  <p className="eyebrow">Corsi di laurea</p>
+                  <h2 className="display section-title">
+                    Scegli il tuo corso.
+                  </h2>
+                </div>
+                <span className="section-count">
+                  {faculty.courses.length} percors{faculty.courses.length === 1 ? "o" : "i"}
+                </span>
               </div>
 
-              <div className="courses-grid">
+              <div className="courses-list">
                 {faculty.courses.map((course) => (
                   <Link
                     key={course.slug}
                     href={`/matricole/${faculty.slug}/${course.slug}`}
-                    className="course-card"
+                    className="course-row"
                   >
-                    <span className="course-kicker">Corso di laurea</span>
-
-                    <h3 className="display">{course.name}</h3>
-
-                    <p>{course.description}</p>
-
-                    <div className="course-footer">
-                      <span>{course.representatives.length} rappresentant{course.representatives.length === 1 ? "e" : "i"}</span>
-                      <span>Apri →</span>
+                    <div>
+                      <span>Corso di laurea</span>
+                      <h3>{course.name}</h3>
                     </div>
+
+                    <strong>Apri →</strong>
                   </Link>
                 ))}
               </div>
@@ -411,31 +399,37 @@ function MatricoleFacultyStyles() {
         font-size: .98rem;
       }
 
-      .disclaimer {
-        margin-top: 1rem;
-        border-radius: 1.2rem;
-        border: 1px solid rgba(255,255,255,.12);
-        background: rgba(255,255,255,.055);
-        padding: .85rem 1rem;
-        color: rgba(255,255,255,.82);
-        line-height: 1.65;
-        font-size: .92rem;
-      }
 
       .section {
-        margin-top: 1.5rem;
+        margin-top: 1.2rem;
+      }
+
+      .clean-section {
+        border-radius: 2rem;
+        background: white;
+        border: 1px solid rgba(8,16,42,.08);
+        box-shadow: 0 14px 40px rgba(8,16,42,.055);
+        padding: 1.5rem;
       }
 
       .section-head {
         margin-bottom: 1.2rem;
       }
 
+      .compact-section-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
       .section-title {
-        font-size: clamp(2.4rem, 5vw, 4rem);
-        line-height: .95;
+        font-size: clamp(2rem, 4vw, 3.2rem);
+        line-height: .98;
         letter-spacing: -.04em;
         color: var(--ink);
-        margin-bottom: .8rem;
+        margin-bottom: 0;
       }
 
       .muted {
@@ -444,123 +438,100 @@ function MatricoleFacultyStyles() {
         max-width: 780px;
       }
 
-      .representatives-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1rem;
-      }
-
-      .representative-card {
-        border-radius: 2rem;
-        background: white;
-        border: 1px solid rgba(8,16,42,.08);
-        padding: 1.5rem;
-        box-shadow: 0 14px 40px rgba(8,16,42,.06);
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-      }
-
-      .avatar {
-        width: 58px;
-        height: 58px;
-        border-radius: 1.2rem;
-        background: linear-gradient(135deg, var(--sky), var(--sky-deep));
+      .section-count {
+        border-radius: 999px;
+        background: var(--blue-light);
         color: var(--ink-mid);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        padding: .45rem .8rem;
+        font-size: .72rem;
         font-weight: 900;
-        flex-shrink: 0;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        white-space: nowrap;
       }
 
-      .representative-card h3 {
+      .representatives-list,
+      .courses-list {
+        display: flex;
+        flex-direction: column;
+        gap: .65rem;
+      }
+
+      .representative-row,
+      .course-row {
+        border-radius: 1.15rem;
+        border: 1px solid rgba(8,16,42,.08);
+        background: rgba(248,247,243,.62);
+        padding: 1rem 1.1rem;
+      }
+
+      .representative-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .representative-row h3,
+      .course-row h3 {
         margin: 0;
         color: var(--ink);
-        font-size: 1.05rem;
+        font-size: 1rem;
+        line-height: 1.35;
+        font-weight: 900;
       }
 
-      .representative-card .role {
-        margin-top: .25rem;
+      .representative-row p {
+        margin: .2rem 0 0;
         color: var(--mist);
-        font-size: .9rem;
+        font-size: .86rem;
         line-height: 1.5;
       }
 
-      .representative-card a {
-        display: inline-flex;
-        margin-top: .45rem;
+      .representative-row a {
         color: var(--ink-mid);
-        font-weight: 800;
+        font-weight: 900;
         text-decoration: none;
         overflow-wrap: anywhere;
+        text-align: right;
       }
 
-      .representative-card a:hover {
+      .representative-row a:hover {
         color: var(--ink);
       }
 
-      .courses-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 1rem;
-      }
-
-      .course-card {
-        min-height: 290px;
-        border-radius: 2rem;
-        background: white;
-        border: 1px solid rgba(8,16,42,.08);
-        padding: 2rem;
-        box-shadow: 0 14px 40px rgba(8,16,42,.06);
+      .course-row {
         color: inherit;
         text-decoration: none;
         display: flex;
-        flex-direction: column;
-        transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
-      }
-
-      .course-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 55px rgba(8,16,42,.1);
-        border-color: rgba(8,16,42,.16);
-      }
-
-      .course-kicker {
-        align-self: flex-start;
-        border-radius: 999px;
-        padding: .4rem .75rem;
-        background: var(--blue-light);
-        color: var(--ink-mid);
-        font-size: .72rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: .08em;
-      }
-
-      .course-card h3 {
-        margin-top: 1.4rem;
-        color: var(--ink);
-        font-size: clamp(2.2rem, 4vw, 3rem);
-        line-height: .95;
-      }
-
-      .course-card p {
-        margin-top: 1rem;
-        color: var(--mist);
-        line-height: 1.7;
-        font-size: .94rem;
-      }
-
-      .course-footer {
-        margin-top: auto;
-        padding-top: 1.4rem;
-        display: flex;
+        align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        color: var(--ink-mid);
-        font-weight: 900;
+        transition: background .2s ease, border-color .2s ease, transform .2s ease;
       }
+
+      .course-row:hover {
+        background: white;
+        border-color: rgba(8,16,42,.16);
+        transform: translateY(-2px);
+      }
+
+      .course-row span {
+        display: inline-flex;
+        margin-bottom: .28rem;
+        color: var(--ink-soft);
+        font-size: .64rem;
+        font-weight: 900;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+      }
+
+      .course-row strong {
+        color: var(--ink-mid);
+        font-size: .9rem;
+        white-space: nowrap;
+      }
+
 
       .empty-state {
         min-height: 70vh;
@@ -610,9 +581,14 @@ function MatricoleFacultyStyles() {
       }
 
       @media (max-width: 1000px) {
-        .representatives-grid,
-        .courses-grid {
-          grid-template-columns: 1fr;
+        .representative-row,
+        .course-row {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .representative-row a {
+          text-align: left;
         }
       }
 
@@ -622,8 +598,7 @@ function MatricoleFacultyStyles() {
         }
 
         .hero,
-        .representative-card,
-        .course-card,
+        .clean-section,
         .empty-state {
           padding: 1.25rem;
           border-radius: 1.4rem;
@@ -631,14 +606,6 @@ function MatricoleFacultyStyles() {
 
         .hero-title {
           font-size: clamp(2.3rem, 12vw, 3.4rem);
-        }
-
-        .representative-card {
-          align-items: flex-start;
-        }
-
-        .course-card {
-          min-height: auto;
         }
 
         .btn-primary {

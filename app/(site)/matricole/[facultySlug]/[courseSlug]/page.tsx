@@ -452,11 +452,6 @@ export default function MatricoleCoursePage() {
                     >
                       Accedi al gruppo WhatsApp
                     </a>
-
-                    <p className="security-note">
-                      Il pulsante apre una route interna protetta. Il link reale
-                      verrà gestito lato server nello Step 11.
-                    </p>
                   </div>
                 ) : (
                   <div className="login-box">
