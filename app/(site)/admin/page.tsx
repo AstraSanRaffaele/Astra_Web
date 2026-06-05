@@ -47,6 +47,35 @@ export default function AdminPage() {
   });
   const [error, setError] = useState("");
 
+  async function fetchAllProfiles() {
+    const batchSize = 1000;
+    let from = 0;
+    let rows: Profile[] = [];
+    let total: number | null = null;
+
+    while (true) {
+      const { data, error, count } = await supabase
+        .from("profiles")
+        .select("*", { count: from === 0 ? "exact" : undefined })
+        .order("created_at", { ascending: false })
+        .range(from, from + batchSize - 1);
+
+      if (error) throw error;
+
+      const chunk = (data ?? []) as Profile[];
+      rows = [...rows, ...chunk];
+
+      if (from === 0) total = count ?? null;
+
+      if (chunk.length < batchSize) break;
+      if (total !== null && rows.length >= total) break;
+
+      from += batchSize;
+    }
+
+    return rows;
+  }
+
   useEffect(() => {
     async function loadAdminPage() {
       setLoading(true);
@@ -80,18 +109,15 @@ export default function AdminPage() {
 
       setAdminProfile(typedProfile);
 
-      const { data: allProfiles, error: usersError } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
+      let profiles: Profile[] = [];
 
-      if (usersError || !allProfiles) {
+      try {
+        profiles = await fetchAllProfiles();
+      } catch {
         setError("Impossibile caricare i dati amministrativi.");
         setLoading(false);
         return;
       }
-
-      const profiles = allProfiles as Profile[];
 
       setRecentUsers(profiles.slice(0, 6));
 
