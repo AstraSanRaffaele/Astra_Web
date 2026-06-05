@@ -246,6 +246,35 @@ export default function AdminUtentiPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const PAGE_SIZE = 12;
 
+  async function fetchAllProfiles() {
+    const batchSize = 1000;
+    let from = 0;
+    let rows: Profile[] = [];
+    let total: number | null = null;
+
+    while (true) {
+      const { data, error, count } = await supabase
+        .from("profiles")
+        .select("*", { count: from === 0 ? "exact" : undefined })
+        .order("created_at", { ascending: false })
+        .range(from, from + batchSize - 1);
+
+      if (error) throw error;
+
+      const chunk = (data ?? []) as Profile[];
+      rows = [...rows, ...chunk];
+
+      if (from === 0) total = count ?? null;
+
+      if (chunk.length < batchSize) break;
+      if (total !== null && rows.length >= total) break;
+
+      from += batchSize;
+    }
+
+    return rows;
+  }
+
   useEffect(() => {
     let active = true;
     async function load() {
@@ -254,10 +283,20 @@ export default function AdminUtentiPage() {
       if (!user) { router.replace("/login"); return; }
       const { data: admin } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       if (!admin || admin.role !== "admin") { router.replace("/profilo"); return; }
-      const { data: all, error: err } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+      let all: Profile[] = [];
+
+      try {
+        all = await fetchAllProfiles();
+      } catch {
+        if (!active) return;
+        setError("Impossibile caricare gli utenti.");
+        setLoading(false);
+        return;
+      }
+
       if (!active) return;
-      if (err) { setError("Impossibile caricare gli utenti."); setLoading(false); return; }
-      const safe = (all ?? []) as Profile[];
+
+      const safe = all;
       setAdminProfile(admin as Profile);
       setProfiles(safe);
       setEdited(safe.reduce<Record<string, Profile>>((acc, p) => { acc[p.id] = { ...p }; return acc; }, {}));
@@ -337,18 +376,18 @@ export default function AdminUtentiPage() {
     setSavingId(id); setError(""); setSuccess("");
     const { error: err } = await supabase.from("profiles").delete().eq("id", id);
     const res = await fetch("/api/admin/delete-user", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ userId: id }),
-});
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: id }),
+    });
 
-const json = await res.json();
+    const json = await res.json();
 
-if (!res.ok) {
-  setError(json.error ?? "Eliminazione non riuscita.");
-  setSavingId(null);
-  return;
-}
+    if (!res.ok) {
+      setError(json.error ?? "Eliminazione non riuscita.");
+      setSavingId(null);
+      return;
+    }
     setProfiles(c => c.filter(p => p.id !== id));
     setSelected(c => c.filter(x => x !== id));
     setEdited(c => { const n = { ...c }; delete n[id]; return n; });
