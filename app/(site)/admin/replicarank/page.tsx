@@ -947,6 +947,12 @@ export default function AdminReplicaRankPage() {
         .replicarank-small-title { font-size: 1rem; font-weight: 800; }
         .replicarank-list { display: grid; gap: .85rem; }
 
+        .replicarank-scroll-list {
+          max-height: 520px;
+          overflow-y: auto;
+          padding-right: .5rem;
+        }
+
         .replicarank-row {
           display: flex;
           justify-content: space-between;
@@ -1357,7 +1363,7 @@ export default function AdminReplicaRankPage() {
                   </select>
                 </div>
 
-                <div className="replicarank-list" style={{ marginTop: "1rem" }}>
+                <div className="replicarank-list replicarank-scroll-list" style={{ marginTop: "1rem" }}>
                   {filteredParticipants.length === 0 ? (
                     <div className="replicarank-empty-box">Nessun partecipante trovato.</div>
                   ) : (
@@ -1410,7 +1416,7 @@ export default function AdminReplicaRankPage() {
                   ))}
                 </div>
 
-                <div className="replicarank-list">
+                <div className="replicarank-list replicarank-scroll-list">
                   {ranking.length === 0 ? (
                     <div className="replicarank-empty-box">Nessuna graduatoria generata.</div>
                   ) : (
