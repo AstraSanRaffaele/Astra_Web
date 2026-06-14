@@ -17,6 +17,47 @@ function getAdminClient() {
   );
 }
 
+const AREA_ORDER = ["Clinica", "Chirurgia", "Ricerca"];
+const AREA_CAPACITY = 250;
+
+function normalizeAreaName(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+
+  if (normalized.includes("clinic")) return "Clinica";
+  if (normalized.includes("chirurg")) return "Chirurgia";
+  if (normalized.includes("ricerc")) return "Ricerca";
+
+  return "";
+}
+
+type RankingRow = {
+  assigned_group: string | null;
+  final_score: number | string | null;
+  is_within_available_places: boolean | null;
+};
+
+function calculateAreaStats(rankingRows: RankingRow[]) {
+  return AREA_ORDER.map((area) => {
+    const assignedRows = rankingRows.filter((row) => {
+      return row.is_within_available_places && normalizeAreaName(row.assigned_group) === area;
+    });
+
+    const scores = assignedRows
+      .map((row) => Number(row.final_score))
+      .filter((score) => Number.isFinite(score));
+
+    const minimumScore = scores.length > 0 ? Math.min(...scores) : null;
+
+    return {
+      area,
+      assigned_count: assignedRows.length,
+      capacity: AREA_CAPACITY,
+      remaining_places: Math.max(AREA_CAPACITY - assignedRows.length, 0),
+      minimum_score: minimumScore === null ? null : Number(minimumScore.toFixed(2)),
+    };
+  });
+}
+
 async function getCurrentUserId() {
   const cookieStore = await cookies();
 
@@ -71,6 +112,7 @@ export async function GET(req: NextRequest) {
         edition: null,
         subjects: [],
         ranking: [],
+        areaStats: [],
         archives: [],
         participant: null,
         isAuthenticated: Boolean(userId),
@@ -196,6 +238,7 @@ export async function GET(req: NextRequest) {
       edition,
       subjects: subjectsResult.data ?? [],
       ranking: rankingResult.data ?? [],
+      areaStats: calculateAreaStats((rankingResult.data ?? []) as RankingRow[]),
       archives: archivesResult.data ?? [],
       participant: participantResult.data ?? null,
       isAuthenticated: Boolean(userId),

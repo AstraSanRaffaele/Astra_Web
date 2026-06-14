@@ -39,6 +39,14 @@ type RankingRow = {
   generated_at: string;
 };
 
+type AreaStat = {
+  area: string;
+  assigned_count: number;
+  capacity: number;
+  remaining_places: number;
+  minimum_score: number | null;
+};
+
 type ArchiveEdition = {
   id: string;
   name: string;
@@ -82,6 +90,7 @@ export default function ReplicaRankPage() {
   const [edition, setEdition] = useState<Edition | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [ranking, setRanking] = useState<RankingRow[]>([]);
+  const [areaStats, setAreaStats] = useState<AreaStat[]>([]);
   const [archives, setArchives] = useState<ArchiveEdition[]>([]);
   const [participant, setParticipant] = useState<Participant>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -181,6 +190,7 @@ export default function ReplicaRankPage() {
       setEdition(data.edition ?? null);
       setSubjects(data.subjects ?? []);
       setRanking(data.ranking ?? []);
+      setAreaStats(data.areaStats ?? []);
       setArchives(data.archives ?? []);
       setParticipant(data.participant ?? null);
       setIsAuthenticated(Boolean(data.isAuthenticated));
@@ -678,6 +688,52 @@ export default function ReplicaRankPage() {
 
         .top-row { background: #fbfdff; }
 
+        .area-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 1rem;
+          margin-top: 1.2rem;
+        }
+
+        .area-card {
+          border: 1px solid rgba(8,16,42,.08);
+          border-radius: 1.4rem;
+          background: var(--cream);
+          padding: 1.2rem;
+        }
+
+        .area-card h3 {
+          font-size: 1rem;
+          margin-bottom: .8rem;
+          color: var(--ink);
+        }
+
+        .area-number {
+          font-size: 2rem;
+          font-weight: 900;
+          color: var(--ink);
+          line-height: 1;
+        }
+
+        .area-meta {
+          margin-top: .45rem;
+          color: var(--mist);
+          font-size: .9rem;
+          line-height: 1.5;
+        }
+
+        .area-score {
+          margin-top: .8rem;
+          border-radius: 999px;
+          background: white;
+          border: 1px solid rgba(8,16,42,.08);
+          padding: .55rem .8rem;
+          color: var(--ink-mid);
+          font-weight: 800;
+          font-size: .86rem;
+          display: inline-flex;
+        }
+
         .archive-grid {
           display: grid;
           grid-template-columns: repeat(3, minmax(0,1fr));
@@ -696,7 +752,7 @@ export default function ReplicaRankPage() {
         .empty-box { border-radius: 1.4rem; border: 1px dashed rgba(8,16,42,.18); padding: 2rem; text-align: center; color: var(--mist); background: var(--cream); margin-top: 1rem; }
 
         @media (max-width: 1000px) {
-          .grid, .stats, .archive-grid { grid-template-columns: 1fr; }
+          .grid, .stats, .archive-grid, .area-grid { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 760px) {
@@ -1044,6 +1100,19 @@ export default function ReplicaRankPage() {
                     <div className="empty-box">Graduatoria non ancora pubblicata.</div>
                   ) : (
                     <>
+                      <div className="area-grid">
+                        {areaStats.map((stat) => (
+                          <div key={stat.area} className="area-card">
+                            <h3>{stat.area}</h3>
+                            <div className="area-number">{stat.assigned_count} / {stat.capacity}</div>
+                            <p className="area-meta">{stat.remaining_places} posti residui</p>
+                            <span className="area-score">
+                              Punteggio minimo: {stat.minimum_score === null ? "—" : Number(stat.minimum_score).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
                       <div className="ranking-tools">
                         <input
                           value={matricolaSearch}
