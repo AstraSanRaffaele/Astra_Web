@@ -74,13 +74,11 @@ function formatLessonDate(value: string | null) {
 
   if (Number.isNaN(date.getTime())) return "Data non valida";
 
-  return date.toLocaleString("it-IT", {
+  return date.toLocaleDateString("it-IT", {
     weekday: "long",
     day: "2-digit",
     month: "long",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
@@ -328,8 +326,7 @@ export default function MatricoleCoursePage() {
               <p className="hero-subtitle">{course.description}</p>
 
               <div className="disclaimer">
-                Testo demo: qui verranno inserite le informazioni principali del
-                corso di laurea.
+                Entra in contatto con gli studenti che condivideranno con te questa esperienza universitaria
               </div>
             </div>
           </section>
@@ -339,11 +336,10 @@ export default function MatricoleCoursePage() {
               <div className="section-head">
                 <p className="eyebrow">Prima lezione</p>
                 <h2 className="display section-title">
-                  Countdown all’inizio.
+                  Il tuo percorso sta per iniziare
                 </h2>
                 <p className="muted">
-                  Testo demo: questa sezione aiuterà le matricole a capire
-                  quando inizieranno le lezioni.
+                  Scopri quando inizieranno le lezioni del tuo corso e preparati a vivere la tua esperienza universitaria al meglio. Segna la data sul calendario e non perdere l'inizio del tuo percorso accademico.
                 </p>
               </div>
 
@@ -394,8 +390,7 @@ export default function MatricoleCoursePage() {
                   Rappresentanti del corso.
                 </h2>
                 <p className="muted">
-                  Testo demo: qui verranno mostrati i rappresentanti del corso e
-                  i contatti principali.
+                  Hai dubbi sul corso o sulla vita universitaria? I rappresentanti degli studenti sono il primo punto di riferimento per orientarti e trovare supporto
                 </p>
               </div>
 
@@ -435,12 +430,10 @@ export default function MatricoleCoursePage() {
                 <div>
                   <p className="eyebrow">Community</p>
                   <h2 className="display section-title">
-                    Accedi al gruppo WhatsApp del tuo corso.
+                    Accedi al gruppo WhatsApp del tuo corso
                   </h2>
                   <p className="muted">
-                    Testo demo: questa sezione accompagnerà gli studenti verso il
-                    gruppo WhatsApp del corso. Il link reale non viene mai
-                    caricato nella pagina pubblica.
+                    Ricevi aggiornamenti, confrontati con gli altri studenti e resta sempre connesso con la community del tuo corso
                   </p>
                 </div>
 

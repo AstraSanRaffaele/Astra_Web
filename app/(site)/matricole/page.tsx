@@ -26,6 +26,16 @@ function getFreshersImageUrl(imagePath: string) {
   return `${supabaseUrl}/storage/v1/object/public/freshers-carousel/${imagePath}`;
 }
 
+function getFreshersDocumentUrl(pdfPath: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  if (!supabaseUrl || !pdfPath) {
+    return "";
+  }
+
+  return `${supabaseUrl}/storage/v1/object/public/freshers-documents/${pdfPath}`;
+}
+
 function useReveal(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -194,7 +204,7 @@ export default function MatricolePage() {
         <div className="matricole-inner">
           <section className="hero">
             <div className="hero-content">
-              <p className="eyebrow hero-eyebrow">Benvenuto ASTRA</p>
+              <p className="eyebrow hero-eyebrow">Welcome Matricole 2026</p>
 
               <h1 className="display hero-title">
                 {FRESHERS_PAGE.title}
@@ -227,15 +237,14 @@ export default function MatricolePage() {
 
           {activeCarouselItems.length > 0 && (
             <Reveal>
-              <section className="section">
+              <section id="guida" className="section">
                 <div className="section-head">
                   <p className="eyebrow">Guida rapida</p>
                   <h2 className="display section-title">
                     Informazioni utili per le matricole.
                   </h2>
                   <p className="muted">
-                    Testo demo: queste card accompagneranno gli studenti nei primi
-                    passaggi prima dell’inizio delle lezioni.
+                    Le risposte alle domande più frequenti per iniziare al meglio il tuo percorso universitario.
                   </p>
                 </div>
 
@@ -259,6 +268,43 @@ export default function MatricolePage() {
                         <div className="carousel-content">
                           <h3>{item.title}</h3>
                           <p>{item.description}</p>
+                          {item.ctas && item.ctas.length > 0 && (
+                            <div className="carousel-ctas">
+                              {item.ctas.map((cta) => {
+                                const isExternal = cta.href.startsWith("http");
+                                return (
+                                  <a
+                                    key={cta.href}
+                                    href={cta.href}
+                                    className="carousel-cta"
+                                    {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                                  >
+                                    {cta.label}
+                                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                                      <path d="M7 3v8M3.5 7.5L7 11l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {item.pdfPath && (() => {
+                            const pdfUrl = getFreshersDocumentUrl(item.pdfPath);
+                            if (!pdfUrl) return null;
+                            return (
+                              <a
+                                href={pdfUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="carousel-cta"
+                              >
+                                {item.pdfLabel ?? "Scarica PDF"}
+                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                                  <path d="M7 2v7M4 6.5L7 10l3-3.5M2 12h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </a>
+                            );
+                          })()}
                         </div>
                       </article>
                     );
@@ -295,10 +341,6 @@ export default function MatricolePage() {
                 <h2 className="display section-title">
                   Trova la tua facoltà.
                 </h2>
-                <p className="muted">
-                  Testo demo: seleziona la facoltà corretta per visualizzare i
-                  rappresentanti e i corsi di laurea disponibili.
-                </p>
               </div>
 
               <div className="faculty-grid">
@@ -307,12 +349,34 @@ export default function MatricolePage() {
                     key={faculty.slug}
                     href={`/matricole/${faculty.slug}`}
                     className="faculty-card"
+                    style={faculty.color ? {
+                      background: faculty.color,
+                      borderColor: "transparent",
+                    } : undefined}
                   >
-                    <span className="faculty-kicker">Facoltà</span>
-                    <h3 className="display">{faculty.name}</h3>
-                    <p>{faculty.description}</p>
+                    <span
+                      className="faculty-kicker"
+                      style={faculty.color ? {
+                        background: "rgba(255,255,255,.18)",
+                        color: "rgba(255,255,255,.9)",
+                      } : undefined}
+                    >
+                      Facoltà
+                    </span>
+                    <h3
+                      className="display"
+                      style={faculty.color ? { color: "#fff" } : undefined}
+                    >
+                      {faculty.name}
+                    </h3>
+                    <p style={faculty.color ? { color: "rgba(255,255,255,.72)" } : undefined}>
+                      {faculty.description}
+                    </p>
 
-                    <div className="faculty-footer">
+                    <div
+                      className="faculty-footer"
+                      style={faculty.color ? { color: "rgba(255,255,255,.85)" } : undefined}
+                    >
                       <span>
                         {faculty.courses.length} cors{faculty.courses.length === 1 ? "o" : "i"}
                       </span>
@@ -604,6 +668,30 @@ function MatricoleStyles() {
         color: var(--mist);
         line-height: 1.65;
         font-size: .9rem;
+      }
+
+      .carousel-ctas {
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        margin-top: .9rem;
+      }
+
+      .carousel-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .8rem;
+        font-weight: 700;
+        color: var(--ink-mid);
+        text-decoration: none;
+        letter-spacing: .01em;
+        transition: gap .2s ease, color .2s ease;
+      }
+
+      .carousel-cta:hover {
+        color: var(--ink);
+        gap: .6rem;
       }
 
       .faculty-grid {

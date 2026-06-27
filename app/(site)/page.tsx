@@ -268,6 +268,12 @@ export default function Home() {
   max-width: 640px;
 }
 
+.freshers-home-banner-btns {
+  display: flex;
+  gap: .65rem;
+  flex-shrink: 0;
+}
+
 .freshers-home-banner-btn {
   background: white;
   color: var(--ink);
@@ -282,6 +288,18 @@ export default function Home() {
 .freshers-home-banner-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 28px rgba(0,0,0,.18);
+}
+
+.freshers-home-banner-btn--ghost {
+  background: transparent;
+  color: rgba(255,255,255,.82);
+  border: 1.5px solid rgba(255,255,255,.35);
+}
+
+.freshers-home-banner-btn--ghost:hover {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.65);
+  box-shadow: none;
 }
 
         .btn-dark {
@@ -364,6 +382,7 @@ export default function Home() {
           .hero-ctas   { flex-direction: column !important; }
           .hero-ctas a { text-align: center !important; }
           .freshers-home-banner { margin: 5.5rem 1rem -4rem !important; padding: 1.25rem !important; border-radius: 1.5rem !important; }
+          .freshers-home-banner-btns { flex-direction: column; width: 100%; }
           .freshers-home-banner-btn { width: 100%; text-align: center; }
         }
       `}</style>
@@ -376,16 +395,21 @@ export default function Home() {
           <section className="freshers-home-banner">
             <div className="freshers-home-banner-inner">
               <div>
-                <p className="freshers-home-banner-kicker">Nuove matricole</p>
-                <h2 className="display">Benvenute matricole</h2>
+                <p className="freshers-home-banner-kicker">Matricole 2026 Università “Vita-Salute” San Raffaele</p>
+                <h2 className="display">Welcome Matricole 2026</h2>
                 <p>
-                  Testo demo: una guida rapida per scegliere la facoltà, trovare il corso corretto e accedere alle prime informazioni utili.
+                  Tutto ciò che ti serve per partire con il piede giusto: scegli il tuo corso, orientati tra i servizi ASTRA per te, accedi al gruppo WhatsApp ufficiale e scopri i prossimi passi del tuo percorso!
                 </p>
               </div>
 
-              <a href="/matricole" className="freshers-home-banner-btn">
-                Vai alla pagina matricole
-              </a>
+              <div className="freshers-home-banner-btns">
+                <a href="/matricole" className="freshers-home-banner-btn">
+                  Scopri di più
+                </a>
+                <a href="/matricole#guida" className="freshers-home-banner-btn freshers-home-banner-btn--ghost">
+                  Guida rapida
+                </a>
+              </div>
             </div>
           </section>
         )}

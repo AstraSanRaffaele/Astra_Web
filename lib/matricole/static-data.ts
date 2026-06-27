@@ -10,11 +10,19 @@ export type FreshersInfoBox = {
   description: string;
 };
 
+export type FreshersCarouselCta = {
+  href: string;
+  label: string;
+};
+
 export type FreshersCarouselItem = {
   title: string;
   description: string;
   imagePath: string;
   linkUrl?: string;
+  ctas?: FreshersCarouselCta[];
+  pdfPath?: string;
+  pdfLabel?: string;
   displayOrder: number;
   isActive: boolean;
 };
@@ -37,6 +45,7 @@ export type FreshersFaculty = {
   description: string;
   representatives: FreshersRepresentative[];
   courses: FreshersCourse[];
+  color?: string;
 };
 
 const DEMO_COURSE_REPRESENTATIVES: FreshersRepresentative[] = [
@@ -49,12 +58,12 @@ const DEMO_COURSE_REPRESENTATIVES: FreshersRepresentative[] = [
 ];
 
 export const FRESHERS_PAGE = {
-  title: "Benvenute matricole",
+  title: "Matricole 2026 Università “Vita-Salute” San Raffaele",
   subtitle: "La tua nuova community universitaria inizia da qui.",
   welcomeText:
-    "Testo demo: qui verrà inserito il messaggio di benvenuto per le matricole.",
+    "Ti accompagneremo passo dopo passo: dalla scelta della facoltà all’ingresso nella community del tuo corso.",
   description:
-    "Testo demo: questa pagina accompagnerà gli studenti nei primi passaggi, dalla scelta della facoltà fino al gruppo WhatsApp del corso.",
+    "Scopri la nostra guida. Ti mostreremo contenuti, informazioni e strumenti pensati per aiutarti a orientarti e vivere al meglio i primi mesi all’università.",
   infoBoxes: [
     {
       title: "Scegli la tua facoltà",
@@ -81,35 +90,62 @@ export const FRESHERS_PAGE = {
 
 export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
   {
-    title: "Come accedere al gruppo WhatsApp",
+    title: "Come accedo al gruppo WhatsApp ufficiale del mio corso?",
     description:
-      "Testo demo: qui verrà spiegato che il gruppo WhatsApp è accessibile solo dopo il login.",
+      "Il gruppo WhatsApp viene sbloccato dopo aver completato il percorso di onboarding. Seleziona la tua facoltà e segui i passaggi indicati: al termine troverai il link per entrare nella community del tuo corso.",
     imagePath: "carousel/whatsapp.webp",
+    ctas: [{ href: "#facolta", label: "Scegli la tua facoltà" }],
     displayOrder: 1,
     isActive: true,
   },
   {
-    title: "Controlla la mail universitaria",
+    title: "Come faccio a orientarmi nel campus?",
     description:
-      "Testo demo: qui verrà ricordato agli studenti di controllare la mail universitaria.",
+      "Scopri dove si trovano aule, biblioteche, mense, spazi studio e servizi universitari. Una guida pratica per muovere i primi passi e sentirti subito a casa nel tuo nuovo ambiente.",
     imagePath: "carousel/mail-universitaria.webp",
+    pdfPath: "documents/guida-campus.pdf",
+    pdfLabel: "Scarica la guida",
     displayOrder: 2,
     isActive: true,
   },
   {
-    title: "Salva i contatti dei rappresentanti",
+    title: "Dove trovo il calendario delle lezioni?",
     description:
-      "Testo demo: qui verranno indicati i riferimenti utili dei rappresentanti.",
+      "L’università pubblica online il calendario aggiornato delle lezioni. Consulta il portale ufficiale dell’Ateneo per verificare orari, aule e eventuali modifiche al programma.",
     imagePath: "carousel/rappresentanti.webp",
+    ctas: [{ href: "https://orario.unisr.it/", label: "Apri il portale orari" }],
     displayOrder: 3,
     isActive: true,
   },
   {
-    title: "Consulta il calendario delle lezioni",
+    title: "Come posso trovare casa?",
     description:
-      "Testo demo: qui verrà indicato dove consultare il calendario delle lezioni.",
+      "Grazie alla collaborazione con partner immobiliari selezionati e ai consulenti esperti di CLEM, puoi ricevere supporto nella ricerca di un appartamento adatto alle tue esigenze! Entra anche nel gruppo WhatsApp dedicato!",
     imagePath: "carousel/calendario.webp",
+    ctas: [
+      { href: "https://www.clemilanodue.com/", label: "Sito CLEM" },
+      { href: "https://chat.whatsapp.com/LglIs4r6eCuAt0jAjpV5Bd?mode=gi_t", label: "Gruppo WhatsApp SOS Casa" },
+    ],
     displayOrder: 4,
+    isActive: true,
+  },
+  {
+    title: "Dove trovo gli sconti dedicati agli studenti?",
+    description:
+      "Esplora le convenzioni ASTRA disponibili per la community e approfitta di offerte esclusive su servizi, attività e prodotti utili durante il tuo percorso universitario",
+    imagePath: "carousel/calendario.webp",
+    ctas: [{ href: "https://www.astrasanraffaele.it/convenzioni", label: "Vai alle convenzioni" }],
+    displayOrder: 5,
+    isActive: true,
+  },
+  {
+    title: "Come raggiungo l'università?",
+    description:
+      "Informazioni utili su trasporti pubblici, parcheggi, abbonamenti e agevolazioni per studenti.",
+    imagePath: "carousel/calendario.webp",
+    pdfPath: "documents/come-raggiungere-universita.pdf",
+    pdfLabel: "Organizza il tuo viaggio",
+    displayOrder: 6,
     isActive: true,
   },
 ].sort((a, b) => a.displayOrder - b.displayOrder);
@@ -122,8 +158,9 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
   {
     slug: "medicina",
     name: "Medicina",
+    color: "#2154C8",
     description:
-      "Testo demo: qui verrà spiegata brevemente la Facoltà di Medicina.",
+      "Una formazione che integra didattica, ricerca e pratica clinica all’interno dell’IRCCS Ospedale San Raffaele. Un percorso innovativo e internazionale che prepara i futuri professionisti della salute attraverso un contatto diretto con l’assistenza e la ricerca fin dai primi anni.",
     representatives: [
       {
         firstName: "Nome",
@@ -236,8 +273,9 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
   {
     slug: "psicologia",
     name: "Psicologia",
+    color: "#D4820A",
     description:
-      "Testo demo: qui verrà spiegata brevemente la Facoltà di Psicologia.",
+      "Un percorso dedicato allo studio della mente, del comportamento e delle relazioni umane. Grazie a un approccio interdisciplinare che integra ricerca, neuroscienze e applicazioni cliniche, gli studenti sviluppano competenze scientifiche e professionali in un contesto innovativo e internazionale.",
     representatives: [
       {
         firstName: "Nome",
@@ -287,8 +325,9 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
   {
     slug: "filosofia",
     name: "Filosofia",
+    color: "#B83220",
     description:
-      "Testo demo: qui verrà spiegata brevemente la Facoltà di Filosofia.",
+      "Un percorso che sviluppa pensiero critico e capacità di analisi attraverso il dialogo tra filosofia, scienze e società contemporanea. Una formazione interdisciplinare che aiuta a comprendere le sfide del presente e a immaginare il futuro con consapevolezza e responsabilità.",
     representatives: [
       {
         firstName: "Nome",
