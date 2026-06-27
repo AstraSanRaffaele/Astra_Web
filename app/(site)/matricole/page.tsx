@@ -632,7 +632,7 @@ function MatricoleStyles() {
       .carousel-wrap {
         display: grid;
         grid-auto-flow: column;
-        grid-auto-columns: minmax(240px, 320px);
+        grid-auto-columns: minmax(300px, 380px);
         gap: 1rem;
         overflow-x: auto;
         overscroll-behavior-x: contain;
