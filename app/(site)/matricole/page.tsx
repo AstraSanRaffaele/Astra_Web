@@ -493,9 +493,10 @@ function MatricoleStyles() {
       }
 
       .hero-title {
-        font-size: clamp(4rem, 10vw, 8rem);
-        line-height: .86;
-        letter-spacing: -.06em;
+        font-size: clamp(2.4rem, 5.5vw, 4.8rem);
+        line-height: 1.05;
+        letter-spacing: -.03em;
+        max-width: 680px;
       }
 
       .hero-subtitle {
