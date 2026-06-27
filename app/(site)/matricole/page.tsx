@@ -223,13 +223,15 @@ export default function MatricolePage() {
               </p>
 
               <div className="hero-actions">
-                <a href="#facolta" className="btn-primary">
-                  Scegli la tua facoltà
-                </a>
-
-                <a href="#facolta" className="btn-outline">
-                  Vai ai percorsi
-                </a>
+                <div className="split-pill">
+                  <a href="#facolta" className="split-pill-left">
+                    Scegli la tua facoltà
+                  </a>
+                  <span className="split-pill-divider" aria-hidden="true" />
+                  <a href="#guida" className="split-pill-right">
+                    Guida rapida
+                  </a>
+                </div>
               </div>
             </div>
           </section>
@@ -268,43 +270,42 @@ export default function MatricolePage() {
                         <div className="carousel-content">
                           <h3>{item.title}</h3>
                           <p>{item.description}</p>
-                          {item.ctas && item.ctas.length > 0 && (
-                            <div className="carousel-ctas">
-                              {item.ctas.map((cta) => {
-                                const isExternal = cta.href.startsWith("http");
-                                return (
-                                  <a
-                                    key={cta.href}
-                                    href={cta.href}
-                                    className="carousel-cta"
-                                    {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                                  >
-                                    {cta.label}
-                                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                                      <path d="M7 3v8M3.5 7.5L7 11l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                  </a>
-                                );
-                              })}
-                            </div>
-                          )}
-                          {item.pdfPath && (() => {
-                            const pdfUrl = getFreshersDocumentUrl(item.pdfPath);
-                            if (!pdfUrl) return null;
-                            return (
-                              <a
-                                href={pdfUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="carousel-cta"
-                              >
-                                {item.pdfLabel ?? "Scarica PDF"}
-                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                                  <path d="M7 2v7M4 6.5L7 10l3-3.5M2 12h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              </a>
-                            );
-                          })()}
+                          <div className="carousel-actions">
+                            {item.ctas && item.ctas.length > 0 && item.ctas.map((cta) => {
+                              const isExternal = cta.href.startsWith("http");
+                              return (
+                                <a
+                                  key={cta.href}
+                                  href={cta.href}
+                                  className="carousel-cta"
+                                  {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                                >
+                                  {cta.label}
+                                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                                    <path d="M7 3v8M3.5 7.5L7 11l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </a>
+                              );
+                            })}
+                            {item.pdfPath && (() => {
+                              const pdfUrl = getFreshersDocumentUrl(item.pdfPath);
+                              if (!pdfUrl) return null;
+                              return (
+                                <a
+                                  key="pdf"
+                                  href={pdfUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="carousel-cta"
+                                >
+                                  {item.pdfLabel ?? "Scarica PDF"}
+                                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                                    <path d="M7 2v7M4 6.5L7 10l3-3.5M2 12h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </a>
+                              );
+                            })()}
+                          </div>
                         </div>
                       </article>
                     );
@@ -562,6 +563,48 @@ function MatricoleStyles() {
         justify-content: center;
       }
 
+      .split-pill {
+        display: inline-flex;
+        align-items: center;
+        background: white;
+        border-radius: 999px;
+        overflow: hidden;
+        box-shadow: 0 2px 18px rgba(255,255,255,.12);
+      }
+
+      .split-pill-left,
+      .split-pill-right {
+        padding: 1rem 1.8rem;
+        text-decoration: none;
+        font-weight: 900;
+        font-size: .96rem;
+        transition: background .18s ease;
+        white-space: nowrap;
+      }
+
+      .split-pill-left {
+        color: var(--ink);
+      }
+
+      .split-pill-left:hover {
+        background: rgba(8,16,42,.07);
+      }
+
+      .split-pill-divider {
+        width: 1px;
+        height: 1.6rem;
+        background: rgba(8,16,42,.14);
+        flex-shrink: 0;
+      }
+
+      .split-pill-right {
+        color: var(--ink-soft);
+      }
+
+      .split-pill-right:hover {
+        background: rgba(8,16,42,.07);
+      }
+
       .section {
         margin-top: 1.5rem;
       }
@@ -623,6 +666,8 @@ function MatricoleStyles() {
         overflow: hidden;
         box-shadow: 0 14px 40px rgba(8,16,42,.06);
         height: 100%;
+        display: flex;
+        flex-direction: column;
         transition: transform .2s ease, box-shadow .2s ease;
       }
 
@@ -656,6 +701,9 @@ function MatricoleStyles() {
 
       .carousel-content {
         padding: 1.2rem;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
       }
 
       .carousel-content h3 {
@@ -670,11 +718,12 @@ function MatricoleStyles() {
         font-size: .9rem;
       }
 
-      .carousel-ctas {
+      .carousel-actions {
         display: flex;
         flex-direction: column;
         gap: .5rem;
-        margin-top: .9rem;
+        margin-top: auto;
+        padding-top: .9rem;
       }
 
       .carousel-cta {
@@ -809,11 +858,23 @@ function MatricoleStyles() {
 
         .hero-actions {
           flex-direction: column;
+          align-items: flex-start;
         }
 
         .btn-primary,
         .btn-outline {
           width: 100%;
+        }
+
+        .split-pill {
+          width: 100%;
+        }
+
+        .split-pill-left,
+        .split-pill-right {
+          flex: 1;
+          justify-content: center;
+          display: flex;
         }
 
         .carousel-wrap {
