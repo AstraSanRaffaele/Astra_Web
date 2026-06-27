@@ -207,7 +207,8 @@ export default function MatricolePage() {
               <p className="eyebrow hero-eyebrow">Welcome Matricole 2026</p>
 
               <h1 className="display hero-title">
-                {FRESHERS_PAGE.title}
+                Matricole 2026<br />
+                <span style={{ whiteSpace: "nowrap" }}>Università &ldquo;Vita-Salute&rdquo; San Raffaele</span>
               </h1>
 
               <p className="hero-subtitle">
