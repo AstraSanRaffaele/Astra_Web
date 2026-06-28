@@ -292,8 +292,7 @@ export default function MatricoleCoursePage() {
               <p className="eyebrow">Matricole</p>
               <h1 className="display">Pagina non ancora disponibile</h1>
               <p>
-                Testo demo: questa sezione sarà attivata quando saranno
-                disponibili le informazioni per le nuove matricole.
+                Questa sezione sarà disponibile a breve con tutte le informazioni per le nuove matricole.
               </p>
               <Link href="/" className="btn-primary dark-btn">
                 Torna alla homepage
@@ -382,47 +381,49 @@ export default function MatricoleCoursePage() {
             </section>
           </Reveal>
 
-          <Reveal>
-            <section className="section">
-              <div className="section-head">
-                <p className="eyebrow">Contatti utili</p>
-                <h2 className="display section-title">
-                  Rappresentanti del corso
-                </h2>
-                <p className="muted">
-                  Hai dubbi sul corso o sulla vita universitaria? I rappresentanti degli studenti sono il primo punto di riferimento per orientarti e trovare supporto
-                </p>
-              </div>
+          {course.representatives.length > 0 && (
+            <Reveal>
+              <section className="section">
+                <div className="section-head">
+                  <p className="eyebrow">Contatti utili</p>
+                  <h2 className="display section-title">
+                    Rappresentanti del corso
+                  </h2>
+                  <p className="muted">
+                    Hai dubbi sul corso o sulla vita universitaria? I rappresentanti degli studenti sono il primo punto di riferimento per orientarti e trovare supporto
+                  </p>
+                </div>
 
-              <div className="representatives-grid">
-                {course.representatives.map((representative) => (
-                  <article
-                    key={`${representative.firstName}-${representative.lastName}-${representative.email}`}
-                    className="representative-card"
-                  >
-                    <div className="avatar">
-                      {representative.firstName.charAt(0)}
-                      {representative.lastName.charAt(0)}
-                    </div>
+                <div className="representatives-grid">
+                  {course.representatives.map((representative) => (
+                    <article
+                      key={`${representative.firstName}-${representative.lastName}-${representative.email}`}
+                      className="representative-card"
+                    >
+                      <div className="avatar">
+                        {representative.firstName.charAt(0)}
+                        {representative.lastName.charAt(0)}
+                      </div>
 
-                    <div>
-                      <h3>
-                        {representative.firstName} {representative.lastName}
-                      </h3>
+                      <div>
+                        <h3>
+                          {representative.firstName} {representative.lastName}
+                        </h3>
 
-                      {representative.role && (
-                        <p className="role">{representative.role}</p>
-                      )}
+                        {representative.role && (
+                          <p className="role">{representative.role}</p>
+                        )}
 
-                      <a href={`mailto:${representative.email}`}>
-                        {representative.email}
-                      </a>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          </Reveal>
+                        <a href={`mailto:${representative.email}`}>
+                          {representative.email}
+                        </a>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </Reveal>
+          )}
 
           <Reveal>
             <section className="section">
@@ -799,7 +800,21 @@ function MatricoleCourseStyles() {
         align-items: center;
       }
 
-      .whatsapp-actions,
+      .whatsapp-actions {
+        border-radius: 1.5rem;
+        padding: 1.2rem;
+        background: var(--cream);
+        border: 1px solid rgba(8,16,42,.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .whatsapp-actions .btn-primary {
+        width: 100%;
+        text-align: center;
+      }
+
       .login-box {
         border-radius: 1.5rem;
         padding: 1.2rem;

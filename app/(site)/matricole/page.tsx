@@ -181,8 +181,7 @@ export default function MatricolePage() {
               <p className="eyebrow">Matricole</p>
               <h1 className="display">Pagina non ancora disponibile</h1>
               <p>
-                Testo demo: questa sezione sarà attivata quando saranno disponibili
-                le informazioni per le nuove matricole.
+                Questa sezione sarà disponibile a breve con tutte le informazioni per le nuove matricole.
               </p>
               <Link href="/" className="btn-primary">
                 Torna alla homepage

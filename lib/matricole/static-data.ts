@@ -68,22 +68,22 @@ export const FRESHERS_PAGE = {
     {
       title: "Scegli la tua facoltà",
       description:
-        "Testo demo: qui lo studente verrà guidato verso la facoltà corretta.",
+        "",
     },
     {
       title: "Trova il tuo corso",
       description:
-        "Testo demo: qui verranno mostrati i corsi di laurea disponibili per ogni facoltà.",
+        "",
     },
     {
       title: "Contatta i rappresentanti",
       description:
-        "Testo demo: qui verranno indicati i contatti utili e le prime informazioni per orientarsi.",
+        "",
     },
     {
       title: "Accedi al gruppo WhatsApp dopo il login",
       description:
-        "Testo demo: questa sezione accompagnerà gli studenti verso il gruppo WhatsApp del corso.",
+        "",
     },
   ] satisfies FreshersInfoBox[],
 };
@@ -192,7 +192,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "medicina-chirurgia",
         name: "Cdl magistrale a ciclo unico in Medicina e Chirurgia",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Medicina e Chirurgia.",
+          "",
         representatives: [
           {
             firstName: "Alberto",
@@ -225,7 +225,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "international-medical-doctor-program",
         name: "International Medical Doctor Program",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali dell'International Medical Doctor Program.",
+          "",
         representatives: [
           {
             firstName: "Mirko",
@@ -248,7 +248,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "ricerca-biotecnologica-medicina",
         name: "Cdl triennale in Ricerca biotecnologica in medicina",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Ricerca biotecnologica in medicina.",
+          "",
         representatives: [
           {
             firstName: "Paola",
@@ -271,7 +271,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "fisioterapia",
         name: "Cdl triennale in Fisioterapia",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Fisioterapia.",
+          "",
         representatives: [
           {
             firstName: "Alessandro",
@@ -294,7 +294,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "igiene-dentale",
         name: "Cdl triennale in Igiene dentale",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Igiene dentale.",
+          "",
         representatives: [
           {
             firstName: "Martina",
@@ -317,7 +317,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "infermieristica",
         name: "Cdl triennale in Infermieristica",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Infermieristica.",
+          "",
         representatives: [
           {
             firstName: "Andrea Aurora",
@@ -340,28 +340,28 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "ostetricia",
         name: "Cdl triennale in Ostetricia",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Ostetricia.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+          "",
+        representatives: [],
       },
       {
         slug: "osteopatia",
         name: "Cdl triennale in Osteopatia",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Osteopatia.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+          "",
+        representatives: [],
       },
       {
         slug: "tecniche-radiologia-medica-immagini-radioterapia",
         name: "Cdl triennale in Tecniche di Radiologia Medica per Immagini e Radioterapia",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Tecniche di Radiologia Medica per Immagini e Radioterapia.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+          "",
+        representatives: [],
       },
       {
         slug: "odontoiatria-protesi-dentaria",
         name: "Cdl magistrale in Odontoiatria e protesi dentaria",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Odontoiatria e protesi dentaria.",
+          "",
         representatives: [
           {
             firstName: "Anna",
@@ -384,7 +384,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "biotechnology-innovative-therapeutics",
         name: "Cdl magistrale in Biotechnology for Innovative Therapeutics",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Biotechnology for Innovative Therapeutics.",
+          "",
         representatives: [
           {
             firstName: "Michela",
@@ -402,7 +402,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "scienze-riabilitative-professioni-sanitarie",
         name: "Cdl magistrale in Scienze riabilitative delle professioni sanitarie",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Scienze riabilitative delle professioni sanitarie.",
+          "",
         representatives: [
           {
             firstName: "Pietro",
@@ -415,15 +415,15 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "scienze-infermieristiche-ostetriche",
         name: "Cdl magistrale in Scienze infermieristiche ed ostetriche",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Scienze infermieristiche ed ostetriche.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+          "",
+        representatives: [],
       },
       {
         slug: "health-informatics",
         name: "Cdl magistrale in Health Informatics",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Health Informatics.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+          "",
+        representatives: [],
       },
     ],
   },
@@ -458,7 +458,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "scienze-tecniche-psicologiche",
         name: "Cdl triennale in Scienze e tecniche psicologiche",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Scienze e tecniche psicologiche.",
+          "",
         representatives: [
           {
             firstName: "Giulia",
@@ -476,14 +476,14 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "scienze-politiche-strategie-globali",
         name: "Cdl triennale in Scienze politiche e strategie globali",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Scienze politiche e strategie globali.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+          "",
+        representatives: [],
       },
       {
         slug: "psicologia-magistrale",
         name: "Cdl magistrale in Psicologia",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea magistrale in Psicologia.",
+          "",
         representatives: [
           {
             firstName: "Martina",
@@ -506,15 +506,15 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "cognitive-psychology-health-communication",
         name: "Cdl magistrale in Cognitive psychology in health communication",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Cognitive psychology in health communication.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+          "",
+        representatives: [],
       },
       {
         slug: "geopolitica-economia-strategie-globali",
         name: "Cdl magistrale in Geopolitica, economia e strategie globali",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Geopolitica, economia e strategie globali.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+          "",
+        representatives: [],
       },
     ],
   },
@@ -543,7 +543,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "filosofia-triennale",
         name: "Cdl triennale in Filosofia",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea triennale in Filosofia.",
+          "",
         representatives: [
           {
             firstName: "Federica Maria",
@@ -566,7 +566,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "filosofia-mondo-contemporaneo",
         name: "Cdl magistrale in Filosofia del mondo contemporaneo",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Filosofia del mondo contemporaneo.",
+          "",
         representatives: [
           {
             firstName: "Giovanni",
@@ -589,7 +589,7 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "teoria-storia-arti-immagine",
         name: "Cdl magistrale in Teoria e storia delle arti e dell’immagine",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Teoria e storia delle arti e dell’immagine.",
+          "",
         representatives: [
           {
             firstName: "Nina",
@@ -602,8 +602,8 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         slug: "politics-philosophy-public-affairs",
         name: "Cdl magistrale in Politics, Philosophy and Public Affairs",
         description:
-          "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Politics, Philosophy and Public Affairs.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+          "",
+        representatives: [],
       },
     ],
   },
@@ -616,7 +616,7 @@ export const FRESHERS_STANDALONE_COURSES: FreshersStandaloneCourse[] = [
     facultySlug: "specializzandi",
     facultyName: "Specializzandi",
     description:
-      "Testo demo: qui verranno inserite le informazioni principali per gli specializzandi.",
+      "",
     representatives: [
       {
         firstName: "Fabio",

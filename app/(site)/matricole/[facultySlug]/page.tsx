@@ -160,8 +160,7 @@ export default function MatricoleFacultyPage() {
               <p className="eyebrow">Matricole</p>
               <h1 className="display">Pagina non ancora disponibile</h1>
               <p>
-                Testo demo: questa sezione sarà attivata quando saranno disponibili
-                le informazioni per le nuove matricole.
+                Questa sezione sarà disponibile a breve con tutte le informazioni per le nuove matricole.
               </p>
               <Link href="/" className="btn-primary">
                 Torna alla homepage
@@ -200,40 +199,42 @@ export default function MatricoleFacultyPage() {
             </div>
           </section>
 
-          <Reveal>
-            <section className="section clean-section">
-              <div className="section-head compact-section-head">
-                <div>
-                  <p className="eyebrow">Contatti utili</p>
-                  <h2 className="display section-title">
-                    Rappresentanti di facoltà
-                  </h2>
+          {faculty.representatives.length > 0 && (
+            <Reveal>
+              <section className="section clean-section">
+                <div className="section-head compact-section-head">
+                  <div>
+                    <p className="eyebrow">Contatti utili</p>
+                    <h2 className="display section-title">
+                      Rappresentanti di facoltà
+                    </h2>
+                  </div>
                 </div>
-              </div>
 
-              <div className="representatives-list">
-                {faculty.representatives.map((representative) => (
-                  <article
-                    key={`${representative.firstName}-${representative.lastName}-${representative.email}`}
-                    className="representative-row"
-                  >
-                    <div>
-                      <h3>
-                        {representative.firstName} {representative.lastName}
-                      </h3>
-                      {representative.role && (
-                        <p>{representative.role}</p>
-                      )}
-                    </div>
+                <div className="representatives-list">
+                  {faculty.representatives.map((representative) => (
+                    <article
+                      key={`${representative.firstName}-${representative.lastName}-${representative.email}`}
+                      className="representative-row"
+                    >
+                      <div>
+                        <h3>
+                          {representative.firstName} {representative.lastName}
+                        </h3>
+                        {representative.role && (
+                          <p>{representative.role}</p>
+                        )}
+                      </div>
 
-                    <a href={`mailto:${representative.email}`}>
-                      {representative.email}
-                    </a>
-                  </article>
-                ))}
-              </div>
-            </section>
-          </Reveal>
+                      <a href={`mailto:${representative.email}`}>
+                        {representative.email}
+                      </a>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </Reveal>
+          )}
 
           <Reveal>
             <section className="section clean-section">
