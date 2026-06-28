@@ -105,7 +105,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     imagePath: "documents/carosello/campus.png",
     pdfPath: "documents/guida-campus.pdf",
     pdfLabel: "Scarica la guida",
-    displayOrder: 6,
+    displayOrder: 3,
     isActive: true,
   },
   {
@@ -114,7 +114,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
       "L’università pubblica online il calendario aggiornato delle lezioni. Consulta il portale ufficiale dell’Ateneo per verificare orari, aule e eventuali modifiche al programma.",
     imagePath: "documents/carosello/calendario.png",
     ctas: [{ href: "https://orario.unisr.it/", label: "Apri il portale orari" }],
-    displayOrder: 2,
+    displayOrder: 4,
     isActive: true,
   },
   {
@@ -126,7 +126,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
       { href: "https://www.clemilanodue.com/", label: "Sito CLEM" },
       { href: "https://chat.whatsapp.com/LglIs4r6eCuAt0jAjpV5Bd?mode=gi_t", label: "Gruppo WhatsApp SOS Casa" },
     ],
-    displayOrder: 4,
+    displayOrder: 5,
     isActive: true,
   },
   {
@@ -135,7 +135,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
       "Esplora le convenzioni ASTRA disponibili per la community e approfitta di offerte esclusive su servizi, attività e prodotti utili durante il tuo percorso universitario",
     imagePath: "documents/carosello/sconti.png",
     ctas: [{ href: "https://www.astrasanraffaele.it/convenzioni", label: "Vai alle convenzioni" }],
-    displayOrder: 3,
+    displayOrder: 6,
     isActive: true,
   },
   {
@@ -145,7 +145,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     imagePath: "documents/carosello/trasporti.png",
     pdfPath: "documents/come-raggiungere-universita.pdf",
     pdfLabel: "Organizza il tuo viaggio",
-    displayOrder: 5,
+    displayOrder: 2,
     isActive: true,
   },
 ].sort((a, b) => a.displayOrder - b.displayOrder);

@@ -212,7 +212,11 @@ export default function MatricoleFacultyPage() {
                 </div>
 
                 <div className="representatives-list">
-                  {faculty.representatives.map((representative) => (
+                  {[...faculty.representatives].sort((a, b) => {
+                    const order = (role?: string) =>
+                      role?.toLowerCase().includes("senato") ? 1 : 0;
+                    return order(a.role) - order(b.role);
+                  }).map((representative) => (
                     <article
                       key={`${representative.firstName}-${representative.lastName}-${representative.email}`}
                       className="representative-row"
