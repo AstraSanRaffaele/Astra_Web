@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
 import { useRouter } from "next/navigation";
@@ -86,9 +87,11 @@ function validatePassword(password: string) {
   };
 }
 
-export default function SignupPage() {
+function SignupPageContent() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next");
 
   const [nome, setNome] = useState("");
   const [cognome, setCognome] = useState("");
@@ -152,7 +155,7 @@ export default function SignupPage() {
       options: {
         emailRedirectTo:
           typeof window !== "undefined"
-            ? `${window.location.origin}/auth/callback?next=/profile`
+            ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath && nextPath.startsWith("/") ? nextPath : "/profile")}`
             : undefined,
         data: {
           nome: normalizedNome,
@@ -174,7 +177,10 @@ export default function SignupPage() {
     }
 
     setLoading(false);
-    router.push(`/signup/check-email?email=${encodeURIComponent(normalizedEmail)}`);
+    const checkEmailUrl = nextPath && nextPath.startsWith("/")
+      ? `/signup/check-email?email=${encodeURIComponent(normalizedEmail)}&next=${encodeURIComponent(nextPath)}`
+      : `/signup/check-email?email=${encodeURIComponent(normalizedEmail)}`;
+    router.push(checkEmailUrl);
   }
 
   return (
@@ -411,5 +417,13 @@ export default function SignupPage() {
         </div>
       </AuthShell>
     </>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPageContent />
+    </Suspense>
   );
 }

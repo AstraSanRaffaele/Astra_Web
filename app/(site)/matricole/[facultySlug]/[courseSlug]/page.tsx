@@ -387,7 +387,7 @@ export default function MatricoleCoursePage() {
               <div className="section-head">
                 <p className="eyebrow">Contatti utili</p>
                 <h2 className="display section-title">
-                  Rappresentanti del corso.
+                  Rappresentanti del corso
                 </h2>
                 <p className="muted">
                   Hai dubbi sul corso o sulla vita universitaria? I rappresentanti degli studenti sono il primo punto di riferimento per orientarti e trovare supporto
@@ -455,14 +455,14 @@ export default function MatricoleCoursePage() {
 
                     <div className="login-actions">
                       <Link
-                        href={`/login?redirect=/matricole/${faculty.slug}/${course.slug}`}
+                        href={`/login?next=/matricole/${faculty.slug}/${course.slug}`}
                         className="btn-primary"
                       >
                         Accedi
                       </Link>
 
                       <Link
-                        href={`/register?redirect=/matricole/${faculty.slug}/${course.slug}`}
+                        href={`/signup?next=/matricole/${faculty.slug}/${course.slug}`}
                         className="btn-outline-light"
                       >
                         Registrati
@@ -617,11 +617,11 @@ function MatricoleCourseStyles() {
       }
 
       .section {
-        margin-top: 1.5rem;
+        margin-top: clamp(1.2rem, 3vw, 2rem);
       }
 
       .section-head {
-        margin-bottom: 1.2rem;
+        margin-bottom: clamp(1rem, 2.5vw, 1.6rem);
       }
 
       .section-title {
@@ -794,7 +794,7 @@ function MatricoleCourseStyles() {
       .whatsapp-card {
         padding: 2rem;
         display: grid;
-        grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr);
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
         gap: 2rem;
         align-items: center;
       }
@@ -884,7 +884,50 @@ function MatricoleCourseStyles() {
         max-width: 620px;
       }
 
-      @media (max-width: 1000px) {
+      /* ── 768px: tablet ── */
+      @media (max-width: 768px) {
+        .matricole-page {
+          padding: 5.5rem 1.2rem 3rem;
+        }
+
+        .hero::after {
+          width: 180px;
+          height: 180px;
+          right: -40px;
+          top: -60px;
+        }
+
+        .hero-subtitle {
+          font-size: .92rem;
+        }
+
+        .section-title {
+          font-size: clamp(1.8rem, 5vw, 3.2rem);
+        }
+
+        .countdown-card h3 {
+          font-size: 1.1rem;
+        }
+      }
+
+      /* ── 640px: large phone — stack grids ── */
+      @media (max-width: 640px) {
+        .matricole-page {
+          padding: 5rem 1rem 2.5rem;
+        }
+
+        .hero,
+        .countdown-card,
+        .whatsapp-card,
+        .empty-state {
+          padding: 1.4rem;
+          border-radius: 1.6rem;
+        }
+
+        .hero-title {
+          font-size: clamp(2.1rem, 8vw, 3rem);
+        }
+
         .representatives-grid,
         .whatsapp-card {
           grid-template-columns: 1fr;
@@ -893,39 +936,54 @@ function MatricoleCourseStyles() {
         .countdown-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+
+        .representative-card {
+          padding: 1.2rem;
+          border-radius: 1.6rem;
+          align-items: flex-start;
+        }
       }
 
-      @media (max-width: 760px) {
+      /* ── 430px: small phone ── */
+      @media (max-width: 430px) {
         .matricole-page {
-          padding: 6rem 1rem 3rem;
+          padding: 5rem 0.8rem 2rem;
         }
 
         .hero,
         .countdown-card,
-        .representative-card,
         .whatsapp-card,
         .empty-state {
-          padding: 1.25rem;
-          border-radius: 1.4rem;
-        }
-
-        .hero-title {
-          font-size: clamp(2.3rem, 12vw, 3.4rem);
+          padding: 1.2rem;
+          border-radius: 1.3rem;
         }
 
         .representative-card {
-          align-items: flex-start;
+          padding: 1rem;
+          border-radius: 1.3rem;
         }
 
         .btn-primary,
         .btn-outline-light {
           width: 100%;
         }
-      }
 
-      @media (max-width: 520px) {
-        .countdown-grid {
-          grid-template-columns: 1fr;
+        .countdown-box {
+          border-radius: 1rem;
+          padding: 1rem;
+        }
+
+        .disclaimer {
+          padding: 0.75rem 0.85rem;
+          font-size: .88rem;
+        }
+
+        .empty-state h1 {
+          font-size: clamp(2.2rem, 10vw, 3.6rem);
+        }
+
+        .back-link {
+          font-size: .82rem;
         }
       }
     `}</style>

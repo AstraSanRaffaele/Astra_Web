@@ -375,15 +375,22 @@ export default function Home() {
           .contacts-inner-grid { grid-template-columns: 1fr !important; gap: 3rem !important; }
           .hero-stats     { gap: 2.5rem !important; }
           .freshers-home-banner { margin: 6rem 1.5rem -4.5rem !important; }
-          .freshers-home-banner-inner { flex-direction: column !important; align-items: flex-start !important; }
+          .freshers-home-banner-inner { flex-direction: column !important; align-items: flex-start !important; gap: 1rem !important; }
         }
         @media (max-width: 600px) {
           .chips-grid  { grid-template-columns: 1fr !important; }
           .hero-ctas   { flex-direction: column !important; }
           .hero-ctas a { text-align: center !important; }
-          .freshers-home-banner { margin: 5.5rem 1rem -4rem !important; padding: 1.25rem !important; border-radius: 1.5rem !important; }
-          .freshers-home-banner-btns { flex-direction: column; width: 100%; }
-          .freshers-home-banner-btn { width: 100%; text-align: center; }
+          .freshers-home-banner { margin: 5.5rem 1rem -4rem !important; padding: 1.2rem !important; border-radius: 1.5rem !important; }
+          .freshers-home-banner-btns { flex-direction: column !important; width: 100% !important; }
+          .freshers-home-banner-btn { display: flex !important; justify-content: center !important; width: 100% !important; }
+        }
+        @media (max-width: 430px) {
+          .freshers-home-banner { margin: 5rem 0.8rem -3.5rem !important; padding: 1rem !important; border-radius: 1.3rem !important; }
+          .freshers-home-banner-kicker { font-size: .6rem !important; letter-spacing: .14em !important; }
+          .freshers-home-banner h2 { font-size: clamp(1.4rem, 7vw, 1.9rem) !important; }
+          .freshers-home-banner p { font-size: .86rem !important; margin-top: .4rem !important; }
+          .freshers-home-banner-btn { padding: .8rem 1.2rem !important; font-size: .88rem !important; }
         }
       `}</style>
 
@@ -478,7 +485,7 @@ export default function Home() {
                   padding: ".05em .3em",
                   borderRadius: "14px",
                   lineHeight: 1.08,
-                }}>qui.</span>
+                }}>qui</span>
               </span>
             </h1>
 
@@ -541,7 +548,7 @@ export default function Home() {
               <h2 className="display" style={{ fontSize: "clamp(2.6rem,4.8vw,4rem)", fontWeight: 700, lineHeight: 1.08, letterSpacing: "-.02em", color: "var(--ink)" }}>
                 Studenti che<br />
                 <span style={{ color: "var(--ink-soft)" }}>rappresentano</span><br />
-                studenti.
+                studenti
               </h2>
               <p style={{ fontSize: "1rem", lineHeight: 1.85, color: "var(--mist)", marginTop: "1.8rem", fontWeight: 400 }}>
                 Astra San Raffaele è l&apos;associazione studentesca dell&apos;Università
@@ -647,7 +654,7 @@ export default function Home() {
             <p className="eyebrow eyebrow-light">Cosa facciamo</p>
             <h2 className="display" style={{ fontSize: "clamp(2.6rem,4.8vw,4rem)", fontWeight: 700, lineHeight: 1.08, letterSpacing: "-.02em", color: "#fff" }}>
               Tre anime,<br />
-              <span style={{ color: "rgba(255,255,255,.55)" }}>un&apos;unica missione.</span>
+              <span style={{ color: "rgba(255,255,255,.55)" }}>un&apos;unica missione</span>
             </h2>
           </Reveal>
 
@@ -677,7 +684,7 @@ export default function Home() {
               <p className="eyebrow">ASTRA network</p>
               <h2 className="display" style={{ fontSize: "clamp(2.6rem,4.8vw,4rem)", fontWeight: 700, lineHeight: 1.08, letterSpacing: "-.02em", color: "var(--ink)" }}>
                 Diversi atenei,<br />
-                <span style={{ color: "var(--ink-soft)" }}>un&apos;unica casa.</span>
+                <span style={{ color: "var(--ink-soft)" }}>un&apos;unica casa</span>
               </h2>
               <p style={{ fontSize: "1rem", lineHeight: 1.85, color: "var(--mist)", marginTop: "1.8rem", maxWidth: 400 }}>
                 Diversi percorsi, stessa visione. ASTRA è anche tua: uno spazio dove ogni studente può crescere, confrontarsi e sentirsi parte di qualcosa di più grande.              </p>
@@ -726,7 +733,7 @@ export default function Home() {
                 <p className="eyebrow eyebrow-light">Applications are open</p>
                 <h2 className="display" style={{ fontSize: "clamp(2.4rem,4.2vw,3.6rem)", fontWeight: 700, lineHeight: 1.08, color: "#fff", letterSpacing: "-.02em" }}>
                   Entra nel<br />
-                  <span style={{ color: "rgba(255,255,255,.55)" }}>nostro team.</span>
+                  <span style={{ color: "rgba(255,255,255,.55)" }}>nostro team</span>
                 </h2>
                 <p style={{ fontSize: "1rem", color: "rgba(255,255,255,.5)", marginTop: "1.2rem", lineHeight: 1.8, maxWidth: 380, fontWeight: 400 }}>
                   Cerchiamo persone curiose, motivate e pronte a fare la differenza.
@@ -764,7 +771,7 @@ export default function Home() {
                   <p className="eyebrow">Contatti</p>
                   <h2 className="display" style={{ fontSize: "clamp(2.4rem,4.2vw,3.6rem)", fontWeight: 700, lineHeight: 1.08, color: "var(--ink)", letterSpacing: "-.02em" }}>
                     Restiamo<br />
-                    <span style={{ color: "var(--ink-soft)" }}>in contatto.</span>
+                    <span style={{ color: "var(--ink-soft)" }}>in contatto</span>
                   </h2>
                   <p style={{ fontSize: "1rem", lineHeight: 1.85, color: "var(--mist)", marginTop: "1.4rem", fontWeight: 400 }}>
                     Per informazioni, collaborazioni o domande, puoi contattarci

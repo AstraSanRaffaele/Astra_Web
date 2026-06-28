@@ -23,7 +23,7 @@ function getFreshersImageUrl(imagePath: string) {
     return "";
   }
 
-  return `${supabaseUrl}/storage/v1/object/public/freshers-carousel/${imagePath}`;
+  return `${supabaseUrl}/storage/v1/object/public/freshers-documents/${imagePath}`;
 }
 
 function getFreshersDocumentUrl(pdfPath: string) {
@@ -208,7 +208,7 @@ export default function MatricolePage() {
 
               <h1 className="display hero-title">
                 Matricole 2026<br />
-                <span style={{ whiteSpace: "nowrap" }}>Università &ldquo;Vita-Salute&rdquo; San Raffaele</span>
+                <span className="hero-university-name">Università &ldquo;Vita-Salute&rdquo; San Raffaele</span>
               </h1>
 
               <p className="hero-subtitle">
@@ -244,7 +244,7 @@ export default function MatricolePage() {
                 <div className="section-head">
                   <p className="eyebrow">Guida rapida</p>
                   <h2 className="display section-title">
-                    Informazioni utili per le matricole.
+                    Informazioni utili per le matricole
                   </h2>
                   <p className="muted">
                     Le risposte alle domande più frequenti per iniziare al meglio il tuo percorso universitario.
@@ -341,7 +341,7 @@ export default function MatricolePage() {
               <div className="section-head">
                 <p className="eyebrow">Scegli il tuo percorso</p>
                 <h2 className="display section-title">
-                  Trova la tua facoltà.
+                  Trova la tua facoltà
                 </h2>
               </div>
 
@@ -608,11 +608,11 @@ function MatricoleStyles() {
       }
 
       .section {
-        margin-top: 1.5rem;
+        margin-top: clamp(1.8rem, 4vw, 3rem);
       }
 
       .section-head {
-        margin-bottom: 1.2rem;
+        margin-bottom: clamp(1.2rem, 3vw, 2rem);
       }
 
       .section-title {
@@ -840,32 +840,72 @@ function MatricoleStyles() {
         color: white;
       }
 
-      @media (max-width: 1000px) {
+      /* ── 960px: tablet landscape — 2-col faculty ── */
+      @media (max-width: 960px) {
         .faculty-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .faculty-card h3 {
+          font-size: clamp(1.8rem, 3.5vw, 2.6rem);
         }
       }
 
-      @media (max-width: 760px) {
+      /* ── 768px: tablet ── */
+      @media (max-width: 768px) {
         .matricole-page {
-          padding: 6rem 1rem 3rem;
+          padding: 5.5rem 1.2rem 3rem;
+        }
+
+        .hero {
+          border-radius: 2rem;
+        }
+
+        .hero::after {
+          width: 220px;
+          height: 220px;
+          right: -50px;
+          top: -50px;
+        }
+
+        .hero-subtitle {
+          font-size: 1rem;
+        }
+
+        .section-title {
+          font-size: clamp(2rem, 6vw, 3.2rem);
+        }
+
+        .carousel-wrap {
+          grid-auto-columns: minmax(270px, 72vw);
+        }
+      }
+
+      /* ── 640px: large phone — 1-col layout ── */
+      @media (max-width: 640px) {
+        .matricole-page {
+          padding: 5rem 1rem 2.5rem;
+        }
+
+        .faculty-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .faculty-card {
+          min-height: auto;
+          padding: 1.6rem;
+          border-radius: 1.6rem;
         }
 
         .hero,
-        .faculty-card,
         .empty-state {
-          padding: 1.5rem;
-          border-radius: 1.6rem;
+          padding: 1.8rem;
+          border-radius: 1.8rem;
         }
 
         .hero-actions {
           flex-direction: column;
-          align-items: flex-start;
-        }
-
-        .btn-primary,
-        .btn-outline {
-          width: 100%;
+          align-items: stretch;
         }
 
         .split-pill {
@@ -879,8 +919,72 @@ function MatricoleStyles() {
           display: flex;
         }
 
+        .btn-primary,
+        .btn-outline {
+          width: 100%;
+          justify-content: center;
+        }
+
         .carousel-wrap {
-          grid-auto-columns: minmax(240px, 82vw);
+          grid-auto-columns: minmax(250px, 85vw);
+        }
+
+        .hero-university-name {
+          white-space: normal;
+        }
+      }
+
+      /* ── 430px: small phone ── */
+      @media (max-width: 430px) {
+        .matricole-page {
+          padding: 5rem 0.8rem 2rem;
+        }
+
+        .hero,
+        .empty-state {
+          padding: 1.4rem;
+          border-radius: 1.4rem;
+        }
+
+        .faculty-card {
+          padding: 1.4rem;
+          border-radius: 1.4rem;
+        }
+
+        .split-pill {
+          flex-direction: column;
+          border-radius: 1.4rem;
+        }
+
+        .split-pill-left,
+        .split-pill-right {
+          padding: 0.85rem 1.2rem;
+          width: 100%;
+        }
+
+        .split-pill-divider {
+          width: 100%;
+          height: 1px;
+        }
+
+        .carousel-wrap {
+          grid-auto-columns: minmax(220px, 91vw);
+        }
+
+        .disclaimer {
+          padding: 0.8rem 1rem;
+          font-size: 0.9rem;
+        }
+
+        .empty-state h1 {
+          font-size: clamp(2.2rem, 10vw, 3.6rem);
+        }
+      }
+
+      /* ── min-width: keep nowrap on wider screens ── */
+      @media (min-width: 641px) {
+        .hero-university-name {
+          white-space: nowrap;
         }
       }
     `}</style>

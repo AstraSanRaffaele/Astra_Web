@@ -59,7 +59,7 @@ const DEMO_COURSE_REPRESENTATIVES: FreshersRepresentative[] = [
 
 export const FRESHERS_PAGE = {
   title: "Matricole 2026 Università “Vita-Salute” San Raffaele",
-  subtitle: "La tua nuova community universitaria inizia da qui.",
+  subtitle: "La tua nuova community universitaria inizia da qui",
   welcomeText:
     "Ti accompagneremo passo dopo passo: dalla scelta della facoltà all’ingresso nella community del tuo corso.",
   description:
@@ -93,7 +93,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     title: "Come accedo al gruppo WhatsApp ufficiale del mio corso?",
     description:
       "Il gruppo WhatsApp viene sbloccato dopo aver completato il percorso di onboarding. Seleziona la tua facoltà e segui i passaggi indicati: al termine troverai il link per entrare nella community del tuo corso.",
-    imagePath: "carousel/whatsapp.webp",
+    imagePath: "documents/carosello/whatsapp.webp",
     ctas: [{ href: "#facolta", label: "Scegli la tua facoltà" }],
     displayOrder: 1,
     isActive: true,
@@ -102,26 +102,26 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     title: "Come faccio a orientarmi nel campus?",
     description:
       "Scopri dove si trovano aule, biblioteche, mense, spazi studio e servizi universitari. Una guida pratica per muovere i primi passi e sentirti subito a casa nel tuo nuovo ambiente.",
-    imagePath: "carousel/mail-universitaria.webp",
+    imagePath: "documents/carosello/campus.webp",
     pdfPath: "documents/guida-campus.pdf",
     pdfLabel: "Scarica la guida",
-    displayOrder: 2,
+    displayOrder: 6,
     isActive: true,
   },
   {
     title: "Dove trovo il calendario delle lezioni?",
     description:
       "L’università pubblica online il calendario aggiornato delle lezioni. Consulta il portale ufficiale dell’Ateneo per verificare orari, aule e eventuali modifiche al programma.",
-    imagePath: "carousel/rappresentanti.webp",
+    imagePath: "documents/carosello/calendario.webp",
     ctas: [{ href: "https://orario.unisr.it/", label: "Apri il portale orari" }],
-    displayOrder: 3,
+    displayOrder: 2,
     isActive: true,
   },
   {
     title: "Come posso trovare casa?",
     description:
       "Grazie alla collaborazione con partner immobiliari selezionati e ai consulenti esperti di CLEM, puoi ricevere supporto nella ricerca di un appartamento adatto alle tue esigenze! Entra anche nel gruppo WhatsApp dedicato!",
-    imagePath: "carousel/calendario.webp",
+    imagePath: "documents/carosello/casa.webp",
     ctas: [
       { href: "https://www.clemilanodue.com/", label: "Sito CLEM" },
       { href: "https://chat.whatsapp.com/LglIs4r6eCuAt0jAjpV5Bd?mode=gi_t", label: "Gruppo WhatsApp SOS Casa" },
@@ -133,19 +133,19 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     title: "Dove trovo gli sconti dedicati agli studenti?",
     description:
       "Esplora le convenzioni ASTRA disponibili per la community e approfitta di offerte esclusive su servizi, attività e prodotti utili durante il tuo percorso universitario",
-    imagePath: "carousel/calendario.webp",
+    imagePath: "documents/carosello/sconti.webp",
     ctas: [{ href: "https://www.astrasanraffaele.it/convenzioni", label: "Vai alle convenzioni" }],
-    displayOrder: 5,
+    displayOrder: 3,
     isActive: true,
   },
   {
     title: "Come raggiungo l'università?",
     description:
       "Informazioni utili su trasporti pubblici, parcheggi, abbonamenti e agevolazioni per studenti.",
-    imagePath: "carousel/calendario.webp",
+    imagePath: "documents/carosello/trasporti.webp",
     pdfPath: "documents/come-raggiungere-universita.pdf",
     pdfLabel: "Organizza il tuo viaggio",
-    displayOrder: 6,
+    displayOrder: 5,
     isActive: true,
   },
 ].sort((a, b) => a.displayOrder - b.displayOrder);
@@ -163,10 +163,28 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
       "Una formazione che integra didattica, ricerca e pratica clinica all’interno dell’IRCCS Ospedale San Raffaele. Un percorso innovativo e internazionale che prepara i futuri professionisti della salute attraverso un contatto diretto con l’assistenza e la ricerca fin dai primi anni.",
     representatives: [
       {
-        firstName: "Nome",
-        lastName: "Cognome",
-        role: "Rappresentante di facoltà",
-        email: "demo.medicina@email.it",
+        firstName: "Paolo",
+        lastName: "Abete",
+        role: "Senato Accademico",
+        email: "p.abete@studenti.unisr.it",
+      },
+      {
+        firstName: "Simone",
+        lastName: "Manzo",
+        role: "Senato Accademico",
+        email: "s.manzo@studenti.unisr.it",
+      },
+      {
+        firstName: "Flavio",
+        lastName: "Errante",
+        role: "Consiglio di Facoltà",
+        email: "f.errante@studenti.unisr.it",
+      },
+      {
+        firstName: "Carlotta",
+        lastName: "Minzera",
+        role: "Consiglio di Facoltà",
+        email: "c.minzera@studenti.unisr.it",
       },
     ],
     courses: [
@@ -175,42 +193,148 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         name: "Cdl magistrale a ciclo unico in Medicina e Chirurgia",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Medicina e Chirurgia.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Alberto",
+            lastName: "Carluccio",
+            email: "a.carluccio3@studenti.unisr.it",
+          },
+          {
+            firstName: "Sabina",
+            lastName: "Castronovo",
+            email: "s.castronovo@studenti.unisr.it",
+          },
+          {
+            firstName: "Flavio",
+            lastName: "Cammarata",
+            email: "f.cammarata@studenti.unisr.it",
+          },
+          {
+            firstName: "Elvira Paola",
+            lastName: "Tricarico",
+            email: "e.tricarico1@studenti.unisr.it",
+          },
+          {
+            firstName: "Giulia Claudia",
+            lastName: "Porcu",
+            email: "g.porcu3@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "international-medical-doctor-program",
         name: "International Medical Doctor Program",
         description:
           "Testo demo: qui verranno inserite le informazioni principali dell'International Medical Doctor Program.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Mirko",
+            lastName: "Romito",
+            email: "m.romito1@studenti.unisr.it",
+          },
+          {
+            firstName: "Carlotta",
+            lastName: "Minzera",
+            email: "c.minzera@studenti.unisr.it",
+          },
+          {
+            firstName: "Alessandro",
+            lastName: "Aresu",
+            email: "a.aresu1@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "ricerca-biotecnologica-medicina",
         name: "Cdl triennale in Ricerca biotecnologica in medicina",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Ricerca biotecnologica in medicina.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Paola",
+            lastName: "Lavorato",
+            email: "p.lavorato@studenti.unisr.it",
+          },
+          {
+            firstName: "Francesca Caterina",
+            lastName: "Inguscio",
+            email: "f.inguscio@studenti.unisr.it",
+          },
+          {
+            firstName: "Beatrice",
+            lastName: "Straniero",
+            email: "b.straniero@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "fisioterapia",
         name: "Cdl triennale in Fisioterapia",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Fisioterapia.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Alessandro",
+            lastName: "Guarnieri",
+            email: "a.guarnieri1@studenti.unisr.it",
+          },
+          {
+            firstName: "Giacomo",
+            lastName: "Lippolis",
+            email: "g.lippolis@studenti.unisr.it",
+          },
+          {
+            firstName: "Beatrice",
+            lastName: "Rainis",
+            email: "b.rainis@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "igiene-dentale",
         name: "Cdl triennale in Igiene dentale",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Igiene dentale.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Martina",
+            lastName: "Moscatello",
+            email: "m.moscatello@studenti.unisr.it",
+          },
+          {
+            firstName: "Gianmarco",
+            lastName: "Baiardi",
+            email: "g.baiardi1@studenti.unisr.it",
+          },
+          {
+            firstName: "Riccardo",
+            lastName: "Vinci",
+            email: "r.vinci2@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "infermieristica",
         name: "Cdl triennale in Infermieristica",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Infermieristica.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Andrea Aurora",
+            lastName: "Cavallari",
+            email: "a.cavallari@studenti.unisr.it",
+          },
+          {
+            firstName: "Andrea",
+            lastName: "Caccamo",
+            email: "a.caccamo@studenti.unisr.it",
+          },
+          {
+            firstName: "Paolo",
+            lastName: "Favale",
+            email: "p.favale@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "ostetricia",
@@ -238,21 +362,54 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         name: "Cdl magistrale in Odontoiatria e protesi dentaria",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Odontoiatria e protesi dentaria.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Anna",
+            lastName: "Rustichini",
+            email: "a.rustichini@studenti.unisr.it",
+          },
+          {
+            firstName: "Mario",
+            lastName: "Diana",
+            email: "m.diana2@studenti.unisr.it",
+          },
+          {
+            firstName: "Enrico",
+            lastName: "Levi",
+            email: "e.levi@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "biotechnology-innovative-therapeutics",
         name: "Cdl magistrale in Biotechnology for Innovative Therapeutics",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Biotechnology for Innovative Therapeutics.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Michela",
+            lastName: "Agostini",
+            email: "m.agostini@studenti.unisr.it",
+          },
+          {
+            firstName: "Joelle",
+            lastName: "Bassal",
+            email: "j.bassal@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "scienze-riabilitative-professioni-sanitarie",
         name: "Cdl magistrale in Scienze riabilitative delle professioni sanitarie",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Scienze riabilitative delle professioni sanitarie.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Pietro",
+            lastName: "Medico",
+            email: "p.medico@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "scienze-infermieristiche-ostetriche",
@@ -278,10 +435,22 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
       "Un percorso dedicato allo studio della mente, del comportamento e delle relazioni umane. Grazie a un approccio interdisciplinare che integra ricerca, neuroscienze e applicazioni cliniche, gli studenti sviluppano competenze scientifiche e professionali in un contesto innovativo e internazionale.",
     representatives: [
       {
-        firstName: "Nome",
-        lastName: "Cognome",
-        role: "Rappresentante di facoltà",
-        email: "demo.psicologia@email.it",
+        firstName: "Carlotta",
+        lastName: "Leoni",
+        role: "Senato Accademico",
+        email: "c.leoni2@studenti.unisr.it",
+      },
+      {
+        firstName: "Carlotta",
+        lastName: "Leoni",
+        role: "Consiglio di Facoltà",
+        email: "c.leoni2@studenti.unisr.it",
+      },
+      {
+        firstName: "Francesca Maria",
+        lastName: "Meroni",
+        role: "Consiglio di Facoltà",
+        email: "f.meroni1@studenti.unisr.it",
       },
     ],
     courses: [
@@ -290,7 +459,18 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         name: "Cdl triennale in Scienze e tecniche psicologiche",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Scienze e tecniche psicologiche.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Giulia",
+            lastName: "Bendinelli",
+            email: "g.bendinelli@studenti.unisr.it",
+          },
+          {
+            firstName: "Mattia",
+            lastName: "Ascoli",
+            email: "m.ascoli2@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "scienze-politiche-strategie-globali",
@@ -304,7 +484,23 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         name: "Cdl magistrale in Psicologia",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea magistrale in Psicologia.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Martina",
+            lastName: "Barbieri",
+            email: "m.barbieri17@studenti.unisr.it",
+          },
+          {
+            firstName: "Benedetta",
+            lastName: "Leidi",
+            email: "b.leidi@studenti.unisr.it",
+          },
+          {
+            firstName: "Francesca",
+            lastName: "Host",
+            email: "f.host@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "cognitive-psychology-health-communication",
@@ -330,10 +526,16 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
       "Un percorso che sviluppa pensiero critico e capacità di analisi attraverso il dialogo tra filosofia, scienze e società contemporanea. Una formazione interdisciplinare che aiuta a comprendere le sfide del presente e a immaginare il futuro con consapevolezza e responsabilità.",
     representatives: [
       {
-        firstName: "Nome",
-        lastName: "Cognome",
-        role: "Rappresentante di facoltà",
-        email: "demo.filosofia@email.it",
+        firstName: "Francesco Pietro",
+        lastName: "Berrini",
+        role: "Consiglio di Facoltà",
+        email: "f.berrini1@studenti.unisr.it",
+      },
+      {
+        firstName: "Michele",
+        lastName: "Gomarasca",
+        role: "Consiglio di Facoltà",
+        email: "m.gomarasca@studenti.unisr.it",
       },
     ],
     courses: [
@@ -342,21 +544,59 @@ export const FRESHERS_FACULTIES: FreshersFaculty[] = [
         name: "Cdl triennale in Filosofia",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea triennale in Filosofia.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Federica Maria",
+            lastName: "Taddei",
+            email: "f.taddei@studenti.unisr.it",
+          },
+          {
+            firstName: "Alessandro Maria",
+            lastName: "Amendola",
+            email: "a.amendola@studenti.unisr.it",
+          },
+          {
+            firstName: "Vittoria",
+            lastName: "Aquilano",
+            email: "v.aquilano@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "filosofia-mondo-contemporaneo",
         name: "Cdl magistrale in Filosofia del mondo contemporaneo",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Filosofia del mondo contemporaneo.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Giovanni",
+            lastName: "Balestra",
+            email: "g.balestra1@studenti.unisr.it",
+          },
+          {
+            firstName: "Francesco Pietro",
+            lastName: "Berrini",
+            email: "f.berrini1@studenti.unisr.it",
+          },
+          {
+            firstName: "Valerio",
+            lastName: "D'Innocenzo",
+            email: "v.dinnocenzo@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "teoria-storia-arti-immagine",
         name: "Cdl magistrale in Teoria e storia delle arti e dell’immagine",
         description:
           "Testo demo: qui verranno inserite le informazioni principali del corso di laurea in Teoria e storia delle arti e dell’immagine.",
-        representatives: DEMO_COURSE_REPRESENTATIVES,
+        representatives: [
+          {
+            firstName: "Nina",
+            lastName: "Segre",
+            email: "n.segre@studenti.unisr.it",
+          },
+        ],
       },
       {
         slug: "politics-philosophy-public-affairs",
@@ -379,10 +619,22 @@ export const FRESHERS_STANDALONE_COURSES: FreshersStandaloneCourse[] = [
       "Testo demo: qui verranno inserite le informazioni principali per gli specializzandi.",
     representatives: [
       {
-        firstName: "Nome",
-        lastName: "Cognome",
-        role: "Rappresentante specializzandi",
-        email: "demo.specializzandi@email.it",
+        firstName: "Fabio",
+        lastName: "Biondi",
+        role: "Area Clinica – Dermatologia e venereologia",
+        email: "biondi.fabio@hsr.it",
+      },
+      {
+        firstName: "Andrea",
+        lastName: "Bisoglio",
+        role: "Area Chirurgica – Neurochirurgia",
+        email: "bisoglio.andrea@hsr.it",
+      },
+      {
+        firstName: "Rita",
+        lastName: "Cuciniello",
+        role: "Area Servizi – Igiene e medicina preventiva",
+        email: "cuciniello.rita@hsr.it",
       },
     ],
   },

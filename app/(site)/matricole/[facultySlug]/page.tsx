@@ -206,7 +206,7 @@ export default function MatricoleFacultyPage() {
                 <div>
                   <p className="eyebrow">Contatti utili</p>
                   <h2 className="display section-title">
-                    Rappresentanti di facoltà.
+                    Rappresentanti di facoltà
                   </h2>
                 </div>
               </div>
@@ -241,7 +241,7 @@ export default function MatricoleFacultyPage() {
                 <div>
                   <p className="eyebrow">Corsi di laurea</p>
                   <h2 className="display section-title">
-                    Scegli il tuo corso.
+                    Scegli il tuo corso
                   </h2>
                 </div>
                 <span className="section-count">
@@ -401,7 +401,7 @@ function MatricoleFacultyStyles() {
 
 
       .section {
-        margin-top: 1.2rem;
+        margin-top: clamp(1rem, 2.5vw, 2rem);
       }
 
       .clean-section {
@@ -409,11 +409,11 @@ function MatricoleFacultyStyles() {
         background: white;
         border: 1px solid rgba(8,16,42,.08);
         box-shadow: 0 14px 40px rgba(8,16,42,.055);
-        padding: 1.5rem;
+        padding: clamp(1.2rem, 3vw, 2rem);
       }
 
       .section-head {
-        margin-bottom: 1.2rem;
+        margin-bottom: clamp(1rem, 2.5vw, 1.6rem);
       }
 
       .compact-section-head {
@@ -580,7 +580,45 @@ function MatricoleFacultyStyles() {
         transform: translateY(-2px);
       }
 
-      @media (max-width: 1000px) {
+      /* ── 768px: tablet ── */
+      @media (max-width: 768px) {
+        .matricole-page {
+          padding: 5.5rem 1.2rem 3rem;
+        }
+
+        .hero::after {
+          width: 180px;
+          height: 180px;
+          right: -40px;
+          top: -60px;
+        }
+
+        .hero-subtitle {
+          font-size: .92rem;
+        }
+
+        .section-title {
+          font-size: clamp(1.8rem, 5vw, 2.8rem);
+        }
+      }
+
+      /* ── 640px: large phone ── */
+      @media (max-width: 640px) {
+        .matricole-page {
+          padding: 5rem 1rem 2.5rem;
+        }
+
+        .hero,
+        .clean-section,
+        .empty-state {
+          padding: 1.4rem;
+          border-radius: 1.6rem;
+        }
+
+        .hero-title {
+          font-size: clamp(2.1rem, 8vw, 3rem);
+        }
+
         .representative-row,
         .course-row {
           align-items: flex-start;
@@ -590,26 +628,48 @@ function MatricoleFacultyStyles() {
         .representative-row a {
           text-align: left;
         }
+
+        .compact-section-head {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: .5rem;
+        }
+
+        .btn-primary {
+          width: 100%;
+        }
       }
 
-      @media (max-width: 760px) {
+      /* ── 430px: small phone ── */
+      @media (max-width: 430px) {
         .matricole-page {
-          padding: 6rem 1rem 3rem;
+          padding: 5rem 0.8rem 2rem;
         }
 
         .hero,
         .clean-section,
         .empty-state {
-          padding: 1.25rem;
-          border-radius: 1.4rem;
+          padding: 1.2rem;
+          border-radius: 1.3rem;
         }
 
-        .hero-title {
-          font-size: clamp(2.3rem, 12vw, 3.4rem);
+        .representative-row,
+        .course-row {
+          padding: .85rem .9rem;
+          border-radius: 1rem;
         }
 
-        .btn-primary {
-          width: 100%;
+        .empty-state h1 {
+          font-size: clamp(2.2rem, 10vw, 3.6rem);
+        }
+
+        .back-link {
+          font-size: .82rem;
+        }
+
+        .section-count {
+          font-size: .66rem;
+          padding: .4rem .7rem;
         }
       }
     `}</style>
