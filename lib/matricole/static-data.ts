@@ -93,7 +93,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     title: "Come accedo al gruppo WhatsApp ufficiale del mio corso?",
     description:
       "Il gruppo WhatsApp viene sbloccato dopo aver completato il percorso di onboarding. Seleziona la tua facoltà e segui i passaggi indicati: al termine troverai il link per entrare nella community del tuo corso.",
-    imagePath: "documents/carosello/whatsapp.webp",
+    imagePath: "documents/carosello/whatsapp.png",
     ctas: [{ href: "#facolta", label: "Scegli la tua facoltà" }],
     displayOrder: 1,
     isActive: true,
@@ -102,7 +102,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     title: "Come faccio a orientarmi nel campus?",
     description:
       "Scopri dove si trovano aule, biblioteche, mense, spazi studio e servizi universitari. Una guida pratica per muovere i primi passi e sentirti subito a casa nel tuo nuovo ambiente.",
-    imagePath: "documents/carosello/campus.webp",
+    imagePath: "documents/carosello/campus.png",
     pdfPath: "documents/guida-campus.pdf",
     pdfLabel: "Scarica la guida",
     displayOrder: 6,
@@ -112,7 +112,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     title: "Dove trovo il calendario delle lezioni?",
     description:
       "L’università pubblica online il calendario aggiornato delle lezioni. Consulta il portale ufficiale dell’Ateneo per verificare orari, aule e eventuali modifiche al programma.",
-    imagePath: "documents/carosello/calendario.webp",
+    imagePath: "documents/carosello/calendario.png",
     ctas: [{ href: "https://orario.unisr.it/", label: "Apri il portale orari" }],
     displayOrder: 2,
     isActive: true,
@@ -121,7 +121,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     title: "Come posso trovare casa?",
     description:
       "Grazie alla collaborazione con partner immobiliari selezionati e ai consulenti esperti di CLEM, puoi ricevere supporto nella ricerca di un appartamento adatto alle tue esigenze! Entra anche nel gruppo WhatsApp dedicato!",
-    imagePath: "documents/carosello/casa.webp",
+    imagePath: "documents/carosello/casa.png",
     ctas: [
       { href: "https://www.clemilanodue.com/", label: "Sito CLEM" },
       { href: "https://chat.whatsapp.com/LglIs4r6eCuAt0jAjpV5Bd?mode=gi_t", label: "Gruppo WhatsApp SOS Casa" },
@@ -133,7 +133,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     title: "Dove trovo gli sconti dedicati agli studenti?",
     description:
       "Esplora le convenzioni ASTRA disponibili per la community e approfitta di offerte esclusive su servizi, attività e prodotti utili durante il tuo percorso universitario",
-    imagePath: "documents/carosello/sconti.webp",
+    imagePath: "documents/carosello/sconti.png",
     ctas: [{ href: "https://www.astrasanraffaele.it/convenzioni", label: "Vai alle convenzioni" }],
     displayOrder: 3,
     isActive: true,
@@ -142,7 +142,7 @@ export const FRESHERS_CAROUSEL_ITEMS: FreshersCarouselItem[] = [
     title: "Come raggiungo l'università?",
     description:
       "Informazioni utili su trasporti pubblici, parcheggi, abbonamenti e agevolazioni per studenti.",
-    imagePath: "documents/carosello/trasporti.webp",
+    imagePath: "documents/carosello/trasporti.png",
     pdfPath: "documents/come-raggiungere-universita.pdf",
     pdfLabel: "Organizza il tuo viaggio",
     displayOrder: 5,
