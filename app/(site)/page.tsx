@@ -402,7 +402,7 @@ export default function Home() {
           <section className="freshers-home-banner">
             <div className="freshers-home-banner-inner">
               <div>
-                <p className="freshers-home-banner-kicker">Matricole 2026 Università “Vita-Salute” San Raffaele</p>
+                <p className="freshers-home-banner-kicker">Università “Vita-Salute” San Raffaele</p>
                 <h2 className="display">Welcome Matricole 2026</h2>
                 <p>
                   Tutto ciò che ti serve per partire con il piede giusto: scegli il tuo corso, orientati tra i servizi ASTRA per te, accedi al gruppo WhatsApp ufficiale e scopri i prossimi passi del tuo percorso!
