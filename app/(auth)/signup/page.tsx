@@ -149,6 +149,10 @@ function SignupPageContent() {
 
     setLoading(true);
 
+    if (nextPath && nextPath.startsWith("/")) {
+      document.cookie = `auth_redirect=${encodeURIComponent(nextPath)}; path=/; max-age=3600; SameSite=Lax`;
+    }
+
     const { error: signUpError } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,

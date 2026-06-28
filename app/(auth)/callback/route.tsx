@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -8,7 +9,13 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const next = searchParams.get("next") ?? "/profile";
+  const nextParam = searchParams.get("next");
+
+  const cookieStore = await cookies();
+  const redirectCookie = cookieStore.get("auth_redirect")?.value;
+  const next = (redirectCookie && redirectCookie.startsWith("/"))
+    ? redirectCookie
+    : (nextParam && nextParam.startsWith("/") ? nextParam : "/profile");
 
   const supabase = await createClient();
 
@@ -112,5 +119,7 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  const response = NextResponse.redirect(`${origin}${next}`);
+  response.cookies.set("auth_redirect", "", { maxAge: 0, path: "/" });
+  return response;
 }
