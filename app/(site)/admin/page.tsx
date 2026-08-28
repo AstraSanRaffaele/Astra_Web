@@ -211,8 +211,8 @@ export default function AdminPage() {
                 <a href="/admin/convenzioni" className="adminMenuItem">
                   <span className="adminMenuIcon">01</span>
                   <span className="adminMenuText">
-                    <strong>Convenzioni</strong>
-                    <small>Crea e modifica le convenzioni</small>
+                    <strong>Convenzioni generali</strong>
+                    <small>Gestisci partner, vantaggi e convenzioni non librarie</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
                 </a>
@@ -247,8 +247,8 @@ export default function AdminPage() {
                 <a href="/admin/convenzione-libri" className="adminMenuItem">
                   <span className="adminMenuIcon">05</span>
                   <span className="adminMenuText">
-                    <strong>Adesioni libri</strong>
-                    <small>Consulta le adesioni alle convenzioni libri</small>
+                    <strong>Convenzioni libri</strong>
+                    <small>Consulta adesioni, catalogo e periodi</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
                 </a>

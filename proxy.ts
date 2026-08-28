@@ -62,7 +62,12 @@ export async function proxy(req: NextRequest) {
   );
 
   if (!user && isProtected) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    const loginUrl = req.nextUrl.clone();
+    const returnPath = `${req.nextUrl.pathname}${req.nextUrl.search}`;
+    loginUrl.pathname = "/login";
+    loginUrl.search = "";
+    loginUrl.searchParams.set("next", returnPath);
+    return NextResponse.redirect(loginUrl);
   }
 
   return res;

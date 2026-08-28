@@ -1,35 +1,31 @@
 // app/api/book-convention/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import {
+  createClient as createSupabaseClient,
+  type SupabaseClient,
+  type User,
+} from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import nodemailer from "nodemailer";
-
-type PaymentMethod =
-  | "contanti"
-  | "bonifico"
-  | "carta"
-  | "bonus_cultura"
-  | "carta_del_docente"
-  | "bonus_di_merito";
-
-type BookYear = "primo_anno" | "secondo_anno" | "terzo_anno";
-
-type BookConventionBook = {
-  id: number;
-  convention_id: number;
-  title: string;
-  price: number | null;
-  reference_year: BookYear;
-  description: string | null;
-  sort_order: number | null;
-};
-
-type BookConventionRound = {
-  id: string;
-  convention_id: number;
-  starts_at: string;
-  ends_at: string;
-};
+import {
+  BOOK_CONVENTION_BANK_DETAILS,
+  BOOK_YEAR_LABELS,
+  BOOK_YEARS,
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_METHODS,
+  PRODUCT_TYPE_LABELS,
+  PRODUCT_TYPES,
+  STUDY_AREAS,
+  normalizeBookConventionCoverUrl,
+  type BookConventionBook,
+  type BookConventionCatalogBook,
+  type BookConventionRound,
+  type BookYear,
+  type PaymentMethod,
+  type ProductType,
+  type StudyArea,
+} from "@/lib/book-convention";
 
 type BookReceiptProfile = {
   firstName: string;
@@ -37,30 +33,10 @@ type BookReceiptProfile = {
   email: string;
 };
 
-const PAYMENT_METHODS: PaymentMethod[] = [
-  "contanti",
-  "bonifico",
-  "carta",
-  "bonus_cultura",
-  "carta_del_docente",
-  "bonus_di_merito",
-];
-
-const BOOK_YEARS: BookYear[] = ["primo_anno", "secondo_anno", "terzo_anno"];
-
-const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  contanti: "Contanti",
-  bonifico: "Bonifico",
-  carta: "Carta",
-  bonus_cultura: "Bonus cultura",
-  carta_del_docente: "Carta del docente",
-  bonus_di_merito: "Bonus di merito",
-};
-
-const BOOK_YEAR_LABELS: Record<BookYear, string> = {
-  primo_anno: "Primo anno",
-  secondo_anno: "Secondo anno",
-  terzo_anno: "Terzo anno",
+type BookProfileRow = {
+  nome: string | null;
+  cognome: string | null;
+  email_istituzionale: string | null;
 };
 
 function isPaymentMethod(value: unknown): value is PaymentMethod {
@@ -83,6 +59,74 @@ function cleanBookIds(value: unknown) {
   );
 }
 
+function isBookYear(value: unknown): value is BookYear {
+  return typeof value === "string" && BOOK_YEARS.includes(value as BookYear);
+}
+
+function isProductType(value: unknown): value is ProductType {
+  return typeof value === "string" && PRODUCT_TYPES.includes(value as ProductType);
+}
+
+function isStudyArea(value: unknown): value is StudyArea {
+  return typeof value === "string" && STUDY_AREAS.includes(value as StudyArea);
+}
+
+function normalizeBundleItems(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => cleanRequiredString(item))
+    .filter(Boolean);
+}
+
+function parseDatabasePrice(value: unknown) {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function normalizeBookRow(value: unknown): BookConventionBook | null {
+  if (!value || typeof value !== "object") return null;
+
+  const row = value as Record<string, unknown>;
+  const id = Number(row.id);
+  const conventionId = Number(row.convention_id);
+  const title = cleanRequiredString(row.title);
+
+  if (
+    !Number.isInteger(id) ||
+    id <= 0 ||
+    !Number.isInteger(conventionId) ||
+    conventionId <= 0 ||
+    !title ||
+    !isBookYear(row.reference_year) ||
+    !isProductType(row.product_type) ||
+    !isStudyArea(row.study_area)
+  ) {
+    return null;
+  }
+
+  const sortOrder = Number(row.sort_order);
+
+  return {
+    id,
+    convention_id: conventionId,
+    title,
+    price: parseDatabasePrice(row.price),
+    reference_year: row.reference_year,
+    description: cleanRequiredString(row.description) || null,
+    sort_order: Number.isInteger(sortOrder) ? sortOrder : null,
+    product_type: row.product_type,
+    bundle_items: normalizeBundleItems(row.bundle_items),
+    study_area: row.study_area,
+    is_active: row.is_active === true,
+    cover_image: normalizeBookConventionCoverUrl(row.cover_image),
+  };
+}
+
+function priceToCents(price: number) {
+  return Math.round((price + Number.EPSILON) * 100);
+}
+
 function groupBooksByYear(books: BookConventionBook[]) {
   return BOOK_YEARS.reduce<Record<BookYear, BookConventionBook[]>>(
     (acc, year) => {
@@ -93,6 +137,32 @@ function groupBooksByYear(books: BookConventionBook[]) {
       primo_anno: [],
       secondo_anno: [],
       terzo_anno: [],
+    }
+  );
+}
+
+function groupBooksByArea(books: BookConventionCatalogBook[]) {
+  return STUDY_AREAS.reduce<Record<StudyArea, Record<BookYear, BookConventionCatalogBook[]>>>(
+    (areas, area) => {
+      areas[area] = BOOK_YEARS.reduce<Record<BookYear, BookConventionCatalogBook[]>>(
+        (years, year) => {
+          years[year] = books.filter(
+            (book) => book.study_area === area && book.reference_year === year
+          );
+          return years;
+        },
+        { primo_anno: [], secondo_anno: [], terzo_anno: [] }
+      );
+      return areas;
+    },
+    {
+      medicina_chirurgia: { primo_anno: [], secondo_anno: [], terzo_anno: [] },
+      odontoiatria_igiene_dentale: {
+        primo_anno: [],
+        secondo_anno: [],
+        terzo_anno: [],
+      },
+      professioni_sanitarie: { primo_anno: [], secondo_anno: [], terzo_anno: [] },
     }
   );
 }
@@ -113,16 +183,21 @@ function formatEuro(value: number) {
   }).format(value);
 }
 
-function getUserProfileForReceipt(user: NonNullable<Awaited<ReturnType<Awaited<ReturnType<typeof getSupabase>>["auth"]["getUser"]>>["data"]["user"]>): BookReceiptProfile {
+function getUserProfileForReceipt(
+  user: User,
+  profile: BookProfileRow | null
+): BookReceiptProfile {
   const metadata = user.user_metadata ?? {};
 
   const firstName =
+    cleanRequiredString(profile?.nome) ||
     cleanRequiredString(metadata.nome) ||
     cleanRequiredString(metadata.name) ||
     cleanRequiredString(metadata.first_name) ||
     "";
 
   const lastName =
+    cleanRequiredString(profile?.cognome) ||
     cleanRequiredString(metadata.cognome) ||
     cleanRequiredString(metadata.surname) ||
     cleanRequiredString(metadata.last_name) ||
@@ -131,7 +206,7 @@ function getUserProfileForReceipt(user: NonNullable<Awaited<ReturnType<Awaited<R
   return {
     firstName,
     lastName,
-    email: user.email ?? "",
+    email: cleanRequiredString(profile?.email_istituzionale) || user.email || "",
   };
 }
 
@@ -157,10 +232,18 @@ function buildBookConventionReceiptHtml(params: {
   const orderedBooksRows = selectedBooks
     .map((book) => {
       const price = typeof book.price === "number" && Number.isFinite(book.price) ? book.price : 0;
+      const bundleContents =
+        book.product_type === "bundle" && book.bundle_items.length > 0
+          ? `<div style="margin-top: 4px; color: #6b7280; font-size: 12px;">Include: ${escapeHtml(book.bundle_items.join(", "))}</div>`
+          : "";
 
       return `
         <tr>
-          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(book.title)}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">
+            <strong>${escapeHtml(book.title)}</strong>
+            ${bundleContents}
+          </td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(PRODUCT_TYPE_LABELS[book.product_type])}</td>
           <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(BOOK_YEAR_LABELS[book.reference_year])}</td>
           <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${escapeHtml(formatEuro(price))}</td>
         </tr>
@@ -174,13 +257,16 @@ function buildBookConventionReceiptHtml(params: {
         <div style="margin-top: 24px; padding: 16px; border-radius: 12px; background: #eef4ff; border: 1px solid #c7d7fe;">
           <h3 style="margin: 0 0 8px; color: #0f2f6e; font-size: 16px;">Coordinate per il bonifico</h3>
           <p style="margin: 0; color: #1f2937;">
-            IBAN: <strong>Intesa San Paolo SPA – IBAN IT72D0306951150100000009695</strong><br />
-            Intestatario: <strong>CP GROUP SRLS</strong><br />
+            IBAN: <strong>${escapeHtml(BOOK_CONVENTION_BANK_DETAILS.bank)} – IBAN ${escapeHtml(BOOK_CONVENTION_BANK_DETAILS.iban)}</strong><br />
+            Intestatario: <strong>${escapeHtml(BOOK_CONVENTION_BANK_DETAILS.accountHolder)}</strong><br />
             Causale: <strong>Adesione convenzione libri - ${escapeHtml(profile.firstName)} ${escapeHtml(profile.lastName)}</strong>
           </p>
         </div>
       `
       : "";
+
+  const roundStart = new Date(activeRound.starts_at).toLocaleDateString("it-IT");
+  const roundEnd = new Date(activeRound.ends_at).toLocaleDateString("it-IT");
 
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.5; color: #111827; background: #f7f7f7; padding: 24px;">
@@ -218,6 +304,10 @@ function buildBookConventionReceiptHtml(params: {
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Metodo di pagamento</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(PAYMENT_METHOD_LABELS[paymentMethod])}</td>
               </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Periodo</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(`${roundStart} – ${roundEnd}`)}</td>
+              </tr>
             </tbody>
           </table>
 
@@ -226,6 +316,7 @@ function buildBookConventionReceiptHtml(params: {
             <thead>
               <tr>
                 <th align="left" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Titolo</th>
+                <th align="left" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Tipo</th>
                 <th align="left" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Anno</th>
                 <th align="right" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Prezzo</th>
               </tr>
@@ -233,7 +324,7 @@ function buildBookConventionReceiptHtml(params: {
             <tbody>
               ${orderedBooksRows}
               <tr>
-                <td colspan="2" style="padding: 12px 10px; text-align: right;"><strong>Totale</strong></td>
+                <td colspan="3" style="padding: 12px 10px; text-align: right;"><strong>Totale</strong></td>
                 <td style="padding: 12px 10px; text-align: right;"><strong>${escapeHtml(formatEuro(totalPrice))}</strong></td>
               </tr>
             </tbody>
@@ -260,7 +351,7 @@ async function sendBookConventionReceiptEmail(params: {
   totalPrice: number;
   activeRound: BookConventionRound;
 }) {
-  if (!params.to) return;
+  if (!params.to) return false;
 
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT ?? 465);
@@ -270,7 +361,7 @@ async function sendBookConventionReceiptEmail(params: {
 
   if (!host || !user || !pass || !from) {
     console.warn("SMTP non configurato: email ricevuta convenzione libri non inviata.");
-    return;
+    return false;
   }
 
   const transporter = nodemailer.createTransport({
@@ -297,6 +388,8 @@ async function sendBookConventionReceiptEmail(params: {
       activeRound: params.activeRound,
     }),
   });
+
+  return true;
 }
 
 async function getSupabase() {
@@ -313,7 +406,23 @@ async function getSupabase() {
   );
 }
 
-async function getActiveRound(supabase: Awaited<ReturnType<typeof getSupabase>>, conventionId: number) {
+function getServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Configurazione Supabase server mancante.");
+  }
+
+  return createSupabaseClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
+async function getActiveRound(supabase: SupabaseClient, conventionId: number) {
   const now = new Date().toISOString();
 
   const { data, error } = await supabase
@@ -321,7 +430,7 @@ async function getActiveRound(supabase: Awaited<ReturnType<typeof getSupabase>>,
     .select("id, convention_id, starts_at, ends_at")
     .eq("convention_id", conventionId)
     .lte("starts_at", now)
-    .gte("ends_at", now)
+    .gt("ends_at", now)
     .order("starts_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -331,114 +440,199 @@ async function getActiveRound(supabase: Awaited<ReturnType<typeof getSupabase>>,
   return data as BookConventionRound | null;
 }
 
+function privateJson(body: object, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "private, no-store, max-age=0",
+    },
+  });
+}
+
+function logRouteError(context: string, error: unknown) {
+  console.error(context, error instanceof Error ? error.message : error);
+}
+
 // GET /api/book-convention
 // Restituisce la convenzione libri, i periodi disponibili, i libri collegati e l'eventuale adesione dell'utente.
 export async function GET(req: NextRequest) {
-  const supabase = await getSupabase();
+  const authClient = await getSupabase();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Non autenticato." }, { status: 401 });
+    return privateJson({ error: "Non autenticato." }, 401);
   }
 
-  const { searchParams } = new URL(req.url);
+  const { searchParams } = req.nextUrl;
   const conventionIdParam = searchParams.get("convention_id");
   const requestedConventionId = conventionIdParam ? Number(conventionIdParam) : null;
 
   if (
     conventionIdParam &&
-    (!requestedConventionId || Number.isNaN(requestedConventionId))
+    (!requestedConventionId ||
+      !Number.isInteger(requestedConventionId) ||
+      requestedConventionId <= 0)
   ) {
-    return NextResponse.json({ error: "Convenzione non valida." }, { status: 400 });
+    return privateJson({ error: "Convenzione non valida." }, 400);
   }
-
-  let conventionQuery = supabase
-    .from("convenzioni")
-    .select("id, titolo, partner, descrizione, is_book_convention")
-    .eq("is_book_convention", true);
-
-  if (requestedConventionId) {
-    conventionQuery = conventionQuery.eq("id", requestedConventionId);
-  }
-
-  const { data: convention, error: conventionError } = await conventionQuery
-    .order("id", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (conventionError) {
-    return NextResponse.json({ error: conventionError.message }, { status: 500 });
-  }
-
-  if (!convention) {
-    return NextResponse.json({ error: "Convenzione libri non trovata." }, { status: 404 });
-  }
-
-  const conventionId = Number(convention.id);
 
   try {
-    const [activeRoundResult, roundsResult, booksResult, adhesionResult] = await Promise.all([
-      getActiveRound(supabase, conventionId),
-      supabase
+    const serviceClient = getServiceClient();
+    let conventionQuery = serviceClient
+      .from("convenzioni")
+      .select("id, titolo, partner, descrizione, attiva, is_book_convention")
+      .eq("is_book_convention", true);
+
+    if (requestedConventionId) {
+      conventionQuery = conventionQuery.eq("id", requestedConventionId);
+    }
+
+    const { data: convention, error: conventionError } = await conventionQuery
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (conventionError) throw conventionError;
+
+    if (!convention) {
+      return privateJson({ error: "Convenzione libri non trovata." }, 404);
+    }
+
+    const conventionId = Number(convention.id);
+    const activeRound = await getActiveRound(serviceClient, conventionId);
+    const adhesionFields =
+      "id, convention_id, round_id, selected_book_ids, selected_books, total_price, fiscal_code_or_vat, billing_shipping_address, payment_method, created_at";
+
+    const [roundsResult, booksResult, adhesionsResult, profileResult] = await Promise.all([
+      serviceClient
         .from("book_convention_rounds")
         .select("id, convention_id, starts_at, ends_at")
         .eq("convention_id", conventionId)
         .order("starts_at", { ascending: true }),
-      supabase
+      serviceClient
         .from("book_convention_books")
-        .select("id, convention_id, title, price, reference_year, description, sort_order")
+        .select(
+          "id, convention_id, title, price, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+        )
         .eq("convention_id", conventionId)
+        .eq("is_active", true)
+        .order("study_area", { ascending: true })
         .order("reference_year", { ascending: true })
         .order("sort_order", { ascending: true })
         .order("title", { ascending: true }),
-      supabase
+      serviceClient
         .from("book_convention_adhesions")
-        .select(
-          "id, convention_id, round_id, selected_book_ids, selected_books, total_price, fiscal_code_or_vat, billing_shipping_address, payment_method, created_at"
-        )
+        .select(adhesionFields)
         .eq("user_id", user.id)
         .eq("convention_id", conventionId)
         .order("created_at", { ascending: false })
-        .limit(1)
+        .limit(50),
+      serviceClient
+        .from("profiles")
+        .select("nome, cognome, email_istituzionale")
+        .eq("id", user.id)
         .maybeSingle(),
     ]);
 
     if (roundsResult.error) throw roundsResult.error;
     if (booksResult.error) throw booksResult.error;
-    if (adhesionResult.error) throw adhesionResult.error;
+    if (adhesionsResult.error) throw adhesionsResult.error;
+    if (profileResult.error) throw profileResult.error;
 
-    const books = (booksResult.data ?? []) as BookConventionBook[];
+    const availableBookIds = new Set<number>();
+    const conventionIsActive = convention.attiva === true;
 
-    return NextResponse.json({
+    if (conventionIsActive && activeRound) {
+      const { data: links, error: linksError } = await serviceClient
+        .from("book_convention_book_rounds")
+        .select("book_id")
+        .eq("convention_id", conventionId)
+        .eq("round_id", activeRound.id);
+
+      if (linksError) throw linksError;
+
+      for (const link of links ?? []) {
+        const bookId = Number(link.book_id);
+        if (Number.isInteger(bookId) && bookId > 0) availableBookIds.add(bookId);
+      }
+    }
+
+    const normalizedBooks = (booksResult.data ?? [])
+      .map((book) => normalizeBookRow(book))
+      .filter((book): book is BookConventionBook => book !== null);
+
+    const catalogBooks: BookConventionCatalogBook[] = normalizedBooks.map((book) => {
+      let availabilityReason: BookConventionCatalogBook["availability_reason"] = null;
+
+      if (!conventionIsActive) availabilityReason = "convention_inactive";
+      else if (!activeRound) availabilityReason = "round_inactive";
+      else if (!availableBookIds.has(book.id)) availabilityReason = "not_in_round";
+      else if (book.price === null) availabilityReason = "price_unavailable";
+
+      return {
+        ...book,
+        is_available: availabilityReason === null,
+        availability_reason: availabilityReason,
+      };
+    });
+
+    // Compatibilità con la modale esistente: `books` contiene solo elementi selezionabili.
+    const selectableBooks = catalogBooks.filter((book) => book.is_available);
+    const adhesions = adhesionsResult.data ?? [];
+    const activeAdhesion = activeRound
+      ? adhesions.find((adhesion) => adhesion.round_id === activeRound.id) ?? null
+      : null;
+    const latestAdhesion = adhesions[0] ?? null;
+    const receiptProfile = getUserProfileForReceipt(
+      user,
+      (profileResult.data as BookProfileRow | null) ?? null
+    );
+
+    return privateJson({
       ok: true,
       convention,
-      activeRound: activeRoundResult,
+      activeRound,
       rounds: roundsResult.data ?? [],
-      books,
-      booksByYear: groupBooksByYear(books),
-      hasAdhered: Boolean(adhesionResult.data),
-      adhesion: adhesionResult.data ?? null,
+      canAdhere:
+        conventionIsActive && Boolean(activeRound) && selectableBooks.length > 0,
+      books: selectableBooks,
+      booksByYear: groupBooksByYear(selectableBooks),
+      catalogBooks,
+      catalogByArea: groupBooksByArea(catalogBooks),
+      studyAreas: STUDY_AREAS,
+      hasAdhered: Boolean(activeAdhesion),
+      adhesion: activeAdhesion ?? latestAdhesion,
+      activeAdhesion,
+      latestAdhesion,
+      profile: {
+        firstName: receiptProfile.firstName,
+        lastName: receiptProfile.lastName,
+        email: receiptProfile.email,
+      },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Errore durante il caricamento.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logRouteError("Errore caricamento convenzione libri", error);
+    return privateJson(
+      { error: "Non è stato possibile caricare la convenzione libri." },
+      500
+    );
   }
 }
 
 // POST /api/book-convention
 // Crea una nuova adesione alla convenzione libri per l'utente loggato.
 export async function POST(req: NextRequest) {
-  const supabase = await getSupabase();
+  const authClient = await getSupabase();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Non autenticato." }, { status: 401 });
+    return privateJson({ error: "Non autenticato." }, 401);
   }
 
   let body: {
@@ -460,174 +654,249 @@ export async function POST(req: NextRequest) {
   const requestedRoundId = cleanRequiredString(body.round_id);
   const selectedBookIds = cleanBookIds(body.selected_book_ids);
   const paymentMethod = body.payment_method;
-  const fiscalCodeOrVat = cleanRequiredString(body.fiscal_code_or_vat).toUpperCase();
+  const fiscalCodeOrVat = cleanRequiredString(body.fiscal_code_or_vat)
+    .toUpperCase()
+    .replace(/\s+/g, "");
   const billingShippingAddress = cleanRequiredString(body.billing_shipping_address);
 
-  if (!conventionId || Number.isNaN(conventionId)) {
-    return NextResponse.json({ error: "Convenzione non valida." }, { status: 400 });
+  if (!conventionId || !Number.isInteger(conventionId) || conventionId <= 0) {
+    return privateJson({ error: "Convenzione non valida." }, 400);
   }
 
   if (selectedBookIds.length === 0) {
-    return NextResponse.json({ error: "Seleziona almeno un libro o una promozione." }, { status: 400 });
+    return privateJson({ error: "Seleziona almeno un libro o un bundle." }, 400);
   }
 
-  if (!fiscalCodeOrVat) {
-    return NextResponse.json({ error: "Inserisci codice fiscale o partita IVA." }, { status: 400 });
+  if (selectedBookIds.length > 50) {
+    return privateJson({ error: "Hai selezionato troppi elementi." }, 400);
   }
 
-  if (!billingShippingAddress) {
-    return NextResponse.json({ error: "Inserisci indirizzo di spedizione/fatturazione." }, { status: 400 });
+  if (!/^[A-Z0-9]{11,20}$/.test(fiscalCodeOrVat)) {
+    return privateJson({ error: "Inserisci un codice fiscale o una partita IVA validi." }, 400);
+  }
+
+  if (billingShippingAddress.length < 8 || billingShippingAddress.length > 1000) {
+    return privateJson(
+      { error: "Inserisci un indirizzo di spedizione/fatturazione completo." },
+      400
+    );
   }
 
   if (!isPaymentMethod(paymentMethod)) {
-    return NextResponse.json({ error: "Metodo di pagamento non valido." }, { status: 400 });
+    return privateJson({ error: "Metodo di pagamento non valido." }, 400);
   }
-
-  const { data: convention, error: conventionError } = await supabase
-    .from("convenzioni")
-    .select("id, is_book_convention")
-    .eq("id", conventionId)
-    .maybeSingle();
-
-  if (conventionError) {
-    return NextResponse.json({ error: conventionError.message }, { status: 500 });
-  }
-
-  if (!convention) {
-    return NextResponse.json({ error: "Convenzione non trovata." }, { status: 404 });
-  }
-
-  if (!convention.is_book_convention) {
-    return NextResponse.json(
-      { error: "Questa convenzione non è una convenzione libri." },
-      { status: 400 }
-    );
-  }
-
-  let activeRound: BookConventionRound | null = null;
 
   try {
-    activeRound = await getActiveRound(supabase, conventionId);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Errore durante il controllo del periodo.";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+    const serviceClient = getServiceClient();
+    const { data: convention, error: conventionError } = await serviceClient
+      .from("convenzioni")
+      .select("id, attiva, is_book_convention")
+      .eq("id", conventionId)
+      .maybeSingle();
 
-  if (!activeRound) {
-    return NextResponse.json(
-      { error: "La convenzione libri non è attiva in questo momento." },
-      { status: 400 }
+    if (conventionError) throw conventionError;
+
+    if (!convention) {
+      return privateJson({ error: "Convenzione non trovata." }, 404);
+    }
+
+    if (!convention.is_book_convention) {
+      return privateJson(
+        { error: "Questa convenzione non è una convenzione libri." },
+        400
+      );
+    }
+
+    if (convention.attiva !== true) {
+      return privateJson({ error: "La convenzione libri è chiusa." }, 409);
+    }
+
+    const activeRound = await getActiveRound(serviceClient, conventionId);
+
+    if (!activeRound) {
+      return privateJson(
+        { error: "La convenzione libri non è attiva in questo momento." },
+        409
+      );
+    }
+
+    if (requestedRoundId && requestedRoundId !== activeRound.id) {
+      return privateJson(
+        { error: "Il periodo selezionato non è attualmente disponibile." },
+        409
+      );
+    }
+
+    const [booksResult, linksResult] = await Promise.all([
+      serviceClient
+        .from("book_convention_books")
+        .select(
+          "id, convention_id, title, price, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+        )
+        .eq("convention_id", conventionId)
+        .eq("is_active", true)
+        .in("id", selectedBookIds),
+      serviceClient
+        .from("book_convention_book_rounds")
+        .select("book_id")
+        .eq("convention_id", conventionId)
+        .eq("round_id", activeRound.id)
+        .in("book_id", selectedBookIds),
+    ]);
+
+    if (booksResult.error) throw booksResult.error;
+    if (linksResult.error) throw linksResult.error;
+
+    const normalizedBooks = (booksResult.data ?? [])
+      .map((book) => normalizeBookRow(book))
+      .filter((book): book is BookConventionBook => book !== null);
+    const booksById = new Map(normalizedBooks.map((book) => [book.id, book]));
+    const selectedBooks = selectedBookIds
+      .map((bookId) => booksById.get(bookId))
+      .filter((book): book is BookConventionBook => Boolean(book));
+    const linkedBookIds = new Set(
+      (linksResult.data ?? [])
+        .map((link) => Number(link.book_id))
+        .filter((bookId) => Number.isInteger(bookId) && bookId > 0)
     );
-  }
 
-  if (requestedRoundId && requestedRoundId !== activeRound.id) {
-    return NextResponse.json(
-      { error: "Il periodo selezionato non è attualmente disponibile." },
-      { status: 400 }
+    if (
+      selectedBooks.length !== selectedBookIds.length ||
+      selectedBookIds.some((bookId) => !linkedBookIds.has(bookId))
+    ) {
+      return privateJson(
+        { error: "Uno o più elementi selezionati non sono disponibili nel periodo attivo." },
+        409
+      );
+    }
+
+    if (selectedBooks.some((book) => book.price === null)) {
+      return privateJson(
+        { error: "Uno o più elementi selezionati non hanno un prezzo valido." },
+        409
+      );
+    }
+
+    const totalPriceInCents = selectedBooks.reduce(
+      (sum, book) => sum + priceToCents(book.price ?? 0),
+      0
     );
-  }
+    const totalPrice = totalPriceInCents / 100;
 
-  const { data: books, error: booksError } = await supabase
-    .from("book_convention_books")
-    .select("id, convention_id, title, price, reference_year, description, sort_order")
-    .eq("convention_id", conventionId)
-    .in("id", selectedBookIds);
+    const { data: existingAdhesion, error: existingError } = await serviceClient
+      .from("book_convention_adhesions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("convention_id", conventionId)
+      .eq("round_id", activeRound.id)
+      .limit(1)
+      .maybeSingle();
 
-  if (booksError) {
-    return NextResponse.json({ error: booksError.message }, { status: 500 });
-  }
+    if (existingError) throw existingError;
 
-  const selectedBooks = (books ?? []) as BookConventionBook[];
-
-  if (selectedBooks.length !== selectedBookIds.length) {
-    return NextResponse.json(
-      { error: "Uno o più libri selezionati non sono validi." },
-      { status: 400 }
-    );
-  }
-
-  const totalPrice = selectedBooks.reduce((sum, book) => {
-    const price = typeof book.price === "number" && Number.isFinite(book.price) ? book.price : 0;
-    return sum + price;
-  }, 0);
-
-  const { data: existingAdhesion, error: existingError } = await supabase
-    .from("book_convention_adhesions")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("convention_id", conventionId)
-    .eq("round_id", activeRound.id)
-    .maybeSingle();
-
-  if (existingError) {
-    return NextResponse.json({ error: existingError.message }, { status: 500 });
-  }
-
-  if (existingAdhesion) {
-    return NextResponse.json({
-      ok: true,
-      hasAdhered: true,
-      message: "Hai già aderito a questa convenzione libri per il periodo attivo.",
-    });
-  }
-
-  const { data: insertedAdhesion, error } = await supabase
-    .from("book_convention_adhesions")
-    .insert({
-      user_id: user.id,
-      convention_id: conventionId,
-      round_id: activeRound.id,
-      selected_book_ids: selectedBookIds,
-      selected_books: selectedBooks.map((book) => ({
-        id: book.id,
-        title: book.title,
-        price: book.price ?? 0,
-        reference_year: book.reference_year,
-        description: book.description,
-      })),
-      total_price: totalPrice,
-      fiscal_code_or_vat: fiscalCodeOrVat,
-      billing_shipping_address: billingShippingAddress,
-      payment_method: paymentMethod,
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    if (error.code === "23505") {
-      return NextResponse.json({
+    if (existingAdhesion) {
+      return privateJson({
         ok: true,
         hasAdhered: true,
-        message: "Hai già aderito a questa convenzione libri per il periodo attivo.",
+        adhesionId: existingAdhesion.id,
+        message: "Hai già aderito a questa convenzione libri per la raccolta attiva.",
       });
     }
 
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+    const latestActiveRound = await getActiveRound(serviceClient, conventionId);
 
-  try {
-    const profile = getUserProfileForReceipt(user);
+    if (!latestActiveRound || latestActiveRound.id !== activeRound.id) {
+      return privateJson(
+        { error: "La raccolta ordini è stata chiusa. Aggiorna la pagina prima di riprovare." },
+        409
+      );
+    }
 
-    await sendBookConventionReceiptEmail({
-      to: profile.email,
-      profile,
-      fiscalCodeOrVat,
-      billingShippingAddress,
-      paymentMethod,
-      selectedBooks,
-      totalPrice,
-      activeRound,
+    const { data: insertedAdhesion, error: insertError } = await serviceClient
+      .from("book_convention_adhesions")
+      .insert({
+        user_id: user.id,
+        convention_id: conventionId,
+        round_id: activeRound.id,
+        selected_book_ids: selectedBooks.map((book) => book.id),
+        selected_books: selectedBooks.map((book) => ({
+          id: book.id,
+          title: book.title,
+          price: book.price,
+          reference_year: book.reference_year,
+          description: book.description,
+          product_type: book.product_type,
+          bundle_items: book.bundle_items,
+          study_area: book.study_area,
+          cover_image: book.cover_image,
+        })),
+        total_price: totalPrice,
+        fiscal_code_or_vat: fiscalCodeOrVat,
+        billing_shipping_address: billingShippingAddress,
+        payment_method: paymentMethod,
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      if (insertError.code === "23505") {
+        return privateJson({
+          ok: true,
+          hasAdhered: true,
+          message: "Hai già aderito a questa convenzione libri per la raccolta attiva.",
+        });
+      }
+
+      throw insertError;
+    }
+
+    let emailSent = false;
+
+    try {
+      const { data: profileData, error: profileError } = await serviceClient
+        .from("profiles")
+        .select("nome, cognome, email_istituzionale")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      const profile = getUserProfileForReceipt(
+        user,
+        (profileData as BookProfileRow | null) ?? null
+      );
+
+      emailSent = await sendBookConventionReceiptEmail({
+        to: profile.email,
+        profile,
+        fiscalCodeOrVat,
+        billingShippingAddress,
+        paymentMethod,
+        selectedBooks,
+        totalPrice,
+        activeRound,
+      });
+    } catch (mailError) {
+      logRouteError(
+        `Errore invio email ricevuta convenzione libri (${insertedAdhesion.id})`,
+        mailError
+      );
+    }
+
+    return privateJson({
+      ok: true,
+      hasAdhered: true,
+      adhesionId: insertedAdhesion.id,
+      emailSent,
+      message: emailSent
+        ? "Adesione registrata correttamente. Ti abbiamo inviato una mail di conferma."
+        : "Adesione registrata correttamente. La mail di conferma non è al momento disponibile.",
     });
-  } catch (mailError) {
-    console.error("Errore invio email ricevuta convenzione libri", {
-      adhesionId: insertedAdhesion?.id,
-      error: mailError instanceof Error ? mailError.message : mailError,
-    });
+  } catch (error) {
+    logRouteError("Errore registrazione adesione convenzione libri", error);
+    return privateJson(
+      { error: "Non è stato possibile registrare l’adesione. Riprova tra poco." },
+      500
+    );
   }
-
-  return NextResponse.json({
-    ok: true,
-    hasAdhered: true,
-    message: "Adesione registrata correttamente. Ti abbiamo inviato una mail di conferma.",
-  });
 }

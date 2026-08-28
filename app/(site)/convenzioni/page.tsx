@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -8,176 +9,36 @@ const categoryColors: Record<string, { bg: string; text: string; dot: string }> 
   default: { bg: "rgba(8,16,42,.06)", text: "#2E4080", dot: "#2E4080" },
   trasporti: { bg: "rgba(16,107,60,.08)", text: "#0a6638", dot: "#0a6638" },
   sport: { bg: "rgba(107,16,16,.08)", text: "#8b1111", dot: "#c0392b" },
-  libri_e_materiale_didattico: { bg: "rgba(107,60,16,.08)", text: "#7a4010", dot: "#c06a1a" },
   tech: { bg: "rgba(14,31,107,.08)", text: "#0E1F6B", dot: "#1A3399" },
   bar_e_ristoranti: { bg: "rgba(120,16,107,.08)", text: "#7a0f70", dot: "#9b12a0" },
 };
 
-function normalizeCategoryKey(cat: string) {
+function normalizeCategoryKey(cat: string | null | undefined) {
   return cat?.trim().toLowerCase().replace(/[\s-]+/g, "_") as keyof typeof categoryColors;
 }
 
-function formatCategoryLabel(cat: string) {
+function formatCategoryLabel(cat: string | null | undefined) {
   return cat?.replace(/[_-]+/g, " ") ?? "";
 }
 
-function getCategoryStyle(cat: string) {
+function getCategoryStyle(cat: string | null | undefined) {
   const key = normalizeCategoryKey(cat);
   return categoryColors[key] ?? categoryColors.default;
 }
 
-type PaymentMethod =
-  | "contanti"
-  | "bonifico"
-  | "carta"
-  | "bonus_cultura"
-  | "carta_del_docente"
-  | "bonus_di_merito";
-
-type BookYear = "primo_anno" | "secondo_anno" | "terzo_anno";
-
-type BookItem = {
-  id?: number;
-  title: string;
-  price: number | null;
-  reference_year?: BookYear;
-  description?: string | null;
+type GeneralConvention = {
+  id: number;
+  titolo: string | null;
+  partner: string | null;
+  descrizione: string | null;
+  vantaggio: string | null;
+  categoria: string | null;
+  link: string | null;
+  ordine: number | null;
+  attiva: boolean | null;
+  convenzione_libri: boolean | null;
+  is_book_convention: boolean | null;
 };
-
-type BookConventionRound = {
-  id: string;
-  convention_id: number;
-  starts_at: string;
-  ends_at: string;
-};
-
-type BookConventionApiResponse = {
-  ok?: boolean;
-  convention?: any;
-  activeRound?: BookConventionRound | null;
-  rounds?: BookConventionRound[];
-  books?: BookItem[];
-  booksByYear?: Record<BookYear, BookItem[]>;
-  hasAdhered?: boolean;
-  adhesion?: any;
-  error?: string;
-};
-
-type BookConvention = {
-  id: string;
-  titolo?: string | null;
-  partner?: string | null;
-  libri_titoli?: string[] | string | null;
-  book_titles?: string[] | string | null;
-  libri?: string[] | string | null;
-  book_items?: BookItem[] | null;
-  convenzione_libri?: boolean | null;
-  is_book_convention?: boolean | null;
-  activeRound?: BookConventionRound | null;
-  canAdhere?: boolean;
-};
-
-function isBookConvention(c: any) {
-  return Boolean(c?.convenzione_libri || c?.is_book_convention);
-}
-
-function getBookTitles(c: BookConvention | null) {
-  if (!c) return [];
-
-  const raw = c.libri_titoli ?? c.book_titles ?? c.libri ?? null;
-
-  if (Array.isArray(raw)) {
-    return raw.map((item) => String(item).trim()).filter(Boolean);
-  }
-
-  if (typeof raw === "string") {
-    return raw
-      .split(/\n|,|;/g)
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  return [];
-}
-
-function getBookItems(c: BookConvention | null): BookItem[] {
-  if (!c) return [];
-
-  if (Array.isArray(c.book_items) && c.book_items.length > 0) {
-    return c.book_items
-      .map((item) => ({
-        title: String(item?.title ?? "").trim(),
-        price:
-          typeof item?.price === "number" && Number.isFinite(item.price)
-            ? item.price
-            : null,
-      }))
-      .filter((item) => item.title.length > 0);
-  }
-
-  return getBookTitles(c).map((title) => ({
-    title,
-    price: null,
-  }));
-}
-
-function formatBookPrice(value: number | null | undefined) {
-  if (value === null || value === undefined || !Number.isFinite(value)) {
-    return "Prezzo non indicato";
-  }
-
-  return new Intl.NumberFormat("it-IT", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-const YEAR_LABELS: Record<BookYear, string> = {
-  primo_anno: "Primo anno",
-  secondo_anno: "Secondo anno",
-  terzo_anno: "Terzo anno",
-};
-
-const YEAR_ORDER: BookYear[] = ["primo_anno", "secondo_anno", "terzo_anno"];
-
-const PAYMENT_METHOD_OPTIONS: Array<{ value: PaymentMethod; label: string }> = [
-  { value: "contanti", label: "Contanti" },
-  { value: "bonifico", label: "Bonifico" },
-  { value: "carta", label: "Carta" },
-  { value: "bonus_cultura", label: "Bonus cultura" },
-  { value: "carta_del_docente", label: "Carta del docente" },
-  { value: "bonus_di_merito", label: "Bonus di merito" },
-];
-
-function formatRoundLabel(round: BookConventionRound | null | undefined) {
-  if (!round) return "Periodo non disponibile";
-
-  const start = new Date(round.starts_at).toLocaleDateString("it-IT", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-
-  const end = new Date(round.ends_at).toLocaleDateString("it-IT", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-
-  return `${start} - ${end}`;
-}
-
-function groupBooksByYear(books: BookItem[]) {
-  return YEAR_ORDER.reduce<Record<BookYear, BookItem[]>>(
-    (acc, year) => {
-      acc[year] = books.filter((book) => book.reference_year === year);
-      return acc;
-    },
-    { primo_anno: [], secondo_anno: [], terzo_anno: [] }
-  );
-}
 
 function SkeletonCard() {
   return (
@@ -268,222 +129,92 @@ export default function ConvenzioniPage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
-  const [convenzioni, setConvenzioni] = useState<any[]>([]);
+  const [convenzioni, setConvenzioni] = useState<GeneralConvention[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-  const [selectedBookConvention, setSelectedBookConvention] =
-    useState<BookConvention | null>(null);
-  const [bookConventionDetails, setBookConventionDetails] =
-    useState<BookConventionApiResponse | null>(null);
-  const [bookDetailsLoading, setBookDetailsLoading] = useState(false);
-  const [selectedBookIds, setSelectedBookIds] = useState<number[]>([]);
-  const [selectedRoundId, setSelectedRoundId] = useState<string>("");
-  const [fiscalCodeOrVat, setFiscalCodeOrVat] = useState("");
-  const [billingShippingAddress, setBillingShippingAddress] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("contanti");
-  const [bookConfirmChecked, setBookConfirmChecked] = useState(false);
-  const [bookSubmitting, setBookSubmitting] = useState(false);
-  const [bookMessage, setBookMessage] = useState("");
-
   useEffect(() => {
+    let active = true;
+
     async function load() {
+      setLoading(true);
+      setLoadError("");
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      if (!active) return;
 
       if (!user) {
         router.replace("/login?next=/convenzioni");
         return;
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("convenzioni")
-        .select("*")
+        .select(
+          "id, titolo, partner, descrizione, vantaggio, categoria, link, ordine, attiva, convenzione_libri, is_book_convention"
+        )
         .order("ordine", { ascending: true });
 
-      const now = new Date().toISOString();
+      if (!active) return;
 
-      const { data: activeRounds } = await supabase
-        .from("book_convention_rounds")
-        .select("id, convention_id, starts_at, ends_at")
-        .lte("starts_at", now)
-        .gte("ends_at", now);
+      if (error) {
+        setLoadError("Non è stato possibile caricare le convenzioni. Riprova tra poco.");
+        setLoading(false);
+        return;
+      }
 
-      const activeRoundByConventionId = new Map(
-        (activeRounds ?? []).map((round) => [round.convention_id, round])
+      const generalConventions = ((data ?? []) as GeneralConvention[]).filter(
+        (convention) =>
+          convention.attiva !== false &&
+          convention.convenzione_libri !== true &&
+          convention.is_book_convention !== true &&
+          normalizeCategoryKey(convention.categoria) !== "libri_e_materiale_didattico"
       );
 
-      const conventionsWithRounds = (data ?? []).map((convention) => {
-        const activeRound = activeRoundByConventionId.get(convention.id) ?? null;
-
-        return {
-          ...convention,
-          activeRound,
-          canAdhere: Boolean(activeRound),
-        };
-      });
-
-      setConvenzioni(conventionsWithRounds);
+      setConvenzioni(generalConventions);
       setLoading(false);
     }
 
-    load();
+    void load();
+
+    return () => {
+      active = false;
+    };
   }, [supabase, router]);
 
   const categories = useMemo(() => {
-    const cats = [...new Set(convenzioni.map((c) => c.categoria).filter(Boolean))];
+    const cats = [
+      ...new Set(
+        convenzioni
+          .map((convention) => convention.categoria)
+          .filter((category): category is string => Boolean(category))
+      ),
+    ];
     return cats.sort();
   }, [convenzioni]);
 
   const filtered = useMemo(() => {
-    return convenzioni.filter((c) => {
-      const q = searchTerm.toLowerCase();
+    return convenzioni.filter((convention) => {
+      const query = searchTerm.trim().toLocaleLowerCase("it");
 
-      const bookSearchText = Array.isArray(c.book_items)
-        ? c.book_items
-          .map((item: BookItem) => `${item.title} ${item.price ?? ""}`)
-          .join(" ")
-          .toLowerCase()
-        : getBookTitles(c).join(" ").toLowerCase();
+      const matchesSearch =
+        !query ||
+        convention.titolo?.toLocaleLowerCase("it").includes(query) ||
+        convention.partner?.toLocaleLowerCase("it").includes(query) ||
+        convention.categoria?.toLocaleLowerCase("it").includes(query) ||
+        convention.descrizione?.toLocaleLowerCase("it").includes(query) ||
+        convention.vantaggio?.toLocaleLowerCase("it").includes(query);
 
-      const matchSearch =
-        !q ||
-        c.titolo?.toLowerCase().includes(q) ||
-        c.partner?.toLowerCase().includes(q) ||
-        c.categoria?.toLowerCase().includes(q) ||
-        bookSearchText.includes(q);
+      const matchesCategory =
+        !activeCategory || convention.categoria === activeCategory;
 
-      const matchCat = !activeCategory || c.categoria === activeCategory;
-
-      return matchSearch && matchCat;
+      return matchesSearch && matchesCategory;
     });
   }, [convenzioni, searchTerm, activeCategory]);
-
-  async function openBookConventionModal(convention: BookConvention) {
-    setSelectedBookConvention(convention);
-    setBookConventionDetails(null);
-    setSelectedBookIds([]);
-    setSelectedRoundId(convention.activeRound?.id ?? "");
-    setPaymentMethod("contanti");
-    setFiscalCodeOrVat("");
-    setBillingShippingAddress("");
-    setBookConfirmChecked(false);
-    setBookMessage("");
-    setBookDetailsLoading(true);
-
-    try {
-      const res = await fetch(`/api/book-convention?convention_id=${convention.id}`, {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      if (res.status === 401) {
-        router.replace("/login?next=/convenzioni");
-        return;
-      }
-
-      const json: BookConventionApiResponse = await res.json();
-
-      if (!res.ok) {
-        setBookMessage(json.error || "Errore durante il caricamento della convenzione libri.");
-        return;
-      }
-
-      setBookConventionDetails(json);
-      setSelectedRoundId(json.activeRound?.id ?? convention.activeRound?.id ?? "");
-    } catch {
-      setBookMessage("Errore di connessione durante il caricamento dei libri.");
-    } finally {
-      setBookDetailsLoading(false);
-    }
-  }
-
-  function toggleSelectedBook(bookId: number) {
-    setSelectedBookIds((prev) =>
-      prev.includes(bookId) ? prev.filter((id) => id !== bookId) : [...prev, bookId]
-    );
-  }
-
-  async function submitBookConventionAdhesion() {
-    if (!selectedBookConvention) return;
-
-    if (selectedBookIds.length === 0) {
-      setBookMessage("Seleziona almeno un libro o una promozione.");
-      return;
-    }
-
-    const effectiveRoundId =
-      bookConventionDetails?.activeRound?.id ??
-      selectedBookConvention.activeRound?.id ??
-      "";
-
-    if (!effectiveRoundId) {
-      setBookMessage("Nessun periodo attivo disponibile per questa convenzione.");
-      return;
-    }
-
-    if (!fiscalCodeOrVat.trim()) {
-      setBookMessage("Inserisci codice fiscale o partita IVA.");
-      return;
-    }
-
-    if (!billingShippingAddress.trim()) {
-      setBookMessage("Inserisci indirizzo di spedizione/fatturazione.");
-      return;
-    }
-
-    if (!bookConfirmChecked) {
-      setBookMessage("Devi confermare di voler aderire alla convenzione libri.");
-      return;
-    }
-
-    try {
-      setBookSubmitting(true);
-      setBookMessage("");
-
-      const res = await fetch("/api/book-convention", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          convention_id: selectedBookConvention.id,
-          round_id: effectiveRoundId,
-          selected_book_ids: selectedBookIds,
-          payment_method: paymentMethod,
-          fiscal_code_or_vat: fiscalCodeOrVat,
-          billing_shipping_address: billingShippingAddress,
-        }),
-      });
-
-      if (res.status === 401) {
-        router.replace("/login?next=/convenzioni");
-        return;
-      }
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        setBookMessage(
-          json.error || "Errore durante l'adesione alla convenzione libri."
-        );
-        return;
-      }
-
-      setBookMessage(json.message || "Adesione registrata correttamente.");
-
-      window.setTimeout(() => {
-        setSelectedBookConvention(null);
-        setBookConventionDetails(null);
-        setBookMessage("");
-      }, 900);
-    } catch {
-      setBookMessage("Errore di connessione.");
-    } finally {
-      setBookSubmitting(false);
-    }
-  }
 
   return (
     <>
@@ -502,118 +233,6 @@ export default function ConvenzioniPage() {
           color: #08102A;
           overflow-x: hidden;
         }
-
-        .book-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  background: rgba(248,247,243,.98);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  padding: 0;
-  overflow: auto;
-}
-
-.book-modal {
-  width: min(100%, 1180px);
-  min-height: 100vh;
-  overflow: visible;
-  background: transparent;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-  padding: 7.5rem 1.5rem 4rem;
-}
-
-.book-modal-shell {
-  position: relative;
-  background: #fff;
-  border: 1px solid rgba(8,16,42,.08);
-  border-radius: 2rem;
-  box-shadow: 0 24px 80px rgba(8,16,42,.14);
-  overflow: hidden;
-}
-
-.book-modal-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: rgba(255,255,255,.94);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(8,16,42,.08);
-  padding: 1.25rem 4.25rem 1.25rem 1.5rem;
-}
-
-.book-modal-content {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(340px, .85fr);
-  gap: 1.25rem;
-  padding: 1.5rem;
-  align-items: start;
-}
-
-.book-modal-panel {
-  border: 1px solid rgba(8,16,42,.08);
-  border-radius: 1.4rem;
-  background: rgba(8,16,42,.018);
-  padding: 1.15rem;
-}
-
-.book-modal-summary {
-  position: sticky;
-  top: 6rem;
-  align-self: start;
-  background: #fff;
-}
-
-.book-modal-close {
-  position: absolute;
-  top: 1.15rem;
-  right: 1.15rem;
-  z-index: 5;
-}
-
-.payment-option {
-  display: flex;
-  align-items: center;
-  gap: .65rem;
-  border: 1px solid rgba(8,16,42,.1);
-  border-radius: 1rem;
-  padding: .85rem 1rem;
-  cursor: pointer;
-  color: #08102A;
-  font-weight: 700;
-}
-
-        .payment-option:hover {
-  background: rgba(8,16,42,.035);
-  border-color: rgba(8,16,42,.2);
-}
-
-.book-field-label {
-  font-size: .72rem;
-  font-weight: 800;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: #6B7280;
-  margin-bottom: .55rem;
-}
-
-.book-modal-section-title {
-  font-size: .78rem;
-  font-weight: 900;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: #2E4080;
-  margin-bottom: .75rem;
-}
-
-.payment-option input,
-.book-confirm-check input {
-  accent-color: #08102A;
-}
 
         @keyframes sk {
           0%, 100% { opacity: .5; }
@@ -711,37 +330,6 @@ export default function ConvenzioniPage() {
             grid-template-columns: 1fr !important;
           }
 
-          .book-modal {
-            width: 100%;
-            min-height: 100vh;
-            padding: 5.25rem 0 0 !important;
-          }
-
-          .book-modal-shell {
-            min-height: calc(100vh - 5.25rem);
-            border-left: none;
-            border-right: none;
-            border-bottom: none;
-            border-radius: 1.4rem 1.4rem 0 0;
-          }
-
-          .book-modal-header {
-            padding: 1rem 1.1rem;
-          }
-
-          .book-modal-content {
-            grid-template-columns: 1fr !important;
-            padding: 1rem !important;
-          }
-
-          .book-modal-summary {
-            position: static !important;
-          }
-
-          .book-modal-close {
-            top: .9rem !important;
-            right: .9rem !important;
-          }
         }
       `}</style>
 
@@ -809,6 +397,30 @@ export default function ConvenzioniPage() {
             </span>{" "}
             per accedere alle offerte online.
           </p>
+
+          <Link
+            href="/convenzioni-libri"
+            className="card-cta"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: ".55rem",
+              width: "fit-content",
+              marginTop: "1.6rem",
+              padding: ".65rem 1.15rem",
+              border: "1px solid rgba(8,16,42,.14)",
+              borderRadius: "999px",
+              background: "#fff",
+              color: "#08102A",
+              fontSize: ".84rem",
+              fontWeight: 700,
+              textDecoration: "none",
+              boxShadow: "0 2px 12px rgba(8,16,42,.04)",
+            }}
+          >
+            Vai alle Convenzioni Libri
+            <span aria-hidden="true">→</span>
+          </Link>
 
           {!loading && convenzioni.length > 0 && (
             <div style={{ display: "flex", gap: "2.5rem", marginTop: "2.5rem", flexWrap: "wrap" }}>
@@ -972,7 +584,20 @@ export default function ConvenzioniPage() {
           className="conv-page-content"
           style={{ maxWidth: 1100, margin: "0 auto", padding: "0 3rem 6rem" }}
         >
-          {loading ? (
+          {loadError ? (
+            <div className="empty-state">
+              <p
+                style={{
+                  fontWeight: 600,
+                  fontSize: "1.05rem",
+                  color: "#8B1D1D",
+                  marginBottom: ".5rem",
+                }}
+              >
+                {loadError}
+              </p>
+            </div>
+          ) : loading ? (
             <div
               className="conv-grid"
               style={{
@@ -1145,51 +770,9 @@ export default function ConvenzioniPage() {
                         marginTop: ".8rem",
                       }}
                     >
-                      {isBookConvention(c) && c.canAdhere && (
-                        <button
-                          type="button"
-                          onClick={() => openBookConventionModal(c)}
-                          className="card-cta"
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            fontSize: ".84rem",
-                            fontWeight: 700,
-                            color: "#fff",
-                            textDecoration: "none",
-                            border: "1px solid #08102A",
-                            background: "#08102A",
-                            borderRadius: "999px",
-                            padding: ".55rem 1.15rem",
-                            transition: "background .18s, border-color .18s",
-                            width: "fit-content",
-                            cursor: "pointer",
-                            fontFamily: "'DM Sans', sans-serif",
-                          }}
-                        >
-                          Aderisci
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                            <path
-                              d="M2.5 6H9.5M6.5 3L9.5 6L6.5 9"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
-                      )}
-
-                      {isBookConvention(c) && !c.canAdhere && (
-                        <p style={{ margin: ".2rem 0 0", color: "#6B7280", fontSize: ".84rem", fontWeight: 700 }}>
-                          Adesioni non attive in questo momento.
-                        </p>
-                      )}
-
-                      {c.url && (
+                      {c.link && c.link !== "#" && (
                         <a
-                          href={c.url}
+                          href={c.link}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="card-cta"
@@ -1228,379 +811,6 @@ export default function ConvenzioniPage() {
           )}
         </section>
       </div>
-      {selectedBookConvention && (
-        <div
-          className="book-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="book-modal-title"
-          onClick={() => {
-            if (!bookSubmitting) setSelectedBookConvention(null);
-          }}
-        >
-          <div className="book-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="book-modal-shell">
-            <div className="book-modal-header">
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  gap: "1rem",
-                }}
-              >
-                <div>
-                  <p
-                    style={{
-                      fontSize: ".68rem",
-                      fontWeight: 800,
-                      letterSpacing: ".18em",
-                      textTransform: "uppercase",
-                      color: "#2E4080",
-                      marginBottom: ".55rem",
-                    }}
-                  >
-                    Convenzione libri
-                  </p>
-
-                  <h2
-                    id="book-modal-title"
-                    style={{
-                      fontFamily: "'Cormorant Garamond', serif",
-                      fontSize: "clamp(2rem, 5vw, 3rem)",
-                      lineHeight: 1,
-                      color: "#08102A",
-                      margin: 0,
-                    }}
-                  >
-                    Conferma adesione
-                  </h2>
-                </div>
-
-                <button
-                  type="button"
-                  className="book-modal-close"
-                  onClick={() => setSelectedBookConvention(null)}
-                  disabled={bookSubmitting}
-                  aria-label="Chiudi popup"
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: "999px",
-                    border: "1px solid rgba(8,16,42,.1)",
-                    background: "#fff",
-                    color: "#08102A",
-                    cursor: bookSubmitting ? "not-allowed" : "pointer",
-                    fontWeight: 800,
-                    flexShrink: 0,
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            <div className="book-modal-content">
-              <div style={{ display: "grid", gap: ".65rem", minWidth: 0, alignContent: "start", alignSelf: "start" }}>
-            <p
-              style={{
-                color: "#6B7280",
-                lineHeight: 1.65,
-                fontSize: ".98rem",
-                margin: "0 0 .15rem",
-              }}
-            >
-              Seleziona uno o più libri/promozioni e completa i dati necessari per spedizione, fatturazione e pagamento.
-              Una volta inviata, l’adesione sarà registrata nell’elenco e non potrà essere rimossa autonomamente.
-            </p>
-
-            <div className="book-modal-panel" style={{ alignSelf: "start" }}>
-              <p className="book-modal-section-title">
-                Libri e promozioni disponibili
-              </p>
-
-              {bookDetailsLoading ? (
-                <p style={{ color: "#6B7280", fontWeight: 700 }}>Caricamento libri...</p>
-              ) : (() => {
-                const books = bookConventionDetails?.books ?? getBookItems(selectedBookConvention);
-                const booksByYear = bookConventionDetails?.booksByYear ?? groupBooksByYear(books);
-                const selectedBooks = books.filter((book) => book.id && selectedBookIds.includes(book.id));
-                const total = selectedBooks.reduce((sum, book) => {
-                  const price = typeof book.price === "number" && Number.isFinite(book.price) ? book.price : 0;
-                  return sum + price;
-                }, 0);
-
-                return books.length > 0 ? (
-                  <div style={{ display: "grid", gap: "1rem" }}>
-                    {YEAR_ORDER.map((year) => (
-                      <div key={year}>
-                        <p
-                          style={{
-                            fontSize: ".68rem",
-                            fontWeight: 900,
-                            letterSpacing: ".14em",
-                            textTransform: "uppercase",
-                            color: "#2E4080",
-                            marginBottom: ".55rem",
-                          }}
-                        >
-                          {YEAR_LABELS[year]}
-                        </p>
-
-                        {(booksByYear[year] ?? []).length > 0 ? (
-                          <div style={{ display: "grid", gap: ".6rem" }}>
-                            {(booksByYear[year] ?? []).map((book) => {
-                              const checked = Boolean(book.id && selectedBookIds.includes(book.id));
-
-                              return (
-                                <label
-                                  key={book.id ?? book.title}
-                                  style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "auto 1fr",
-                                    gap: ".75rem",
-                                    alignItems: "flex-start",
-                                    border: checked ? "1px solid rgba(46,64,128,.45)" : "1px solid rgba(8,16,42,.1)",
-                                    borderRadius: "1rem",
-                                    padding: ".85rem 1rem",
-                                    cursor: book.id ? "pointer" : "not-allowed",
-                                    background: checked ? "rgba(46,64,128,.07)" : "#fff",
-                                  }}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    disabled={!book.id || bookSubmitting}
-                                    onChange={() => book.id && toggleSelectedBook(book.id)}
-                                    style={{ marginTop: ".2rem", accentColor: "#08102A" }}
-                                  />
-                                  <span style={{ display: "grid", gap: ".2rem" }}>
-                                    <span style={{ fontWeight: 800, color: "#08102A", lineHeight: 1.35 }}>{book.title}</span>
-                                    {book.description && (
-                                      <span style={{ color: "#6B7280", fontSize: ".84rem", lineHeight: 1.45 }}>{book.description}</span>
-                                    )}
-                                    <span style={{ color: "#2E4080", fontWeight: 900, fontSize: ".88rem" }}>
-                                      {formatBookPrice(book.price)}
-                                    </span>
-                                  </span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p style={{ color: "#9CA3AF", fontSize: ".86rem", fontWeight: 600 }}>Nessun libro disponibile.</p>
-                        )}
-                      </div>
-                    ))}
-
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: "1rem",
-                        borderTop: "1px solid rgba(8,16,42,.08)",
-                        paddingTop: ".85rem",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: ".72rem",
-                          fontWeight: 800,
-                          letterSpacing: ".14em",
-                          textTransform: "uppercase",
-                          color: "#6B7280",
-                        }}
-                      >
-                        Totale selezionato
-                      </span>
-
-                      <span style={{ color: "#08102A", fontWeight: 900, fontSize: "1rem" }}>
-                        {formatBookPrice(total)}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <p style={{ color: "#08102A", fontWeight: 600, lineHeight: 1.5 }}>
-                    Nessun libro configurato per questa convenzione.
-                  </p>
-                );
-              })()}
-            </div>
-              </div>
-              <div className="book-modal-summary book-modal-panel">
-            <div style={{ display: "grid", gap: ".9rem" }}>
-              <div>
-                <p className="book-field-label">
-                  Codice fiscale / Partita IVA
-                </p>
-                <input
-                  value={fiscalCodeOrVat}
-                  onChange={(e) => setFiscalCodeOrVat(e.target.value)}
-                  disabled={bookSubmitting}
-                  placeholder="Inserisci codice fiscale o partita IVA"
-                  style={{
-                    width: "100%",
-                    border: "1px solid rgba(8,16,42,.1)",
-                    borderRadius: "1rem",
-                    padding: ".85rem 1rem",
-                    color: "#08102A",
-                    fontWeight: 700,
-                    background: "#fff",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                />
-              </div>
-
-              <div>
-                <p className="book-field-label">
-                  Indirizzo spedizione / fatturazione
-                </p>
-                <textarea
-                  value={billingShippingAddress}
-                  onChange={(e) => setBillingShippingAddress(e.target.value)}
-                  disabled={bookSubmitting}
-                  placeholder={
-                    "Nome e cognome intestatario\nVia/Piazza e numero civico\nCAP, città e provincia\nEventuali note per la spedizione/fatturazione"
-                  }
-                  rows={3}
-                  style={{
-                    width: "100%",
-                    border: "1px solid rgba(8,16,42,.1)",
-                    borderRadius: "1rem",
-                    padding: ".85rem 1rem",
-                    color: "#08102A",
-                    fontWeight: 700,
-                    background: "#fff",
-                    resize: "vertical",
-                    fontFamily: "'DM Sans', sans-serif",
-                    lineHeight: 1.5,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginTop: "1rem" }}>
-              <p className="book-field-label">
-                Metodo di pagamento
-              </p>
-
-              <div style={{ display: "grid", gap: ".65rem" }}>
-                {PAYMENT_METHOD_OPTIONS.map(({ value, label }) => (
-                  <label key={value} className="payment-option">
-                    <input
-                      type="radio"
-                      name="book-payment-method"
-                      value={value}
-                      checked={paymentMethod === value}
-                      onChange={() => setPaymentMethod(value)}
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <label
-              className="book-confirm-check"
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: ".7rem",
-                padding: "1rem",
-                borderRadius: "1rem",
-                background: "rgba(46,64,128,.06)",
-                color: "#08102A",
-                fontSize: ".9rem",
-                lineHeight: 1.55,
-                fontWeight: 600,
-                marginTop: "1rem",
-                marginBottom: "1rem",
-                cursor: "pointer",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={bookConfirmChecked}
-                onChange={(e) => setBookConfirmChecked(e.target.checked)}
-                style={{ marginTop: ".2rem" }}
-              />
-              Confermo di voler aderire alla convenzione libri, di aver selezionato correttamente libri/promozioni, dati di fatturazione/spedizione e metodo di pagamento.
-            </label>
-
-            {bookMessage && (
-              <div
-                style={{
-                  padding: ".85rem 1rem",
-                  borderRadius: "1rem",
-                  background: bookMessage.toLowerCase().includes("correttamente")
-                    ? "rgba(22,101,52,.08)"
-                    : "rgba(220,38,38,.08)",
-                  color: bookMessage.toLowerCase().includes("correttamente")
-                    ? "#166534"
-                    : "#991b1b",
-                  fontWeight: 700,
-                  fontSize: ".9rem",
-                  marginBottom: "1rem",
-                }}
-              >
-                {bookMessage}
-              </div>
-            )}
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: ".7rem",
-                flexWrap: "wrap",
-                borderTop: "1px solid rgba(8,16,42,.08)",
-                paddingTop: "1rem",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setSelectedBookConvention(null)}
-                disabled={bookSubmitting}
-                style={{
-                  border: "1px solid rgba(8,16,42,.12)",
-                  background: "#fff",
-                  color: "#08102A",
-                  borderRadius: "999px",
-                  padding: ".75rem 1.15rem",
-                  cursor: bookSubmitting ? "not-allowed" : "pointer",
-                  fontWeight: 800,
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                Annulla
-              </button>
-
-              <button
-                type="button"
-                onClick={submitBookConventionAdhesion}
-                disabled={bookSubmitting || bookDetailsLoading || !bookConfirmChecked || selectedBookIds.length === 0}
-                style={{
-                  border: "1px solid #08102A",
-                  background: "#08102A",
-                  color: "#fff",
-                  borderRadius: "999px",
-                  padding: ".75rem 1.2rem",
-                  cursor:
-                    bookSubmitting || bookDetailsLoading || !bookConfirmChecked || selectedBookIds.length === 0 ? "not-allowed" : "pointer",
-                  opacity: bookSubmitting || bookDetailsLoading || !bookConfirmChecked || selectedBookIds.length === 0 ? 0.55 : 1,
-                  fontWeight: 800,
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                {bookSubmitting ? "Invio..." : "Conferma adesione"}
-              </button>
-            </div>
-              </div>
-            </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
