@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ClipboardList, LayoutDashboard, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   BOOK_YEAR_LABELS,
   BOOK_YEARS,
-  PRODUCT_TYPE_LABELS,
   STUDY_AREAS,
   STUDY_AREA_LABELS,
   type BookYear,
@@ -97,6 +97,11 @@ type CollectionConfirmation = {
   exportAfterClose: boolean;
 };
 
+type BookConventionDeleteConfirmation = {
+  convention: Convenzione;
+  acknowledged: boolean;
+};
+
 const EMPTY_FORM: ConvForm = {
   titolo: "",
   partner: "",
@@ -119,6 +124,7 @@ const GENERAL_CATEGORY_OPTIONS = [
 ];
 
 const BOOK_CONVENTION_CATEGORY = "Libri_e_Materiale_Didattico";
+const BOOK_CONVENTION_INTERNAL_TITLE = "Convenzioni Libri";
 
 function createEmptyBook(sortOrder = 0): BookConventionBook {
   return {
@@ -135,6 +141,36 @@ function createEmptyBook(sortOrder = 0): BookConventionBook {
     round_ids: [],
     cover_image: null,
   };
+}
+
+function getIncludedBookTitles(book: BookConventionBook) {
+  if (book.product_type === "bundle" || book.bundle_items.length > 0) {
+    return [...book.bundle_items];
+  }
+
+  return [book.title];
+}
+
+function buildAutomaticProductTitle(includedBooks: string[]) {
+  const titles = Array.from(
+    new Set(includedBooks.map(title => title.trim()).filter(Boolean))
+  );
+
+  if (includedBooks.length <= 1) return titles[0] ?? "";
+  if (titles.length === 0) return "";
+
+  const fullTitle = `Bundle – ${titles.join(" + ")}`;
+  return fullTitle.length <= 240
+    ? fullTitle
+    : `${fullTitle.slice(0, 239).trimEnd()}…`;
+}
+
+function getAutomaticBookConventionTitle(form: ConvForm) {
+  if (form.books.length === 1) {
+    return buildAutomaticProductTitle(getIncludedBookTitles(form.books[0]));
+  }
+
+  return form.titolo.trim() || BOOK_CONVENTION_INTERNAL_TITLE;
 }
 
 const categoryColors: Record<string, { bg: string; text: string }> = {
@@ -253,9 +289,10 @@ function ConvModal({
       }
       : {
         ...EMPTY_FORM,
+        titolo: scope === "books" ? BOOK_CONVENTION_INTERNAL_TITLE : "",
         categoria: scope === "books" ? BOOK_CONVENTION_CATEGORY : "",
         is_book_convention: scope === "books",
-        books: [],
+        books: scope === "books" ? [createEmptyBook()] : [],
       }
   );
   const [saving, setSaving] = useState(false);
@@ -285,6 +322,64 @@ function ConvModal({
     setForm(current => ({
       ...current,
       books: [...current.books, createEmptyBook(current.books.length)],
+    }));
+  };
+
+  const addIncludedBook = (index: number) => {
+    setForm(current => ({
+      ...current,
+      books: current.books.map((book, bookIndex) => {
+        if (bookIndex !== index) return book;
+
+        const includedBooks = [...getIncludedBookTitles(book), ""];
+        return {
+          ...book,
+          title: buildAutomaticProductTitle(includedBooks),
+          product_type: "bundle",
+          bundle_items: includedBooks,
+        };
+      }),
+    }));
+  };
+
+  const updateIncludedBook = (bookIndex: number, includedBookIndex: number, title: string) => {
+    setForm(current => ({
+      ...current,
+      books: current.books.map((book, index) => {
+        if (index !== bookIndex) return book;
+
+        const includedBooks = getIncludedBookTitles(book).map((item, itemIndex) =>
+          itemIndex === includedBookIndex ? title : item
+        );
+
+        return {
+          ...book,
+          title: buildAutomaticProductTitle(includedBooks),
+          product_type: includedBooks.length >= 2 ? "bundle" : "book",
+          bundle_items: includedBooks.length >= 2 ? includedBooks : [],
+        };
+      }),
+    }));
+  };
+
+  const removeIncludedBook = (bookIndex: number, includedBookIndex: number) => {
+    setForm(current => ({
+      ...current,
+      books: current.books.map((book, index) => {
+        if (index !== bookIndex) return book;
+
+        const includedBooks = getIncludedBookTitles(book).filter(
+          (_, itemIndex) => itemIndex !== includedBookIndex
+        );
+        const nextTitle = buildAutomaticProductTitle(includedBooks);
+
+        return {
+          ...book,
+          title: nextTitle,
+          product_type: includedBooks.length >= 2 ? "bundle" : "book",
+          bundle_items: includedBooks.length >= 2 ? includedBooks : [],
+        };
+      }),
     }));
   };
 
@@ -360,7 +455,9 @@ function ConvModal({
     e.preventDefault();
     if (saving) return;
 
-    const titolo = form.titolo.trim();
+    const titolo = scope === "books"
+      ? getAutomaticBookConventionTitle(form)
+      : form.titolo.trim();
     const partner = form.partner.trim();
     const categoria = scope === "books"
       ? BOOK_CONVENTION_CATEGORY
@@ -373,17 +470,17 @@ function ConvModal({
       return;
     }
 
-    if (!partner) {
+    if (scope !== "books" && !partner) {
       setErr("Il partner è obbligatorio.");
       return;
     }
 
-    if (!categoria) {
+    if (scope !== "books" && !categoria) {
       setErr("Seleziona una categoria.");
       return;
     }
 
-    if (link && link !== "#") {
+    if (scope !== "books" && link && link !== "#") {
       try {
         const parsed = new URL(link);
         if (!["http:", "https:"].includes(parsed.protocol)) {
@@ -402,10 +499,17 @@ function ConvModal({
     }
 
     if (form.is_book_convention) {
-      const invalidBook = form.books.find(book => !book.title.trim());
+      if (form.books.length === 0) {
+        setErr("Aggiungi almeno un libro o bundle.");
+        return;
+      }
+
+      const invalidBook = form.books.find(book =>
+        getIncludedBookTitles(book).some(title => !title.trim())
+      );
 
       if (invalidBook) {
-        setErr("Ogni libro/promozione deve avere un titolo.");
+        setErr("Inserisci il titolo di ogni libro incluso.");
         return;
       }
 
@@ -415,13 +519,15 @@ function ConvModal({
         return;
       }
 
-      const invalidBundle = form.books.find(
-        book =>
-          book.product_type === "bundle" &&
-          !book.bundle_items.some(item => item.trim().length > 0)
-      );
+      const invalidBundle = form.books.find(book => {
+        const includedBooks = getIncludedBookTitles(book)
+          .map(title => title.trim())
+          .filter(Boolean);
+
+        return book.product_type === "bundle" && includedBooks.length < 2;
+      });
       if (invalidBundle) {
-        setErr(`Il bundle “${invalidBundle.title}” deve contenere almeno un prodotto.`);
+        setErr("Un bundle deve contenere almeno due libri.");
         return;
       }
     }
@@ -442,6 +548,11 @@ function ConvModal({
     }
   }
 
+  const creatingAutomaticBundle =
+    mode === "create" &&
+    form.books.length === 1 &&
+    getIncludedBookTitles(form.books[0]).length >= 2;
+
   return (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(10,20,50,.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
@@ -450,7 +561,7 @@ function ConvModal({
       }}
     >
       <div
-        style={{ background: "#fff", borderRadius: "2rem", padding: "2.5rem", width: "100%", maxWidth: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(10,20,50,.22)" }}
+        style={{ background: "#fff", borderRadius: "2rem", padding: "clamp(1rem,3vw,2.5rem)", width: "100%", maxWidth: scope === "books" ? 980 : 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(10,20,50,.22)" }}
         onClick={e => e.stopPropagation()}
       >
         {bookRemovalIndex !== null && (
@@ -556,12 +667,16 @@ function ConvModal({
           <div>
             <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800, color: "#0f2f6e" }}>
               {scope === "books"
-                ? mode === "create" ? "Nuova convenzione libri" : "Modifica convenzione libri"
+                ? mode === "create"
+                  ? creatingAutomaticBundle ? "Nuovo bundle" : "Nuovo libro"
+                  : "Modifica catalogo libri"
                 : mode === "create" ? "Nuova convenzione" : "Modifica convenzione"}
             </h2>
             <p style={{ margin: ".3rem 0 0", color: "#6b7280", fontSize: ".9rem" }}>
               {scope === "books"
-                ? "Configura dati generali, catalogo, bundle e disponibilità."
+                ? mode === "create"
+                  ? "Inserisci un libro; aggiungendo altri titoli la proposta diventerà automaticamente un bundle."
+                  : "Gestisci titoli, composizione, copertine, prezzi e disponibilità."
                 : mode === "create" ? "Compila i campi per aggiungere una convenzione." : "Modifica i dettagli della convenzione."}
             </p>
           </div>
@@ -569,6 +684,9 @@ function ConvModal({
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+
+          {!form.is_book_convention && (
+            <>
 
           {/* Partner info */}
           <SectionLabel>Partner</SectionLabel>
@@ -642,6 +760,9 @@ function ConvModal({
           <MField label="Vantaggio" value={form.vantaggio} onChange={v => set("vantaggio", v)} placeholder="es. 30% di sconto sulla tariffa standard" />
           <MField label="Link" value={form.link} onChange={v => set("link", v)} placeholder="https://..." />
 
+            </>
+          )}
+
           {scope === "books" && (
             <>
           <SectionLabel>Catalogo libri e bundle</SectionLabel>
@@ -701,36 +822,52 @@ function ConvModal({
               <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap" }}>
                   <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>
-                    Libri e bundle collegati
+                    Proposte del catalogo
                   </label>
-                  <button
-                    type="button"
-                    onClick={addBook}
-                    style={{ border: "1px solid rgba(15,47,110,.14)", background: "white", color: "#0f2f6e", borderRadius: "999px", padding: ".5rem .85rem", fontWeight: 800, cursor: "pointer", fontSize: ".78rem" }}
-                  >
-                    + Aggiungi elemento
-                  </button>
+                  {mode === "edit" || form.books.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={addBook}
+                      style={{ border: "1px solid rgba(15,47,110,.14)", background: "white", color: "#0f2f6e", borderRadius: "999px", padding: ".5rem .85rem", fontWeight: 800, cursor: "pointer", fontSize: ".78rem" }}
+                    >
+                      {mode === "edit" ? "+ Aggiungi proposta indipendente" : "+ Aggiungi nuovo libro"}
+                    </button>
+                  ) : null}
                 </div>
 
                 {form.books.length === 0 ? (
                   <div style={{ border: "1px dashed rgba(15,47,110,.2)", borderRadius: "14px", padding: "1rem", color: "#6b7280", fontSize: ".86rem", lineHeight: 1.5 }}>
-                    Nessun libro aggiunto. Aggiungi libri singoli o bundle/promozioni, ad esempio “Libro A + Libro B”.
+                    Nessuna proposta aggiunta. Crea un libro singolo oppure aggiungi più libri alla stessa proposta per ottenere automaticamente un bundle.
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
-                    {form.books.map((book, index) => (
+                    {form.books.map((book, index) => {
+                      const includedBooks = getIncludedBookTitles(book);
+                      const isBundle = includedBooks.length >= 2 || book.product_type === "bundle";
+                      const automaticTitle = isBundle
+                        ? buildAutomaticProductTitle(includedBooks)
+                        : book.title;
+
+                      return (
                       <div key={book.id ?? `new-${index}`} style={{ border: "1px solid rgba(15,47,110,.1)", background: "white", borderRadius: "16px", padding: "1rem", display: "grid", gap: ".85rem" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".75rem" }}>
-                          <strong style={{ color: "#0f2f6e", fontSize: ".85rem" }}>
-                            {PRODUCT_TYPE_LABELS[book.product_type]} #{index + 1}
-                          </strong>
-                          <button
-                            type="button"
-                            onClick={() => requestRemoveBook(index)}
-                            style={{ border: "1px solid rgba(190,39,39,.14)", background: "white", color: "#8b1d1d", borderRadius: "999px", padding: ".35rem .7rem", fontWeight: 800, cursor: "pointer", fontSize: ".72rem" }}
-                          >
-                            Rimuovi
-                          </button>
+                          <div style={{ display: "flex", alignItems: "center", gap: ".55rem", flexWrap: "wrap" }}>
+                            <strong style={{ color: "#0f2f6e", fontSize: ".85rem" }}>
+                              Proposta #{index + 1}
+                            </strong>
+                            <span style={{ borderRadius: 999, padding: ".28rem .55rem", background: isBundle ? "#0f2f6e" : "rgba(15,47,110,.08)", color: isBundle ? "white" : "#38517e", fontSize: ".64rem", fontWeight: 850, letterSpacing: ".08em", textTransform: "uppercase" }}>
+                              {isBundle ? `Bundle automatico · ${includedBooks.length} libri` : "Libro singolo"}
+                            </span>
+                          </div>
+                          {mode === "edit" || form.books.length > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => requestRemoveBook(index)}
+                              style={{ border: "1px solid rgba(190,39,39,.14)", background: "white", color: "#8b1d1d", borderRadius: "999px", padding: ".35rem .7rem", fontWeight: 800, cursor: "pointer", fontSize: ".72rem" }}
+                            >
+                              Rimuovi proposta
+                            </button>
+                          ) : null}
                         </div>
 
                         <div
@@ -784,8 +921,62 @@ function ConvModal({
                           </div>
                         </div>
 
+                        <div style={{ border: `1px solid ${isBundle ? "rgba(15,47,110,.16)" : "rgba(15,47,110,.08)"}`, background: isBundle ? "rgba(15,47,110,.035)" : "#fbfcfe", borderRadius: "14px", padding: ".8rem", display: "flex", flexDirection: "column", gap: ".7rem" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".7rem", flexWrap: "wrap" }}>
+                            <div>
+                              <p style={{ margin: 0, color: "#17315f", fontSize: ".78rem", fontWeight: 850 }}>
+                                {isBundle ? "Libri inclusi nel bundle" : "Composizione della proposta"}
+                              </p>
+                              <p style={{ margin: ".18rem 0 0", color: "#6b7280", fontSize: ".68rem", lineHeight: 1.4 }}>
+                                {isBundle
+                                  ? "Il titolo pubblico viene generato automaticamente dai libri inseriti."
+                                  : "Aggiungendo un secondo libro la proposta diventerà automaticamente un bundle."}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => addIncludedBook(index)}
+                              style={{ border: "1px solid #1847a3", background: "white", color: "#1847a3", borderRadius: "999px", padding: ".48rem .75rem", fontWeight: 850, cursor: "pointer", fontSize: ".72rem", whiteSpace: "nowrap" }}
+                            >
+                              + Aggiungi nuovo libro
+                            </button>
+                          </div>
+
+                          {isBundle ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: ".55rem" }}>
+                              {includedBooks.map((includedBook, includedBookIndex) => (
+                                <div key={`${book.id ?? `new-${index}`}-included-${includedBookIndex}`} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: ".5rem", alignItems: "end" }}>
+                                  <MField
+                                    label={`Libro ${includedBookIndex + 1} *`}
+                                    value={includedBook}
+                                    onChange={value => updateIncludedBook(index, includedBookIndex, value)}
+                                    placeholder="Titolo del libro"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeIncludedBook(index, includedBookIndex)}
+                                    title="Rimuovi libro dalla proposta"
+                                    style={{ height: 44, border: "1px solid rgba(190,39,39,.14)", background: "white", color: "#8b1d1d", borderRadius: "11px", padding: "0 .75rem", fontWeight: 800, cursor: "pointer", fontSize: ".7rem" }}
+                                  >
+                                    Rimuovi
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+
                         <div className="book-admin-grid-3" style={{ display: "grid", gridTemplateColumns: "1.4fr .8fr .9fr", gap: ".75rem" }}>
-                          <MField label="Titolo *" value={book.title} onChange={v => updateBook(index, { title: v })} placeholder="es. Anatomia Gray" />
+                          {isBundle ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
+                              <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Titolo pubblico del bundle</label>
+                              <div style={{ minHeight: 44, display: "flex", alignItems: "center", border: "1px solid rgba(15,47,110,.1)", background: "#f4f6fa", color: automaticTitle ? "#102a56" : "#8a94a8", borderRadius: "12px", padding: ".72rem 1rem", fontSize: ".86rem", fontWeight: 750, lineHeight: 1.35 }}>
+                                {automaticTitle || "Verrà generato dopo aver inserito i titoli"}
+                              </div>
+                            </div>
+                          ) : (
+                            <MField label="Titolo libro *" value={book.title} onChange={v => updateBook(index, { title: v })} placeholder="es. Anatomia Gray" />
+                          )}
                           <MField label="Prezzo *" type="number" value={String(book.price ?? "")} onChange={v => updateBook(index, { price: v === "" ? null : Number(v) })} placeholder="45" />
                           <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
                             <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Anno *</label>
@@ -801,27 +992,9 @@ function ConvModal({
                           </div>
                         </div>
 
-                        <div className="book-admin-grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1.25fr .8fr", gap: ".75rem" }}>
+                        <div className="book-admin-grid-2" style={{ display: "grid", gridTemplateColumns: "1.25fr .8fr", gap: ".75rem" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
-                            <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Tipologia *</label>
-                            <select
-                              value={book.product_type}
-                              onChange={e => {
-                                const productType = e.target.value as ProductType;
-                                updateBook(index, {
-                                  product_type: productType,
-                                  bundle_items: productType === "book" ? [] : book.bundle_items,
-                                });
-                              }}
-                              style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: "#102a56", borderRadius: "12px", padding: ".8rem 1rem", fontSize: ".9rem", outline: "none" }}
-                            >
-                              <option value="book">Libro singolo</option>
-                              <option value="bundle">Bundle</option>
-                            </select>
-                          </div>
-
-                          <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
-                            <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Macro-area *</label>
+                            <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Area di studio *</label>
                             <select
                               value={book.study_area}
                               onChange={e => updateBook(index, { study_area: e.target.value as StudyArea })}
@@ -859,28 +1032,14 @@ function ConvModal({
                           <MField label="Ordine" type="number" value={String(book.sort_order ?? index)} onChange={v => updateBook(index, { sort_order: Number(v || index) })} placeholder="0" />
                         </div>
 
-                        {book.product_type === "bundle" && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
-                            <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Prodotti inclusi nel bundle *</label>
-                            <textarea
-                              value={book.bundle_items.join("\n")}
-                              onChange={e => updateBook(index, {
-                                bundle_items: e.target.value.split("\n"),
-                              })}
-                              placeholder={"Un prodotto per riga\nAnatomia Umana - Volume 1\nAtlante"}
-                              rows={4}
-                              style={{ border: "1px solid rgba(15,47,110,.12)", background: "rgba(15,47,110,.02)", color: "#102a56", borderRadius: "12px", padding: ".8rem 1rem", fontSize: ".88rem", outline: "none", width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }}
-                            />
-                          </div>
-                        )}
-
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 
                 <p style={{ margin: 0, color: "#6b7280", fontSize: ".82rem", lineHeight: 1.5 }}>
-                  Ogni elemento può essere un libro singolo oppure un bundle/promozione. Gli studenti vedranno la lista divisa per anno.
+                  Ogni riquadro è una proposta acquistabile: con un solo titolo resta un libro singolo; dal secondo libro diventa automaticamente un bundle. Gli studenti vedranno la lista divisa per area e anno.
                 </p>
               </div>
             )}
@@ -901,8 +1060,10 @@ function ConvModal({
               {saving
                 ? "Salvataggio..."
                 : mode === "create"
-                  ? scope === "books" ? "Crea convenzione libri" : "Crea convenzione"
-                  : "Salva modifiche"}
+                  ? scope === "books"
+                    ? creatingAutomaticBundle ? "Salva bundle" : "Salva libro"
+                    : "Crea convenzione"
+                  : scope === "books" ? "Salva catalogo" : "Salva modifiche"}
             </button>
           </div>
         </form>
@@ -945,6 +1106,7 @@ export default function AdminConventionManager({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [warning, setWarning] = useState("");
   const [filter, setFilter] = useState<"tutte" | "attive" | "disattive">("tutte");
   const [search, setSearch] = useState("");
   const isFetchingRef = useRef(false);
@@ -952,6 +1114,72 @@ export default function AdminConventionManager({
   const [bookConventionBooks, setBookConventionBooks] = useState<Record<number, BookConventionBook[]>>({});
   const [collectionActionKey, setCollectionActionKey] = useState<string | null>(null);
   const [collectionConfirmation, setCollectionConfirmation] = useState<CollectionConfirmation | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<BookConventionDeleteConfirmation | null>(null);
+  const [deleteConfirmationError, setDeleteConfirmationError] = useState("");
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  const deleteCheckboxRef = useRef<HTMLInputElement>(null);
+  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const adminMainRef = useRef<HTMLElement>(null);
+  const deleteConfirmationId = deleteConfirmation?.convention.id ?? null;
+
+  useEffect(() => {
+    if (deleteConfirmationId === null) return;
+
+    const trigger = deleteTriggerRef.current;
+    const focusFrame = window.requestAnimationFrame(() => {
+      deleteCheckboxRef.current?.focus();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      const fallbackTarget = trigger?.isConnected ? trigger : adminMainRef.current;
+      window.requestAnimationFrame(() => fallbackTarget?.focus());
+    };
+  }, [deleteConfirmationId]);
+
+  useEffect(() => {
+    if (deleteConfirmationId === null) return;
+
+    function handleDialogKeyDown(event: KeyboardEvent) {
+      const dialog = deleteDialogRef.current;
+      if (!dialog) return;
+
+      if (event.key === "Escape" && deletingId === null) {
+        event.preventDefault();
+        setDeleteConfirmation(null);
+        setDeleteConfirmationError("");
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+        )
+      );
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleDialogKeyDown);
+    return () => document.removeEventListener("keydown", handleDialogKeyDown);
+  }, [deleteConfirmationId, deletingId]);
 
   const fetchConvenzioni = useCallback(async () => {
     if (isFetchingRef.current) return;
@@ -1045,20 +1273,25 @@ export default function AdminConventionManager({
   async function handleSave(form: ConvForm, editingId?: number): Promise<{ ok: boolean; message?: string }> {
     setError("");
     setSuccess("");
+    setWarning("");
 
-    const titolo = form.titolo.trim();
-    const partner = form.partner.trim();
+    const titolo = booksScope
+      ? getAutomaticBookConventionTitle(form)
+      : form.titolo.trim();
+    const partner = booksScope ? "" : form.partner.trim();
+    const descriptionValue = booksScope ? "" : form.descrizione.trim();
+    const advantageValue = booksScope ? "" : form.vantaggio.trim();
     const categoria = booksScope
       ? BOOK_CONVENTION_CATEGORY
       : form.categoria.trim();
-    const linkValue = form.link.trim();
-    const ordineValue = form.ordine.trim();
+    const linkValue = booksScope ? "#" : form.link.trim();
+    const ordineValue = booksScope ? "0" : form.ordine.trim();
 
     if (!titolo) return { ok: false, message: "Il titolo è obbligatorio." };
-    if (!partner) return { ok: false, message: "Il partner è obbligatorio." };
+    if (!booksScope && !partner) return { ok: false, message: "Il partner è obbligatorio." };
     if (!categoria) return { ok: false, message: "Seleziona una categoria." };
 
-    if (linkValue && linkValue !== "#") {
+    if (!booksScope && linkValue && linkValue !== "#") {
       try {
         const parsed = new URL(linkValue);
         if (!["http:", "https:"].includes(parsed.protocol)) {
@@ -1076,8 +1309,8 @@ export default function AdminConventionManager({
     const payload = {
       titolo,
       partner,
-      descrizione: form.descrizione.trim(),
-      vantaggio: form.vantaggio.trim(),
+      descrizione: descriptionValue,
+      vantaggio: advantageValue,
       categoria,
       link: linkValue || "#",
       ordine: Number(ordineValue || "0"),
@@ -1095,27 +1328,29 @@ export default function AdminConventionManager({
             convention_id: editingId,
             title: titolo,
             partner,
-            description: form.descrizione.trim(),
-            vantaggio: form.vantaggio.trim(),
+            description: descriptionValue,
+            vantaggio: advantageValue,
             categoria,
             link: linkValue || "#",
             ordine: Number(ordineValue || "0"),
             attiva: form.attiva,
-            books: form.books.map((book, index) => ({
-              id: book.id ?? null,
-              title: book.title.trim(),
-              price: Number(book.price ?? 0),
-              reference_year: book.reference_year,
-              description: book.description?.trim() || null,
-              sort_order: Number(book.sort_order ?? index),
-              product_type: book.product_type,
-              bundle_items: book.product_type === "bundle"
-                ? book.bundle_items.map(item => item.trim()).filter(Boolean)
-                : [],
-              study_area: book.study_area,
-              is_active: book.is_active,
-              round_ids: book.round_ids,
-            })),
+            books: form.books.map((book, index) => {
+              const includedBooks = getIncludedBookTitles(book)
+                .map(title => title.trim())
+                .filter(Boolean);
+
+              return {
+                id: book.id ?? null,
+                title: buildAutomaticProductTitle(includedBooks),
+                price: Number(book.price ?? 0),
+                reference_year: book.reference_year,
+                description: book.description?.trim() || null,
+                sort_order: Number(book.sort_order ?? index),
+                included_books: includedBooks,
+                study_area: book.study_area,
+                is_active: book.is_active,
+              };
+            }),
           }),
         });
 
@@ -1280,35 +1515,20 @@ export default function AdminConventionManager({
   }
 
   async function handleDelete(conv: Convenzione) {
-    const confirmationMessage = booksScope
-      ? `Archiviare “${conv.titolo}”? I prodotti verranno disattivati, mentre periodi e adesioni storiche saranno conservati.`
-      : `Eliminare “${conv.titolo}”?`;
+    if (booksScope) {
+      setDeleteConfirmation({ convention: conv, acknowledged: false });
+      setDeleteConfirmationError("");
+      return;
+    }
 
-    if (!window.confirm(confirmationMessage)) return;
+    if (!window.confirm(`Eliminare “${conv.titolo}”?`)) return;
 
     setDeletingId(conv.id);
     setError("");
     setSuccess("");
+    setWarning("");
 
     try {
-      if (booksScope) {
-        const response = await fetch("/api/admin/book-convention", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ convention_id: conv.id }),
-        });
-        const payload = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
-
-        if (!response.ok) {
-          setError(payload.error || "Archiviazione non riuscita.");
-          return;
-        }
-
-        await fetchConvenzioni();
-        setSuccess(payload.message || "Convenzione libri archiviata.");
-        return;
-      }
-
       const { error: err } = await supabase.from("convenzioni").delete().eq("id", conv.id);
 
       if (err) {
@@ -1326,9 +1546,74 @@ export default function AdminConventionManager({
     }
   }
 
+  async function confirmBookConventionDelete() {
+    if (!deleteConfirmation?.acknowledged || deletingId !== null) return;
+
+    const convention = deleteConfirmation.convention;
+    setDeletingId(convention.id);
+    setDeleteConfirmationError("");
+    setError("");
+    setSuccess("");
+    setWarning("");
+
+    try {
+      const response = await fetch("/api/admin/book-convention", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          convention_id: convention.id,
+          delete_history: true,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        warning?: string;
+      };
+
+      if (response.status === 401) {
+        router.replace("/login?next=/admin/convenzione-libri");
+        return;
+      }
+
+      if (response.status === 403) {
+        router.replace("/");
+        return;
+      }
+
+      if (!response.ok) {
+        setDeleteConfirmationError(
+          payload.error || "Eliminazione della convenzione non riuscita."
+        );
+        return;
+      }
+
+      setConvenzioni(current => current.filter(item => item.id !== convention.id));
+      setBookConventionBooks(current => {
+        const next = { ...current };
+        delete next[convention.id];
+        return next;
+      });
+      setRounds(current => current.filter(round => round.convention_id !== convention.id));
+      setDeleteConfirmation(null);
+      setSuccess(
+        payload.message || "Convenzione e storico eliminati definitivamente."
+      );
+      setWarning(payload.warning || "");
+    } catch (error) {
+      console.error("Errore eliminazione definitiva convenzione libri:", error);
+      setDeleteConfirmationError(
+        "Si è verificato un errore durante l’eliminazione. Riprova."
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   async function toggleAttiva(conv: Convenzione) {
     setError("");
     setSuccess("");
+    setWarning("");
 
     try {
       if (booksScope) {
@@ -1378,6 +1663,7 @@ export default function AdminConventionManager({
     setCollectionActionKey(actionKey);
     setError("");
     setSuccess("");
+    setWarning("");
 
     try {
       const response = await fetch("/api/admin/book-convention", {
@@ -1426,6 +1712,7 @@ export default function AdminConventionManager({
     setCollectionActionKey(actionKey);
     setError("");
     setSuccess("");
+    setWarning("");
 
     try {
       const response = await fetch("/api/admin/book-convention", {
@@ -1526,6 +1813,119 @@ export default function AdminConventionManager({
         />
       )}
 
+      {deleteConfirmation && (
+        <div
+          role="presentation"
+          onClick={() => {
+            if (deletingId === null) {
+              setDeleteConfirmation(null);
+              setDeleteConfirmationError("");
+            }
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 280,
+            display: "grid",
+            placeItems: "center",
+            padding: "1rem",
+            background: "rgba(8,16,42,.58)",
+            backdropFilter: "blur(7px)",
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-book-convention-title"
+            aria-describedby="delete-book-convention-description"
+            onClick={event => event.stopPropagation()}
+            style={{
+              width: "min(100%, 540px)",
+              maxHeight: "calc(100vh - 2rem)",
+              overflowY: "auto",
+              borderRadius: "1.35rem",
+              border: "1px solid rgba(153,27,27,.16)",
+              background: "white",
+              padding: "clamp(1.1rem,4vw,1.55rem)",
+              boxShadow: "0 28px 80px rgba(8,16,42,.3)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: ".85rem" }}>
+              <span style={{ width: 42, height: 42, flex: "0 0 42px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: ".8rem", background: "#fff1f1", color: "#991b1b" }}>
+                <TriangleAlert size={21} aria-hidden="true" />
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, color: "#991b1b", fontSize: ".65rem", fontWeight: 900, letterSpacing: ".13em", textTransform: "uppercase" }}>
+                  Operazione irreversibile
+                </p>
+                <h2 id="delete-book-convention-title" style={{ margin: ".3rem 0 0", color: "#0f2f6e", fontSize: "1.25rem", lineHeight: 1.25 }}>
+                  Eliminare definitivamente “{deleteConfirmation.convention.titolo}”?
+                </h2>
+              </div>
+            </div>
+
+            <p id="delete-book-convention-description" style={{ margin: "1rem 0 0", color: "#4b5563", fontSize: ".86rem", lineHeight: 1.6 }}>
+              La convenzione sparirà dall’elenco e non potrà essere recuperata. Verrà eliminato tutto lo storico collegato, compresi:
+            </p>
+
+            <ul style={{ margin: ".75rem 0 0", paddingLeft: "1.2rem", color: "#4b5563", fontSize: ".82rem", lineHeight: 1.65 }}>
+              <li>libri, bundle e relative copertine;</li>
+              <li>raccolte ordini aperte e concluse;</li>
+              <li>tutte le adesioni e i dati usati negli export;</li>
+              <li>riepiloghi di pagamento, fatturazione e spedizione.</li>
+            </ul>
+
+            <label style={{ display: "flex", alignItems: "flex-start", gap: ".7rem", marginTop: "1rem", border: "1px solid rgba(153,27,27,.16)", borderRadius: ".9rem", background: "#fff8f8", padding: ".85rem", color: "#641b1b", fontSize: ".8rem", fontWeight: 750, lineHeight: 1.5, cursor: deletingId === null ? "pointer" : "not-allowed" }}>
+              <input
+                type="checkbox"
+                checked={deleteConfirmation.acknowledged}
+                disabled={deletingId !== null}
+                onChange={event => {
+                  setDeleteConfirmation(current => current
+                    ? { ...current, acknowledged: event.target.checked }
+                    : current
+                  );
+                  setDeleteConfirmationError("");
+                }}
+                style={{ width: 18, height: 18, marginTop: ".1rem", accentColor: "#991b1b", flex: "0 0 auto" }}
+              />
+              Confermo di aver compreso che convenzione e storico saranno eliminati definitivamente.
+            </label>
+
+            {deleteConfirmationError ? (
+              <div role="alert" style={{ marginTop: ".8rem", border: "1px solid rgba(153,27,27,.14)", borderRadius: ".8rem", background: "#fff1f1", color: "#8b1d1d", padding: ".7rem .8rem", fontSize: ".78rem", fontWeight: 700, lineHeight: 1.45 }}>
+                {deleteConfirmationError}
+              </div>
+            ) : null}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: ".65rem", marginTop: "1.2rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteConfirmation(null);
+                  setDeleteConfirmationError("");
+                }}
+                disabled={deletingId !== null}
+                style={{ minHeight: 44, border: "1px solid rgba(15,47,110,.14)", background: "white", color: "#0f2f6e", borderRadius: ".8rem", padding: ".65rem 1rem", fontWeight: 800, cursor: deletingId === null ? "pointer" : "not-allowed" }}
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmBookConventionDelete()}
+                disabled={!deleteConfirmation.acknowledged || deletingId !== null}
+                style={{ minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: ".5rem", border: "none", background: deleteConfirmation.acknowledged && deletingId === null ? "#991b1b" : "#d3a5a5", color: "white", borderRadius: ".8rem", padding: ".65rem 1rem", fontWeight: 850, cursor: deleteConfirmation.acknowledged && deletingId === null ? "pointer" : "not-allowed" }}
+              >
+                <Trash2 size={16} aria-hidden="true" />
+                {deletingId === deleteConfirmation.convention.id
+                  ? "Eliminazione in corso..."
+                  : "Elimina convenzione e storico"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {collectionConfirmation && (
         <div
           role="presentation"
@@ -1605,34 +2005,34 @@ export default function AdminConventionManager({
                     : "Amministrazione • Convenzioni generali"}
                 </span>
                 <h1 style={{ margin: 0, fontSize: "clamp(2rem,5vw,3rem)", lineHeight: 1.05, fontWeight: 800 }}>
-                  {booksScope ? "Catalogo e periodi." : "Gestione convenzioni."}
+                  {booksScope ? "Catalogo e raccolte." : "Gestione convenzioni."}
                 </h1>
                 <p style={{ margin: 0, color: "rgba(255,255,255,.8)", lineHeight: 1.6, maxWidth: 500 }}>
                   {booksScope
-                    ? "Gestisci convenzioni libri, prodotti singoli, bundle, copertine e periodi di adesione."
+                    ? "Gestisci convenzioni libri, prodotti singoli, bundle, copertine e raccolte ordini."
                     : "Crea, modifica, attiva e disattiva le convenzioni generali visibili alla community."}
                 </p>
               </div>
-              <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap" }}>
-                <button
-                  onClick={() => setModal({ mode: "create" })}
-                  style={{ border: "none", background: "#fff", color: "#0f2f6e", padding: ".85rem 1.5rem", borderRadius: "999px", fontWeight: 800, cursor: "pointer", fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: ".5rem", boxShadow: "0 4px 16px rgba(0,0,0,.12)" }}
-                >
-                  <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>＋</span>
-                  {booksScope ? "Nuova convenzione libri" : "Nuova convenzione"}
-                </button>
-                <Link
-                  href={booksScope
-                    ? "/admin/convenzione-libri?view=adesioni"
-                    : "/admin/convenzione-libri"}
-                  style={{ textDecoration: "none", color: "white", padding: ".85rem 1.3rem", borderRadius: "999px", border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.1)", fontWeight: 700, whiteSpace: "nowrap" }}
-                >
-                  {booksScope ? "Visualizza adesioni" : "Convenzioni Libri"}
-                </Link>
-                <Link href="/admin" style={{ textDecoration: "none", color: "white", padding: ".85rem 1.3rem", borderRadius: "999px", border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.1)", fontWeight: 700, whiteSpace: "nowrap" }}>
-                  Pannello admin
-                </Link>
-              </div>
+              {!booksScope && (
+                <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => setModal({ mode: "create" })}
+                    style={{ border: "none", background: "#fff", color: "#0f2f6e", padding: ".85rem 1.5rem", borderRadius: "999px", fontWeight: 800, cursor: "pointer", fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: ".5rem", boxShadow: "0 4px 16px rgba(0,0,0,.12)" }}
+                  >
+                    <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>＋</span>
+                    Nuova convenzione
+                  </button>
+                  <Link
+                    href="/admin/convenzione-libri"
+                    style={{ textDecoration: "none", color: "white", padding: ".85rem 1.3rem", borderRadius: "999px", border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.1)", fontWeight: 700, whiteSpace: "nowrap" }}
+                  >
+                    Convenzioni Libri
+                  </Link>
+                  <Link href="/admin" style={{ textDecoration: "none", color: "white", padding: ".85rem 1.3rem", borderRadius: "999px", border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.1)", fontWeight: 700, whiteSpace: "nowrap" }}>
+                    Pannello admin
+                  </Link>
+                </div>
+              )}
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "1rem" }}>
@@ -1645,8 +2045,53 @@ export default function AdminConventionManager({
             </div>
           </section>
 
+          {booksScope && (
+            <section className="book-admin-quick-actions" aria-labelledby="book-admin-actions-title">
+              <div className="book-admin-quick-actions-heading">
+                <div>
+                  <span className="book-admin-quick-actions-kicker">Gestione operativa</span>
+                  <h2 id="book-admin-actions-title">Catalogo e adesioni</h2>
+                  <p>Crea una convenzione con i relativi libri e bundle, oppure consulta le richieste già ricevute.</p>
+                </div>
+                <Link className="book-admin-dashboard-link" href="/admin">
+                  <LayoutDashboard size={17} aria-hidden="true" />
+                  Pannello admin
+                </Link>
+              </div>
+
+              <div className="book-admin-quick-actions-buttons">
+                <button
+                  type="button"
+                  className="book-admin-action book-admin-action-primary"
+                  onClick={() => setModal({ mode: "create" })}
+                >
+                  <span className="book-admin-action-icon" aria-hidden="true">
+                    <Plus size={22} />
+                  </span>
+                  <span className="book-admin-action-copy">
+                    <strong>Nuova convenzione libri</strong>
+                    <small>Configura catalogo, prezzi e disponibilità</small>
+                  </span>
+                </button>
+
+                <Link
+                  className="book-admin-action book-admin-action-secondary"
+                  href="/admin/convenzione-libri?view=adesioni"
+                >
+                  <span className="book-admin-action-icon" aria-hidden="true">
+                    <ClipboardList size={21} />
+                  </span>
+                  <span className="book-admin-action-copy">
+                    <strong>Visualizza adesioni</strong>
+                    <small>Consulta, filtra ed esporta gli ordini</small>
+                  </span>
+                </Link>
+              </div>
+            </section>
+          )}
+
           {/* ── Messages ── */}
-          {(error || success) && (
+          {(error || success || warning) && (
             <div style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}>
               {error && (
                 <div style={{ background: "rgba(190,39,39,.08)", color: "#8b1d1d", border: "1px solid rgba(190,39,39,.14)", borderRadius: "1rem", padding: ".9rem 1.1rem", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1658,6 +2103,12 @@ export default function AdminConventionManager({
                 <div style={{ background: "rgba(12,122,77,.08)", color: "#0b6b46", border: "1px solid rgba(12,122,77,.14)", borderRadius: "1rem", padding: ".9rem 1.1rem", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   {success}
                   <button onClick={() => setSuccess("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#0b6b46", fontSize: "1rem" }}>✕</button>
+                </div>
+              )}
+              {warning && (
+                <div style={{ background: "#fff8e8", color: "#73551a", border: "1px solid #ead8ad", borderRadius: "1rem", padding: ".9rem 1.1rem", fontWeight: 650, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
+                  {warning}
+                  <button onClick={() => setWarning("")} aria-label="Chiudi avviso" style={{ background: "none", border: "none", cursor: "pointer", color: "#73551a", fontSize: "1rem" }}>✕</button>
                 </div>
               )}
             </div>
@@ -1728,6 +2179,11 @@ export default function AdminConventionManager({
                   const activeRound = conventionRounds.find(isRoundActive) ?? null;
                   const upcomingRounds = conventionRounds.filter(isRoundUpcoming);
                   const closedRounds = conventionRounds.filter(isRoundClosed).reverse();
+                  const activeRoundProductCount = activeRound
+                    ? conventionProducts.filter((product) =>
+                      product.round_ids.includes(activeRound.id)
+                    ).length
+                    : 0;
                   const roundNumberById = new Map(
                     conventionRounds.map((round, index) => [round.id, index + 1])
                   );
@@ -1859,7 +2315,7 @@ export default function AdminConventionManager({
                                   borderRadius: 999,
                                 }}
                               >
-                                {activeRound ? "Raccolta aperta" : "Raccolta chiusa"}
+                                {activeRound ? "Raccolta aperta" : "Nessuna raccolta aperta"}
                               </span>
                             </div>
 
@@ -1871,10 +2327,10 @@ export default function AdminConventionManager({
                                       Raccolta {roundNumberById.get(activeRound.id)}
                                     </p>
                                     <p style={{ margin: ".2rem 0 0", color: "#6b7280", fontSize: ".74rem" }}>
-                                      Aperta il {formatDateTime(activeRound.starts_at)} · {activeProducts.length} prodotti inclusi
+                                      Aperta il {formatDateTime(activeRound.starts_at)} · {activeRoundProductCount} prodotti inclusi
                                     </p>
                                   </div>
-                                  <div style={{ display: "flex", gap: ".45rem", flexWrap: "wrap" }}>
+                                  <div className="book-collection-actions" style={{ display: "flex", gap: ".45rem", flexWrap: "wrap" }}>
                                     <button
                                       type="button"
                                       onClick={() => setCollectionConfirmation({
@@ -1904,7 +2360,7 @@ export default function AdminConventionManager({
                                   </div>
                                 </div>
                                 <p style={{ margin: 0, color: "#6b7280", fontSize: ".72rem", lineHeight: 1.5 }}>
-                                  Il catalogo di questa raccolta è stato fissato all’apertura. Le modifiche successive saranno incluse nella prossima raccolta.
+                                  Il catalogo è bloccato durante la raccolta. Per modificare prodotti o prezzi, chiudila prima: lo storico resterà invariato.
                                 </p>
                               </div>
                             ) : (
@@ -1913,6 +2369,7 @@ export default function AdminConventionManager({
                                   Aprendo una nuova raccolta verranno inclusi automaticamente tutti i libri e bundle attivi. Lo storico precedente non verrà modificato.
                                 </p>
                                 <button
+                                  className="book-collection-primary-action"
                                   type="button"
                                   onClick={() => void openCollection(c.id)}
                                   disabled={collectionBusy || activeProducts.length === 0 || upcomingRounds.length > 0}
@@ -1949,8 +2406,9 @@ export default function AdminConventionManager({
                                         Raccolta {roundNumberById.get(round.id)} · {formatDateOnly(round.starts_at)} – {formatDateOnly(round.ends_at)}
                                       </span>
                                       <Link
+                                        className="book-collection-export-link"
                                         href={`/admin/convenzione-libri?view=adesioni&convention_id=${c.id}&round_id=${round.id}&download=csv`}
-                                        style={{ color: "#1847a3", fontSize: ".7rem", fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap" }}
+                                        style={{ color: "#1847a3", fontSize: ".7rem", fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap", border: "1px solid rgba(24,71,163,.16)", borderRadius: 999, padding: ".42rem .65rem" }}
                                       >
                                         Esporta CSV
                                       </Link>
@@ -2001,7 +2459,9 @@ export default function AdminConventionManager({
                         )}
                         <button
                           onClick={() => setModal({ mode: "edit", conv: c })}
-                          style={{ border: "1px solid rgba(15,47,110,.14)", background: "white", color: "#0f2f6e", borderRadius: "999px", padding: ".5rem 1rem", fontWeight: 700, fontSize: ".82rem", cursor: "pointer", transition: "background .18s" }}
+                          disabled={booksScope && Boolean(activeRound)}
+                          title={booksScope && activeRound ? "Chiudi prima la raccolta ordini" : undefined}
+                          style={{ border: "1px solid rgba(15,47,110,.14)", background: "white", color: booksScope && activeRound ? "#8a94a8" : "#0f2f6e", borderRadius: "999px", padding: ".5rem 1rem", fontWeight: 700, fontSize: ".82rem", cursor: booksScope && activeRound ? "not-allowed" : "pointer", transition: "background .18s" }}
                           className="btn-edit-conv"
                         >
                           Modifica
@@ -2009,6 +2469,7 @@ export default function AdminConventionManager({
                         <button
                           onClick={() => handleDelete(c)}
                           disabled={deleting}
+                          title={booksScope ? "Elimina definitivamente convenzione e storico" : undefined}
                           style={{ border: "1px solid rgba(190,39,39,.18)", background: deleting ? "rgba(190,39,39,.05)" : "white", color: deleting ? "#b57b7b" : "#8b1d1d", borderRadius: "999px", padding: ".5rem 1rem", fontWeight: 700, fontSize: ".82rem", cursor: deleting ? "wait" : "pointer", transition: "background .18s" }}
                         >
                           {deleting ? "..." : "Elimina"}
@@ -2027,7 +2488,135 @@ export default function AdminConventionManager({
         @keyframes sk { 0%,100%{opacity:.4} 50%{opacity:.85} }
         .conv-admin-row:hover { box-shadow: 0 8px 32px rgba(15,47,110,.1) !important; transform: translateY(-2px); }
         .btn-edit-conv:hover { background: rgba(15,47,110,.05) !important; }
+        .book-admin-quick-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 1.15rem;
+          padding: 1.35rem 1.5rem;
+          border: 1px solid rgba(15,47,110,.1);
+          border-radius: 1.35rem;
+          background: rgba(255,255,255,.94);
+          box-shadow: 0 10px 30px rgba(15,47,110,.07);
+        }
+        .book-admin-quick-actions-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 1.25rem;
+        }
+        .book-admin-quick-actions-kicker {
+          display: block;
+          margin-bottom: .3rem;
+          color: #58709f;
+          font-size: .68rem;
+          font-weight: 800;
+          letter-spacing: .12em;
+          text-transform: uppercase;
+        }
+        .book-admin-quick-actions-heading h2 {
+          margin: 0;
+          color: #0f2f6e;
+          font-size: 1.15rem;
+          line-height: 1.25;
+        }
+        .book-admin-quick-actions-heading p {
+          margin: .35rem 0 0;
+          color: #667085;
+          font-size: .86rem;
+          line-height: 1.5;
+        }
+        .book-admin-dashboard-link {
+          display: inline-flex;
+          flex: 0 0 auto;
+          align-items: center;
+          gap: .45rem;
+          color: #38517e;
+          font-size: .8rem;
+          font-weight: 750;
+          text-decoration: none;
+          white-space: nowrap;
+        }
+        .book-admin-dashboard-link:hover { color: #0f2f6e; }
+        .book-admin-quick-actions-buttons {
+          display: grid;
+          grid-template-columns: repeat(2,minmax(0,1fr));
+          gap: .8rem;
+        }
+        .book-admin-action {
+          min-width: 0;
+          min-height: 64px;
+          display: flex;
+          align-items: center;
+          gap: .8rem;
+          padding: .85rem 1rem;
+          border-radius: .9rem;
+          font: inherit;
+          text-align: left;
+          text-decoration: none;
+          cursor: pointer;
+          transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease;
+        }
+        .book-admin-action:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 20px rgba(15,47,110,.1);
+        }
+        .book-admin-action-primary {
+          border: 1px solid #1847a3;
+          background: #1847a3;
+          color: white;
+          box-shadow: 0 6px 16px rgba(24,71,163,.18);
+        }
+        .book-admin-action-primary:hover { background: #123c8f; }
+        .book-admin-action-secondary {
+          border: 1px solid rgba(24,71,163,.2);
+          background: #f7f9fe;
+          color: #0f2f6e;
+        }
+        .book-admin-action-secondary:hover {
+          border-color: rgba(24,71,163,.34);
+          background: #f1f5fd;
+        }
+        .book-admin-action-icon {
+          width: 38px;
+          height: 38px;
+          display: inline-flex;
+          flex: 0 0 38px;
+          align-items: center;
+          justify-content: center;
+          border-radius: .7rem;
+          background: rgba(255,255,255,.16);
+        }
+        .book-admin-action-secondary .book-admin-action-icon { background: rgba(24,71,163,.09); }
+        .book-admin-action-copy {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: .15rem;
+        }
+        .book-admin-action-copy strong {
+          font-size: .9rem;
+          line-height: 1.25;
+        }
+        .book-admin-action-copy small {
+          color: inherit;
+          font-size: .72rem;
+          line-height: 1.35;
+          opacity: .72;
+        }
         @media (max-width: 720px) {
+          .book-admin-quick-actions-heading {
+            flex-direction: column;
+            gap: .75rem;
+          }
+
+          .book-admin-quick-actions-buttons {
+            grid-template-columns: 1fr;
+          }
+
+          .book-admin-action {
+            width: 100%;
+          }
+
           .conv-admin-row {
             align-items: flex-start !important;
             gap: .9rem !important;
@@ -2060,11 +2649,28 @@ export default function AdminConventionManager({
           }
 
           .book-admin-grid-3,
+          .book-admin-grid-2,
           .book-admin-grid-description,
           .book-admin-cover,
           form div[style*="grid-template-columns: 1.4fr .8fr .9fr"],
           form div[style*="grid-template-columns: 1fr 120px"] {
             grid-template-columns: 1fr !important;
+          }
+
+          .book-collection-actions,
+          .book-collection-primary-action,
+          .book-collection-export-link {
+            width: 100%;
+          }
+
+          .book-collection-actions button,
+          .book-collection-primary-action,
+          .book-collection-export-link {
+            width: 100%;
+            min-height: 44px;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
           }
         }
 

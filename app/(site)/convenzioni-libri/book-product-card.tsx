@@ -10,8 +10,8 @@ import {
 
 const AVAILABILITY_LABELS: Record<Exclude<BookAvailabilityReason, null>, string> = {
   convention_inactive: "Convenzione chiusa",
-  round_inactive: "Periodo non attivo",
-  not_in_round: "Non disponibile nel periodo",
+  round_inactive: "Raccolta non aperta",
+  not_in_round: "Non disponibile nella raccolta",
   price_unavailable: "Prezzo non disponibile",
 };
 
@@ -89,7 +89,9 @@ export default function BookProductCard({
                   isBundle ? "text-[#0E1F6B]" : "text-[#6B7280]"
                 }`}
               >
-                {isBundle ? "Bundle" : PRODUCT_TYPE_LABELS[product.product_type]}
+                {isBundle
+                  ? `Bundle · ${product.bundle_items.length} libri`
+                  : PRODUCT_TYPE_LABELS[product.product_type]}
               </span>
             </div>
 

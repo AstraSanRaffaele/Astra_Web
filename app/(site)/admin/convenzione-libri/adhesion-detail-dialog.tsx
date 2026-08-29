@@ -19,9 +19,9 @@ import {
 } from "@/lib/book-convention";
 import {
   formatDate,
-  formatDateOnly,
   formatPaymentMethod,
   formatPrice,
+  formatRoundLabel,
   getAdhesionTotal,
   getConventionTitle,
   getFullName,
@@ -136,14 +136,8 @@ export default function AdhesionDetailDialog({
                 <DetailRow label="Data adesione" value={formatDate(adhesion.created_at)} />
                 <DetailRow label="Convenzione" value={getConventionTitle(adhesion.convenzioni)} />
                 <DetailRow
-                  label="Periodo"
-                  value={
-                    adhesion.book_convention_rounds
-                      ? `${formatDateOnly(adhesion.book_convention_rounds.starts_at)} – ${formatDateOnly(
-                          adhesion.book_convention_rounds.ends_at
-                        )}`
-                      : "Senza periodo"
-                  }
+                  label="Raccolta"
+                  value={formatRoundLabel(adhesion.book_convention_rounds)}
                 />
               </DetailSection>
             </div>

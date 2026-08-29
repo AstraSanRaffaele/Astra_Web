@@ -10,7 +10,6 @@ import { cookies } from "next/headers";
 import {
   BOOK_YEARS,
   PAYMENT_METHODS,
-  PRODUCT_TYPES,
   STUDY_AREAS,
   normalizeBookConventionCoverUrl,
   type BookYear,
@@ -26,11 +25,10 @@ type IncomingBook = {
   reference_year?: unknown;
   description?: unknown;
   sort_order?: unknown;
-  product_type?: unknown;
   bundle_items?: unknown;
+  included_books?: unknown;
   study_area?: unknown;
   is_active?: unknown;
-  round_ids?: unknown;
 };
 
 type NormalizedBookInput = {
@@ -40,11 +38,10 @@ type NormalizedBookInput = {
   reference_year: BookYear;
   description: string | null;
   sort_order: number;
-  product_type: ProductType | undefined;
   bundle_items: string[] | undefined;
+  included_books: string[] | undefined;
   study_area: StudyArea | undefined;
   is_active: boolean | undefined;
-  round_ids: string[] | undefined;
 };
 
 type ExistingBookRow = {
@@ -69,6 +66,7 @@ type AdminAuthResult =
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PRODUCT_IMAGE_BUCKET = "book-conventions";
+const BOOK_CONVENTION_CATEGORY = "Libri_e_Materiale_Didattico";
 const MAX_PRODUCT_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_PRODUCT_IMAGE_REQUEST_SIZE = MAX_PRODUCT_IMAGE_SIZE + 128 * 1024;
 const OPEN_COLLECTION_ENDS_AT = "9999-12-31T23:59:59.999Z";
@@ -187,12 +185,6 @@ function isPaymentMethod(value: unknown): value is PaymentMethod {
   );
 }
 
-function isProductType(value: unknown): value is ProductType {
-  return (
-    typeof value === "string" && PRODUCT_TYPES.includes(value as ProductType)
-  );
-}
-
 function isStudyArea(value: unknown): value is StudyArea {
   return typeof value === "string" && STUDY_AREAS.includes(value as StudyArea);
 }
@@ -223,14 +215,35 @@ function normalizeStringArray(
   return normalized;
 }
 
-function normalizeRoundIds(value: unknown) {
-  const roundIds = normalizeStringArray(value, "Lista periodi", 100, 36);
+function buildAutomaticProductTitle(includedBooks: string[]) {
+  if (includedBooks.length === 1) return includedBooks[0];
 
-  if (roundIds?.some((roundId) => !UUID_PATTERN.test(roundId))) {
-    throw new Error("Uno o più periodi selezionati non sono validi.");
+  const fullTitle = `Bundle – ${includedBooks.join(" + ")}`;
+  return fullTitle.length <= 240
+    ? fullTitle
+    : `${fullTitle.slice(0, 239).trimEnd()}…`;
+}
+
+function normalizeIncludedBooks(value: unknown, proposalIndex: number) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length === 0 || value.length > 50) {
+    throw new Error(
+      `La proposta ${proposalIndex + 1} deve contenere da uno a 50 libri.`
+    );
   }
 
-  return roundIds;
+  const normalized = value.map(item => cleanString(item));
+
+  if (normalized.some(title => !title || title.length > 240)) {
+    throw new Error(`Inserisci un titolo valido per ogni libro della proposta ${proposalIndex + 1}.`);
+  }
+
+  const uniqueTitles = new Set(normalized.map(title => title.toLocaleLowerCase("it-IT")));
+  if (uniqueTitles.size !== normalized.length) {
+    throw new Error(`La proposta ${proposalIndex + 1} contiene lo stesso libro più di una volta.`);
+  }
+
+  return normalized;
 }
 
 function normalizeBooks(value: unknown): NormalizedBookInput[] {
@@ -247,22 +260,34 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
     const id = book.id === null || book.id === undefined || book.id === ""
       ? null
       : parsePositiveInteger(book.id);
-    const title = cleanString(book.title);
+    const requestedTitle = cleanString(book.title);
     const price = parseNullableNumber(book.price);
     const description = cleanString(book.description);
     const sortOrder = parseInteger(book.sort_order) ?? index;
-    const productType =
-      book.product_type === undefined
-        ? undefined
-        : isProductType(book.product_type)
-          ? book.product_type
-          : null;
     const studyArea =
       book.study_area === undefined
         ? undefined
         : isStudyArea(book.study_area)
           ? book.study_area
           : null;
+    const includedBooks = normalizeIncludedBooks(book.included_books, index);
+    const requestedBundleItems = normalizeStringArray(
+      book.bundle_items,
+      `Contenuto bundle “${requestedTitle || `proposta ${index + 1}`}”`,
+      50,
+      240
+    );
+    const resolvedProductType = includedBooks
+      ? includedBooks.length >= 2 ? "bundle" : "book"
+      : requestedBundleItems
+        ? requestedBundleItems.length >= 2 ? "bundle" : "book"
+        : undefined;
+    const resolvedBundleItems = includedBooks
+      ? includedBooks.length >= 2 ? includedBooks : []
+      : requestedBundleItems;
+    const title = includedBooks
+      ? buildAutomaticProductTitle(includedBooks)
+      : requestedTitle;
 
     if (book.id !== null && book.id !== undefined && book.id !== "" && !id) {
       throw new Error(`Identificativo non valido per: ${title || `elemento ${index + 1}`}`);
@@ -288,8 +313,12 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
       throw new Error(`Ordine non valido per: ${title}`);
     }
 
-    if (productType === null) {
-      throw new Error(`Tipo prodotto non valido per: ${title}`);
+    if (resolvedProductType === "bundle" && (resolvedBundleItems?.length ?? 0) < 2) {
+      throw new Error(`Il bundle “${title}” deve contenere almeno due libri.`);
+    }
+
+    if (resolvedProductType === "book" && (resolvedBundleItems?.length ?? 0) > 0) {
+      throw new Error(`Un libro singolo non può contenere altri libri: ${title}`);
     }
 
     if (studyArea === null) {
@@ -307,16 +336,10 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
       reference_year: book.reference_year,
       description: description || null,
       sort_order: sortOrder,
-      product_type: productType,
-      bundle_items: normalizeStringArray(
-        book.bundle_items,
-        `Contenuto bundle “${title}”`,
-        50,
-        240
-      ),
+      bundle_items: resolvedBundleItems,
+      included_books: includedBooks,
       study_area: studyArea,
       is_active: book.is_active as boolean | undefined,
-      round_ids: normalizeRoundIds(book.round_ids),
     } satisfies NormalizedBookInput;
   });
 
@@ -341,8 +364,8 @@ function validateResolvedProduct(product: {
   product_type: ProductType;
   bundle_items: string[];
 }) {
-  if (product.product_type === "bundle" && product.bundle_items.length === 0) {
-    throw new Error(`Il bundle “${product.title}” deve contenere almeno un prodotto.`);
+  if (product.product_type === "bundle" && product.bundle_items.length < 2) {
+    throw new Error(`Il bundle “${product.title}” deve contenere almeno due libri.`);
   }
 
   if (product.product_type === "book" && product.bundle_items.length > 0) {
@@ -358,6 +381,50 @@ async function getConventionOrNull(supabase: SupabaseClient, conventionId: numbe
 
   if (error) throw error;
   return data;
+}
+
+async function listConventionProductImages(
+  supabase: SupabaseClient,
+  conventionId: number
+) {
+  const rootPath = `products/${conventionId}`;
+  const pendingFolders = [rootPath];
+  const visitedFolders = new Set<string>();
+  const objectPaths: string[] = [];
+
+  while (pendingFolders.length > 0) {
+    const currentFolder = pendingFolders.shift();
+    if (!currentFolder || visitedFolders.has(currentFolder)) continue;
+    visitedFolders.add(currentFolder);
+
+    let offset = 0;
+    const pageSize = 100;
+
+    while (true) {
+      const { data: entries, error } = await supabase.storage
+        .from(PRODUCT_IMAGE_BUCKET)
+        .list(currentFolder, {
+          limit: pageSize,
+          offset,
+          sortBy: { column: "name", order: "asc" },
+        });
+
+      if (error) throw error;
+
+      const page = entries ?? [];
+      for (const entry of page) {
+        const entryPath = `${currentFolder}/${entry.name}`;
+
+        if (entry.id) objectPaths.push(entryPath);
+        else pendingFolders.push(entryPath);
+      }
+
+      if (page.length < pageSize) break;
+      offset += pageSize;
+    }
+  }
+
+  return objectPaths;
 }
 
 function productImageMatchesMime(bytes: Uint8Array, mimeType: string) {
@@ -491,35 +558,6 @@ async function uploadProductCover(supabase: SupabaseClient, req: NextRequest) {
     cover_image: coverImage,
     message: "Copertina caricata correttamente.",
   });
-}
-
-async function replaceBookRoundLinks(
-  supabase: SupabaseClient,
-  conventionId: number,
-  bookId: number,
-  roundIds: string[]
-) {
-  const { error: deleteError } = await supabase
-    .from("book_convention_book_rounds")
-    .delete()
-    .eq("convention_id", conventionId)
-    .eq("book_id", bookId);
-
-  if (deleteError) throw deleteError;
-
-  if (roundIds.length === 0) return;
-
-  const { error: insertError } = await supabase
-    .from("book_convention_book_rounds")
-    .insert(
-      roundIds.map((roundId) => ({
-        convention_id: conventionId,
-        book_id: bookId,
-        round_id: roundId,
-      }))
-    );
-
-  if (insertError) throw insertError;
 }
 
 async function replaceRoundBookLinks(
@@ -785,175 +823,6 @@ async function getBooksWithRoundIds(
   };
 }
 
-async function saveRound(
-  supabase: SupabaseClient,
-  body: Record<string, unknown>
-) {
-  const conventionId = parsePositiveInteger(body.convention_id);
-  const roundId = cleanString(body.round_id);
-  const startsAtValue = cleanString(body.starts_at);
-  const endsAtValue = cleanString(body.ends_at);
-  const startsAt = new Date(startsAtValue);
-  const endsAt = new Date(endsAtValue);
-
-  if (!conventionId) {
-    return privateJson({ error: "Convenzione non valida." }, 400);
-  }
-
-  if (roundId && !UUID_PATTERN.test(roundId)) {
-    return privateJson({ error: "Periodo non valido." }, 400);
-  }
-
-  if (
-    !startsAtValue ||
-    !endsAtValue ||
-    Number.isNaN(startsAt.getTime()) ||
-    Number.isNaN(endsAt.getTime()) ||
-    endsAt.getTime() <= startsAt.getTime()
-  ) {
-    return privateJson({ error: "Inserisci un intervallo temporale valido." }, 400);
-  }
-
-  const convention = await getConventionOrNull(supabase, conventionId);
-
-  if (!convention || convention.is_book_convention !== true) {
-    return privateJson({ error: "Convenzione libri non trovata." }, 404);
-  }
-
-  let bookIds: number[] | undefined;
-
-  if (body.book_ids !== undefined) {
-    if (!Array.isArray(body.book_ids)) {
-      return privateJson({ error: "Lista prodotti del periodo non valida." }, 400);
-    }
-
-    bookIds = Array.from(
-      new Set(
-        body.book_ids
-          .map((bookId) => parsePositiveInteger(bookId))
-          .filter((bookId): bookId is number => bookId !== null)
-      )
-    );
-
-    if (bookIds.length !== body.book_ids.length) {
-      return privateJson({ error: "Uno o più prodotti del periodo non sono validi." }, 400);
-    }
-  }
-
-  if (bookIds !== undefined && bookIds.length > 0) {
-    const { data: matchingBooks, error: booksError } = await supabase
-      .from("book_convention_books")
-      .select("id")
-      .eq("convention_id", conventionId)
-      .in("id", bookIds);
-
-    if (booksError) throw booksError;
-
-    if ((matchingBooks ?? []).length !== bookIds.length) {
-      return privateJson(
-        { error: "Uno o più prodotti non appartengono alla convenzione selezionata." },
-        400
-      );
-    }
-  }
-
-  let savedRoundId = roundId;
-
-  if (roundId) {
-    const { data: existingRound, error: roundError } = await supabase
-      .from("book_convention_rounds")
-      .select("id")
-      .eq("id", roundId)
-      .eq("convention_id", conventionId)
-      .maybeSingle();
-
-    if (roundError) throw roundError;
-    if (!existingRound) return privateJson({ error: "Periodo non trovato." }, 404);
-
-    const { error: updateError } = await supabase
-      .from("book_convention_rounds")
-      .update({
-        starts_at: startsAt.toISOString(),
-        ends_at: endsAt.toISOString(),
-      })
-      .eq("id", roundId)
-      .eq("convention_id", conventionId);
-
-    if (updateError) {
-      if (updateError.code === "23P01") {
-        return privateJson(
-          { error: "Il periodo si sovrappone a un altro periodo della convenzione." },
-          409
-        );
-      }
-      throw updateError;
-    }
-  } else {
-    const { data: createdRound, error: createError } = await supabase
-      .from("book_convention_rounds")
-      .insert({
-        convention_id: conventionId,
-        starts_at: startsAt.toISOString(),
-        ends_at: endsAt.toISOString(),
-      })
-      .select("id")
-      .single();
-
-    if (createError) {
-      if (createError.code === "23P01") {
-        return privateJson(
-          { error: "Il periodo si sovrappone a un altro periodo della convenzione." },
-          409
-        );
-      }
-      throw createError;
-    }
-
-    savedRoundId = String(createdRound.id);
-  }
-
-  if (bookIds === undefined && !roundId) {
-    const { data: activeBooks, error: booksError } = await supabase
-      .from("book_convention_books")
-      .select("id")
-      .eq("convention_id", conventionId)
-      .eq("is_active", true);
-
-    if (booksError) throw booksError;
-    bookIds = (activeBooks ?? []).map((book) => Number(book.id));
-  }
-
-  if (bookIds !== undefined) {
-    const { error: deleteLinksError } = await supabase
-      .from("book_convention_book_rounds")
-      .delete()
-      .eq("convention_id", conventionId)
-      .eq("round_id", savedRoundId);
-
-    if (deleteLinksError) throw deleteLinksError;
-
-    if (bookIds.length > 0) {
-      const { error: insertLinksError } = await supabase
-        .from("book_convention_book_rounds")
-        .insert(
-          bookIds.map((bookId) => ({
-            convention_id: conventionId,
-            book_id: bookId,
-            round_id: savedRoundId,
-          }))
-        );
-
-      if (insertLinksError) throw insertLinksError;
-    }
-  }
-
-  return privateJson({
-    ok: true,
-    round_id: savedRoundId,
-    message: roundId ? "Periodo aggiornato correttamente." : "Periodo creato correttamente.",
-  });
-}
-
 export async function GET(req: NextRequest) {
   const auth = await getAdminAuth();
   if (!auth.authorized) return unauthorizedResponse(auth);
@@ -975,7 +844,7 @@ export async function GET(req: NextRequest) {
     const requestedPageSize = pageSizeParam ? parsePositiveInteger(pageSizeParam) : 500;
 
     if (roundId && !UUID_PATTERN.test(roundId)) {
-      return privateJson({ error: "Periodo non valido." }, 400);
+      return privateJson({ error: "Raccolta non valida." }, 400);
     }
 
     if (bookIdParam && !bookId) {
@@ -1174,7 +1043,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.action === "save_round") {
-      return await saveRound(supabase, body);
+      return privateJson(
+        { error: "Le raccolte si aprono e si chiudono dai comandi dedicati; la modifica manuale non è più disponibile." },
+        409
+      );
     }
 
     if (body.action === "set_convention_active") {
@@ -1271,16 +1143,12 @@ export async function POST(req: NextRequest) {
     const conventionId = body.convention_id
       ? parsePositiveInteger(body.convention_id)
       : null;
-    const title = cleanString(body.title);
+    const requestedTitle = cleanString(body.title);
     const description = cleanString(body.description);
     const partner = cleanString(body.partner);
 
     if (body.convention_id && !conventionId) {
       return privateJson({ error: "Convenzione non valida." }, 400);
-    }
-
-    if (!title || title.length > 240) {
-      return privateJson({ error: "Inserisci un titolo valido per la convenzione." }, 400);
     }
 
     if (description.length > 6000 || partner.length > 240) {
@@ -1298,6 +1166,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const title = books.length === 1 ? books[0].title : requestedTitle;
+
+    if (!title || title.length > 240) {
+      return privateJson({ error: "Inserisci un titolo valido per la convenzione." }, 400);
+    }
+
     let savedConventionId = conventionId;
 
     if (savedConventionId) {
@@ -1307,10 +1181,29 @@ export async function POST(req: NextRequest) {
         return privateJson({ error: "Convenzione libri non trovata." }, 404);
       }
 
+      const nowIso = new Date().toISOString();
+      const { data: activeCollection, error: activeCollectionError } = await supabase
+        .from("book_convention_rounds")
+        .select("id")
+        .eq("convention_id", savedConventionId)
+        .lte("starts_at", nowIso)
+        .gt("ends_at", nowIso)
+        .limit(1)
+        .maybeSingle();
+
+      if (activeCollectionError) throw activeCollectionError;
+      if (activeCollection) {
+        return privateJson(
+          { error: "Chiudi prima la raccolta ordini per modificare il catalogo." },
+          409
+        );
+      }
+
       const conventionPatch: Record<string, unknown> = {
         titolo: title,
         descrizione: description || null,
         partner: partner || null,
+        categoria: BOOK_CONVENTION_CATEGORY,
         is_book_convention: true,
         convenzione_libri: true,
       };
@@ -1318,9 +1211,6 @@ export async function POST(req: NextRequest) {
       if (typeof body.attiva === "boolean") conventionPatch.attiva = body.attiva;
       if (typeof body.vantaggio === "string") {
         conventionPatch.vantaggio = cleanString(body.vantaggio) || null;
-      }
-      if (typeof body.categoria === "string") {
-        conventionPatch.categoria = cleanString(body.categoria) || "libri";
       }
       if (typeof body.link === "string") conventionPatch.link = cleanString(body.link) || "#";
 
@@ -1341,7 +1231,7 @@ export async function POST(req: NextRequest) {
           titolo: title,
           descrizione: description || null,
           partner: partner || null,
-          categoria: cleanString(body.categoria) || "libri",
+          categoria: BOOK_CONVENTION_CATEGORY,
           vantaggio: cleanString(body.vantaggio) || null,
           link: cleanString(body.link) || "#",
           ordine,
@@ -1358,26 +1248,17 @@ export async function POST(req: NextRequest) {
 
     if (!savedConventionId) throw new Error("Convenzione non salvata.");
 
-    const [currentBooksResult, roundsResult] = await Promise.all([
-      supabase
-        .from("book_convention_books")
-        .select(
-          "id, convention_id, title, price, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
-        )
-        .eq("convention_id", savedConventionId),
-      supabase
-        .from("book_convention_rounds")
-        .select("id")
-        .eq("convention_id", savedConventionId),
-    ]);
+    const currentBooksResult = await supabase
+      .from("book_convention_books")
+      .select(
+        "id, convention_id, title, price, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+      )
+      .eq("convention_id", savedConventionId);
 
     if (currentBooksResult.error) throw currentBooksResult.error;
-    if (roundsResult.error) throw roundsResult.error;
 
     const currentBooks = (currentBooksResult.data ?? []) as ExistingBookRow[];
     const currentBooksById = new Map(currentBooks.map((book) => [Number(book.id), book]));
-    const conventionRoundIds = (roundsResult.data ?? []).map((round) => String(round.id));
-    const conventionRoundIdSet = new Set(conventionRoundIds);
 
     for (const book of books) {
       if (book.id && !currentBooksById.has(book.id)) {
@@ -1387,12 +1268,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (book.round_ids?.some((roundId) => !conventionRoundIdSet.has(roundId))) {
-        return privateJson(
-          { error: `Uno o più periodi associati a “${book.title}” non sono validi.` },
-          400
-        );
-      }
     }
 
     const incomingExistingIds = new Set(
@@ -1416,14 +1291,18 @@ export async function POST(req: NextRequest) {
 
     for (const book of books) {
       const existing = book.id ? currentBooksById.get(book.id) : null;
-      const productType =
-        book.product_type ??
-        existing?.product_type ??
-        (book.bundle_items && book.bundle_items.length > 0 ? "bundle" : "book");
-      const bundleItems =
-        productType === "book"
-          ? []
-          : book.bundle_items ?? normalizeBundleItems(existing?.bundle_items);
+      const requestedBundleItems =
+        book.bundle_items ?? normalizeBundleItems(existing?.bundle_items);
+
+      if (requestedBundleItems.length === 1) {
+        throw new Error(
+          `La proposta “${book.title}” deve contenere un solo libro oppure almeno due libri per formare un bundle.`
+        );
+      }
+
+      const productType: ProductType =
+        requestedBundleItems.length >= 2 ? "bundle" : "book";
+      const bundleItems = productType === "bundle" ? requestedBundleItems : [];
       const studyArea = book.study_area ?? existing?.study_area ?? STUDY_AREAS[0];
       const isActive = book.is_active ?? existing?.is_active ?? true;
 
@@ -1475,18 +1354,6 @@ export async function POST(req: NextRequest) {
 
       savedBookIds.push(savedBookId);
 
-      const roundIdsToSave = book.id
-        ? book.round_ids
-        : book.round_ids ?? conventionRoundIds;
-
-      if (roundIdsToSave !== undefined) {
-        await replaceBookRoundLinks(
-          supabase,
-          savedConventionId,
-          savedBookId,
-          roundIdsToSave
-        );
-      }
     }
 
     const { data: finalBooks, error: finalBooksError } = await supabase
@@ -1525,7 +1392,7 @@ export async function POST(req: NextRequest) {
       const code = String((error as { code?: unknown }).code ?? "");
       if (code === "23P01") {
         return privateJson(
-          { error: "Le date del periodo si sovrappongono a un periodo esistente." },
+          { error: "Le date della raccolta si sovrappongono a una raccolta esistente." },
           409
         );
       }
@@ -1572,7 +1439,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   if (roundId && !UUID_PATTERN.test(roundId)) {
-    return privateJson({ error: "Periodo non valido." }, 400);
+    return privateJson({ error: "Raccolta non valida." }, 400);
   }
 
   try {
@@ -1600,7 +1467,7 @@ export async function DELETE(req: NextRequest) {
     if (bookId) {
       let bookQuery = supabase
         .from("book_convention_books")
-        .select("id, title, is_active")
+        .select("id, convention_id, title, is_active")
         .eq("id", bookId);
 
       if (body.book_convention_id) {
@@ -1614,6 +1481,24 @@ export async function DELETE(req: NextRequest) {
       const { data: book, error: bookError } = await bookQuery.maybeSingle();
       if (bookError) throw bookError;
       if (!book) return privateJson({ error: "Libro o bundle non trovato." }, 404);
+
+      const nowIso = new Date().toISOString();
+      const { data: activeCollection, error: activeCollectionError } = await supabase
+        .from("book_convention_rounds")
+        .select("id")
+        .eq("convention_id", book.convention_id)
+        .lte("starts_at", nowIso)
+        .gt("ends_at", nowIso)
+        .limit(1)
+        .maybeSingle();
+
+      if (activeCollectionError) throw activeCollectionError;
+      if (activeCollection) {
+        return privateJson(
+          { error: "Chiudi prima la raccolta ordini per disattivare il prodotto." },
+          409
+        );
+      }
 
       const { error: deactivateError } = await supabase
         .from("book_convention_books")
@@ -1640,49 +1525,67 @@ export async function DELETE(req: NextRequest) {
     }
 
     if (conventionId) {
+      if (body.delete_history !== true) {
+        return privateJson(
+          {
+            error:
+              "Conferma esplicitamente l’eliminazione definitiva della convenzione e dello storico.",
+          },
+          400
+        );
+      }
+
       const convention = await getConventionOrNull(supabase, conventionId);
 
       if (!convention || convention.is_book_convention !== true) {
         return privateJson({ error: "Convenzione libri non trovata." }, 404);
       }
 
-      const nowIso = new Date().toISOString();
-      const { data: activeRound, error: activeRoundError } = await supabase
-        .from("book_convention_rounds")
-        .select("id")
-        .eq("convention_id", conventionId)
-        .lte("starts_at", nowIso)
-        .gt("ends_at", nowIso)
-        .limit(1)
-        .maybeSingle();
+      const coverPaths = await listConventionProductImages(supabase, conventionId);
 
-      if (activeRoundError) throw activeRoundError;
-      if (activeRound) {
-        return privateJson(
-          { error: "Chiudi prima la raccolta ordini attualmente aperta." },
-          409
-        );
+      const { data: deletionSummary, error: conventionDeleteError } = await supabase
+        .rpc("delete_book_convention_with_history", {
+          p_convention_id: conventionId,
+        });
+
+      if (conventionDeleteError) {
+        if (conventionDeleteError.code === "PGRST202") {
+          return privateJson(
+            {
+              error:
+                "La cancellazione definitiva non è ancora configurata nel database.",
+            },
+            503
+          );
+        }
+
+        throw conventionDeleteError;
       }
 
-      const { error: archiveError } = await supabase
-        .from("convenzioni")
-        .update({ attiva: false })
-        .eq("id", conventionId)
-        .eq("is_book_convention", true);
+      let coverCleanupFailed = false;
 
-      if (archiveError) throw archiveError;
+      for (let index = 0; index < coverPaths.length; index += 100) {
+        const { error: coverDeleteError } = await supabase.storage
+          .from(PRODUCT_IMAGE_BUCKET)
+          .remove(coverPaths.slice(index, index + 100));
 
-      const { error: deactivateBooksError } = await supabase
-        .from("book_convention_books")
-        .update({ is_active: false, updated_at: new Date().toISOString() })
-        .eq("convention_id", conventionId);
-
-      if (deactivateBooksError) throw deactivateBooksError;
+        if (coverDeleteError) {
+          coverCleanupFailed = true;
+          logRouteError(
+            `Errore pulizia copertine convenzione libri ${conventionId}`,
+            coverDeleteError
+          );
+        }
+      }
 
       return privateJson({
         ok: true,
-        softDeleted: true,
-        message: "Convenzione archiviata. Libri, periodi e adesioni storiche sono stati conservati.",
+        deleted: true,
+        message: "Convenzione, catalogo, raccolte e adesioni storiche eliminati definitivamente.",
+        deletion_summary: deletionSummary,
+        ...(coverCleanupFailed
+          ? { warning: "Alcuni file immagine non sono stati rimossi dallo storage." }
+          : {}),
       });
     }
 

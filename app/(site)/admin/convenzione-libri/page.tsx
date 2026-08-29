@@ -6,7 +6,7 @@ import AdminBookAdhesionsClient from "./admin-book-adhesions-client";
 
 export const metadata: Metadata = {
   title: "Convenzioni Libri | Admin ASTRA",
-  description: "Gestione di catalogo, periodi e adesioni alle convenzioni libri.",
+  description: "Gestione di catalogo, raccolte ordini e adesioni alle convenzioni libri.",
 };
 
 export default async function AdminBookConventionsPage({

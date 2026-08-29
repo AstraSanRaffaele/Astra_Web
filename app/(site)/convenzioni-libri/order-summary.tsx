@@ -58,7 +58,7 @@ export default function OrderSummary({
                     Adesione già inviata
                   </p>
                   <p className="mt-1 text-[.76rem] leading-relaxed text-[#477257]">
-                    La tua richiesta per il periodo attivo è stata registrata correttamente.
+                    La tua richiesta per la raccolta attiva è stata registrata correttamente.
                   </p>
                 </div>
               </div>
@@ -134,4 +134,3 @@ export default function OrderSummary({
     </aside>
   );
 }
-

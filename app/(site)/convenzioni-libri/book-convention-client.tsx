@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   CalendarDays,
@@ -60,7 +60,11 @@ function PageSkeleton() {
   );
 }
 
-export default function BookConventionClient() {
+export default function BookConventionClient({
+  initialConventionId,
+}: {
+  initialConventionId?: number;
+}) {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState("");
   const [data, setData] = useState<BookConventionApiResponse | null>(null);
@@ -69,18 +73,28 @@ export default function BookConventionClient() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [selectedConventionId, setSelectedConventionId] = useState<number | null>(
+    initialConventionId ?? null
+  );
+  const loadRequestIdRef = useRef(0);
 
   const goToLogin = useCallback(() => {
-    window.location.replace("/login?next=/convenzioni-libri");
+    const returnPath = `${window.location.pathname}${window.location.search}`;
+    window.location.replace(`/login?next=${encodeURIComponent(returnPath)}`);
   }, []);
 
   const loadConvention = useCallback(
-    async (quiet = false) => {
+    async (quiet = false, conventionId?: number) => {
+      const requestId = loadRequestIdRef.current + 1;
+      loadRequestIdRef.current = requestId;
       if (!quiet) setLoadState("loading");
       setLoadError("");
 
       try {
-        const response = await fetch("/api/book-convention", {
+        const query = conventionId
+          ? `?${new URLSearchParams({ convention_id: String(conventionId) }).toString()}`
+          : "";
+        const response = await fetch(`/api/book-convention${query}`, {
           method: "GET",
           cache: "no-store",
         });
@@ -92,6 +106,8 @@ export default function BookConventionClient() {
 
         const payload = (await response.json().catch(() => ({}))) as BookConventionApiResponse;
 
+        if (requestId !== loadRequestIdRef.current) return;
+
         if (!response.ok) {
           throw new Error(
             payload.error || "Non è stato possibile caricare la convenzione libri."
@@ -102,6 +118,19 @@ export default function BookConventionClient() {
         const firstAreaWithProducts = STUDY_AREAS.find((area) =>
           catalog.some((product) => product.study_area === area)
         );
+
+        const loadedConventionId = payload.convention?.id;
+        if (loadedConventionId) {
+          setSelectedConventionId(loadedConventionId);
+
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set("convention_id", String(loadedConventionId));
+          window.history.replaceState(
+            window.history.state,
+            "",
+            `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
+          );
+        }
 
         setData(payload);
         setSelectedIds((current) =>
@@ -116,6 +145,7 @@ export default function BookConventionClient() {
         );
         setLoadState("ready");
       } catch (error) {
+        if (requestId !== loadRequestIdRef.current) return;
         setLoadError(
           error instanceof Error
             ? error.message
@@ -128,8 +158,8 @@ export default function BookConventionClient() {
   );
 
   useEffect(() => {
-    void loadConvention();
-  }, [loadConvention]);
+    void loadConvention(false, initialConventionId);
+  }, [initialConventionId, loadConvention]);
 
   const catalog = useMemo(() => data?.catalogBooks ?? [], [data]);
 
@@ -192,7 +222,18 @@ export default function BookConventionClient() {
     setDialogOpen(false);
     setSelectedIds([]);
     setSuccessMessage(message);
-    void loadConvention(true);
+    void loadConvention(true, selectedConventionId ?? undefined);
+  }
+
+  function selectConvention(conventionId: number) {
+    if (!Number.isInteger(conventionId) || conventionId <= 0) return;
+    if (conventionId === selectedConventionId) return;
+
+    setSelectedConventionId(conventionId);
+    setSelectedIds([]);
+    setSuccessMessage("");
+    setDialogOpen(false);
+    void loadConvention(false, conventionId);
   }
 
   if (loadState === "loading") return <PageSkeleton />;
@@ -213,7 +254,7 @@ export default function BookConventionClient() {
           </p>
           <Button
             type="button"
-            onClick={() => void loadConvention()}
+            onClick={() => void loadConvention(false, selectedConventionId ?? undefined)}
             className="mt-5 h-10 rounded-full bg-[#0E1F6B] px-5 text-white hover:bg-[#1A3399]"
           >
             <RotateCcw size={14} />
@@ -261,16 +302,35 @@ export default function BookConventionClient() {
               ) : null}
             </div>
 
-            <div className="md:text-right">
+            <div className="flex flex-col gap-2 md:items-end md:text-right">
+              {(data.conventions?.length ?? 0) > 1 ? (
+                <label className="block w-full min-w-0 md:w-72">
+                  <span className="mb-1 block text-left text-[.64rem] font-bold uppercase tracking-[.12em] text-[#596174]">
+                    Convenzione
+                  </span>
+                  <select
+                    value={selectedConventionId ?? convention.id}
+                    onChange={(event) => selectConvention(Number(event.target.value))}
+                    className="h-11 w-full rounded-xl border border-[rgba(14,31,107,.14)] bg-white px-3 text-[.78rem] font-semibold text-[#08102A] outline-none focus:border-[#1A3399] focus:ring-3 focus:ring-[#1A3399]/10"
+                  >
+                    {data.conventions?.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.titolo || `Convenzione libri ${item.id}`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+
               {data.activeRound ? (
                 <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(14,31,107,.12)] bg-white px-3.5 py-2 text-[.72rem] font-semibold text-[#344363]">
                   <CalendarDays size={14} className="text-[#2E4080]" />
-                  {formatRoundDate(data.activeRound.starts_at)} – {formatRoundDate(data.activeRound.ends_at)}
+                  Raccolta aperta dal {formatRoundDate(data.activeRound.starts_at)}
                 </div>
               ) : (
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#E7D7B5] bg-[#FFF9ED] px-3.5 py-2 text-[.72rem] font-semibold text-[#73551A]">
                   <CalendarDays size={14} />
-                  Nessun periodo attivo
+                  Nessuna raccolta aperta
                 </div>
               )}
             </div>
@@ -290,7 +350,7 @@ export default function BookConventionClient() {
                 <CheckCircle2 size={18} />
                 <AlertTitle>Adesione già registrata</AlertTitle>
                 <AlertDescription className="text-[#477257]">
-                  Hai già aderito per il periodo attivo. Puoi consultare qui sotto il catalogo e il riepilogo della richiesta.
+                  Hai già aderito per la raccolta attiva. Puoi consultare qui sotto il catalogo e il riepilogo della richiesta.
                 </AlertDescription>
               </Alert>
             ) : null}

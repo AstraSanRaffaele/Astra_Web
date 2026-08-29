@@ -60,8 +60,19 @@ export function getConventionTitle(convention: AdminBookConvention | null | unde
   return convention?.titolo?.trim() || "Convenzione libri";
 }
 
-export function formatRoundLabel(round: AdminBookConventionRound | null | undefined) {
-  if (!round) return "Senza periodo";
+export function formatRoundLabel(
+  round: Pick<AdminBookConventionRound, "starts_at" | "ends_at"> | null | undefined
+) {
+  if (!round) return "Senza raccolta";
+
+  const now = Date.now();
+  const startsAt = new Date(round.starts_at).getTime();
+  const endsAt = new Date(round.ends_at).getTime();
+
+  if (startsAt <= now && now < endsAt) {
+    return `Aperta dal ${formatDateOnly(round.starts_at)}`;
+  }
+
   return `${formatDateOnly(round.starts_at)} – ${formatDateOnly(round.ends_at)}`;
 }
 

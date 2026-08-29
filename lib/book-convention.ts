@@ -22,6 +22,9 @@ export const BOOK_YEARS = [
   "primo_anno",
   "secondo_anno",
   "terzo_anno",
+  "quarto_anno",
+  "quinto_anno",
+  "sesto_anno",
 ] as const;
 
 export type BookYear = (typeof BOOK_YEARS)[number];
@@ -30,6 +33,9 @@ export const BOOK_YEAR_LABELS: Record<BookYear, string> = {
   primo_anno: "Primo anno",
   secondo_anno: "Secondo anno",
   terzo_anno: "Terzo anno",
+  quarto_anno: "Quarto anno",
+  quinto_anno: "Quinto anno",
+  sesto_anno: "Sesto anno",
 };
 
 export const PRODUCT_TYPES = ["book", "bundle"] as const;
@@ -101,6 +107,16 @@ export type BookConventionRound = {
   ends_at: string;
 };
 
+export type BookConventionSummary = {
+  id: number;
+  titolo: string | null;
+  partner: string | null;
+  descrizione: string | null;
+  attiva: boolean;
+  is_book_convention: boolean;
+  ordine: number | null;
+};
+
 export type BookConventionBook = {
   id: number;
   convention_id: number;
@@ -155,14 +171,8 @@ export type BookConventionAdhesion = {
 
 export type BookConventionApiResponse = {
   ok?: boolean;
-  convention?: {
-    id: number;
-    titolo: string | null;
-    partner: string | null;
-    descrizione: string | null;
-    attiva: boolean;
-    is_book_convention: boolean;
-  };
+  convention?: BookConventionSummary;
+  conventions?: BookConventionSummary[];
   activeRound?: BookConventionRound | null;
   rounds?: BookConventionRound[];
   canAdhere?: boolean;

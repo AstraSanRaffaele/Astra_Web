@@ -137,6 +137,9 @@ function groupBooksByYear(books: BookConventionBook[]) {
       primo_anno: [],
       secondo_anno: [],
       terzo_anno: [],
+      quarto_anno: [],
+      quinto_anno: [],
+      sesto_anno: [],
     }
   );
 }
@@ -151,18 +154,42 @@ function groupBooksByArea(books: BookConventionCatalogBook[]) {
           );
           return years;
         },
-        { primo_anno: [], secondo_anno: [], terzo_anno: [] }
+        {
+          primo_anno: [],
+          secondo_anno: [],
+          terzo_anno: [],
+          quarto_anno: [],
+          quinto_anno: [],
+          sesto_anno: [],
+        }
       );
       return areas;
     },
     {
-      medicina_chirurgia: { primo_anno: [], secondo_anno: [], terzo_anno: [] },
+      medicina_chirurgia: {
+        primo_anno: [],
+        secondo_anno: [],
+        terzo_anno: [],
+        quarto_anno: [],
+        quinto_anno: [],
+        sesto_anno: [],
+      },
       odontoiatria_igiene_dentale: {
         primo_anno: [],
         secondo_anno: [],
         terzo_anno: [],
+        quarto_anno: [],
+        quinto_anno: [],
+        sesto_anno: [],
       },
-      professioni_sanitarie: { primo_anno: [], secondo_anno: [], terzo_anno: [] },
+      professioni_sanitarie: {
+        primo_anno: [],
+        secondo_anno: [],
+        terzo_anno: [],
+        quarto_anno: [],
+        quinto_anno: [],
+        sesto_anno: [],
+      },
     }
   );
 }
@@ -266,7 +293,6 @@ function buildBookConventionReceiptHtml(params: {
       : "";
 
   const roundStart = new Date(activeRound.starts_at).toLocaleDateString("it-IT");
-  const roundEnd = new Date(activeRound.ends_at).toLocaleDateString("it-IT");
 
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.5; color: #111827; background: #f7f7f7; padding: 24px;">
@@ -305,8 +331,8 @@ function buildBookConventionReceiptHtml(params: {
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(PAYMENT_METHOD_LABELS[paymentMethod])}</td>
               </tr>
               <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Periodo</strong></td>
-                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(`${roundStart} – ${roundEnd}`)}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Raccolta</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(`Aperta dal ${roundStart}`)}</td>
               </tr>
             </tbody>
           </table>
@@ -454,7 +480,7 @@ function logRouteError(context: string, error: unknown) {
 }
 
 // GET /api/book-convention
-// Restituisce la convenzione libri, i periodi disponibili, i libri collegati e l'eventuale adesione dell'utente.
+// Restituisce la convenzione libri, le raccolte disponibili, i libri collegati e l'eventuale adesione dell'utente.
 export async function GET(req: NextRequest) {
   const authClient = await getSupabase();
 
@@ -481,21 +507,21 @@ export async function GET(req: NextRequest) {
 
   try {
     const serviceClient = getServiceClient();
-    let conventionQuery = serviceClient
+    const { data: conventionRows, error: conventionError } = await serviceClient
       .from("convenzioni")
-      .select("id, titolo, partner, descrizione, attiva, is_book_convention")
-      .eq("is_book_convention", true);
-
-    if (requestedConventionId) {
-      conventionQuery = conventionQuery.eq("id", requestedConventionId);
-    }
-
-    const { data: convention, error: conventionError } = await conventionQuery
+      .select("id, titolo, partner, descrizione, attiva, is_book_convention, ordine")
+      .eq("is_book_convention", true)
+      .eq("attiva", true)
+      .order("ordine", { ascending: true })
       .order("id", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .limit(100);
 
     if (conventionError) throw conventionError;
+
+    const conventions = conventionRows ?? [];
+    const convention = requestedConventionId
+      ? conventions.find((item) => Number(item.id) === requestedConventionId) ?? null
+      : conventions[0] ?? null;
 
     if (!convention) {
       return privateJson({ error: "Convenzione libri non trovata." }, 404);
@@ -594,6 +620,7 @@ export async function GET(req: NextRequest) {
     return privateJson({
       ok: true,
       convention,
+      conventions,
       activeRound,
       rounds: roundsResult.data ?? [],
       canAdhere:
@@ -722,7 +749,7 @@ export async function POST(req: NextRequest) {
 
     if (requestedRoundId && requestedRoundId !== activeRound.id) {
       return privateJson(
-        { error: "Il periodo selezionato non è attualmente disponibile." },
+        { error: "La raccolta selezionata non è attualmente disponibile." },
         409
       );
     }
@@ -765,7 +792,7 @@ export async function POST(req: NextRequest) {
       selectedBookIds.some((bookId) => !linkedBookIds.has(bookId))
     ) {
       return privateJson(
-        { error: "Uno o più elementi selezionati non sono disponibili nel periodo attivo." },
+        { error: "Uno o più elementi selezionati non sono disponibili nella raccolta attiva." },
         409
       );
     }

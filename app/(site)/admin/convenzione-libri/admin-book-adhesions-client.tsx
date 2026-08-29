@@ -319,9 +319,7 @@ export default function AdminBookAdhesionsClient({
     setSort("newest");
   }
 
-  function exportCsv() {
-    if (filteredAdhesions.length === 0) return;
-
+  const exportCsv = useCallback(() => {
     const rows: Array<Array<string | number>> = [
       [
         "ID adesione",
@@ -334,7 +332,7 @@ export default function AdminBookAdhesionsClient({
         "CF / Partita IVA",
         "Indirizzo spedizione / fatturazione",
         "Convenzione",
-        "Periodo",
+        "Raccolta",
         "Metodo pagamento",
         "Prodotti",
         "Tipi prodotto",
@@ -357,11 +355,7 @@ export default function AdminBookAdhesionsClient({
           adhesion.fiscal_code_or_vat || "",
           adhesion.billing_shipping_address || "",
           getConventionTitle(adhesion.convenzioni),
-          adhesion.book_convention_rounds
-            ? `${formatDateOnly(adhesion.book_convention_rounds.starts_at)} - ${formatDateOnly(
-                adhesion.book_convention_rounds.ends_at
-              )}`
-            : "Senza periodo",
+          formatRoundLabel(adhesion.book_convention_rounds),
           formatPaymentMethod(adhesion.payment_method),
           products.map((product) => `${product.title} (${formatPrice(product.price)})`).join(" | "),
           products.map((product) => PRODUCT_TYPE_LABELS[product.product_type]).join(" | "),
@@ -392,12 +386,60 @@ export default function AdminBookAdhesionsClient({
     );
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `adesioni-convenzioni-libri-${new Date().toISOString().slice(0, 10)}.csv`;
+    const selectedRound =
+      filters.roundId === "all"
+        ? null
+        : data.rounds.find((round) => round.id === filters.roundId) ?? null;
+    const conventionSuffix =
+      filters.conventionId === "all" ? "" : `-convenzione-${filters.conventionId}`;
+    const collectionSuffix = selectedRound
+      ? `-raccolta-${selectedRound.starts_at.slice(0, 10)}-${selectedRound.id.slice(0, 8)}`
+      : "";
+    anchor.download = `adesioni-convenzioni-libri${conventionSuffix}${collectionSuffix}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
     URL.revokeObjectURL(url);
-  }
+  }, [data.books, data.rounds, filteredAdhesions, filters.conventionId, filters.roundId]);
+
+  useEffect(() => {
+    if (!autoExport || loading || error || autoExportTriggeredRef.current) return;
+
+    autoExportTriggeredRef.current = true;
+
+    const requestedRound = initialRoundId
+      ? data.rounds.find((round) => round.id === initialRoundId)
+      : null;
+
+    if (
+      !requestedRound ||
+      (initialConventionId !== undefined &&
+        requestedRound.convention_id !== initialConventionId)
+    ) {
+      setError("La raccolta richiesta non è valida per la convenzione selezionata.");
+      return;
+    }
+
+    exportCsv();
+
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete("download");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
+    );
+  }, [
+    autoExport,
+    data.rounds,
+    error,
+    exportCsv,
+    initialConventionId,
+    initialRoundId,
+    loading,
+  ]);
 
   return (
     <main className="min-h-screen bg-[#f4f6fa] px-4 pb-16 pt-28 text-[#172554] sm:px-6 lg:px-8">
@@ -419,7 +461,7 @@ export default function AdminBookAdhesionsClient({
               href="/admin/convenzione-libri"
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#1847a3] px-4 text-sm font-bold text-white transition hover:bg-[#123b8c]"
             >
-              <BookOpen className="size-4" /> Catalogo e periodi
+              <BookOpen className="size-4" /> Catalogo e raccolte
             </Link>
             <Link
               href="/admin"
@@ -485,7 +527,7 @@ export default function AdminBookAdhesionsClient({
             </FilterSelect>
 
             <FilterSelect
-              label="Periodo"
+              label="Raccolta"
               value={filters.roundId}
               onChange={(value) => updateFilter("roundId", value)}
             >
@@ -641,7 +683,7 @@ export default function AdminBookAdhesionsClient({
                         "Data",
                         "Utente",
                         "Prodotti",
-                        "Convenzione / periodo",
+                        "Convenzione / raccolta",
                         "Pagamento",
                         "Totale",
                         "",
@@ -765,11 +807,7 @@ function AdhesionTableRow({
       <td className="max-w-[260px] px-4 py-3 text-xs text-[#475569]">
         <strong className="block truncate text-[#334155]">{getConventionTitle(adhesion.convenzioni)}</strong>
         <span className="block truncate">
-          {adhesion.book_convention_rounds
-            ? `${formatDateOnly(adhesion.book_convention_rounds.starts_at)} – ${formatDateOnly(
-                adhesion.book_convention_rounds.ends_at
-              )}`
-            : "Senza periodo"}
+          {formatRoundLabel(adhesion.book_convention_rounds)}
         </span>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-xs font-bold text-[#475569]">
@@ -823,13 +861,9 @@ function AdhesionMobileCard({
           <dd className="mt-0.5 font-bold text-[#475569]">{formatPaymentMethod(adhesion.payment_method)}</dd>
         </div>
         <div className="col-span-2">
-          <dt className="font-semibold text-[#94a3b8]">Periodo</dt>
+          <dt className="font-semibold text-[#94a3b8]">Raccolta</dt>
           <dd className="mt-0.5 font-bold text-[#475569]">
-            {adhesion.book_convention_rounds
-              ? `${formatDateOnly(adhesion.book_convention_rounds.starts_at)} – ${formatDateOnly(
-                  adhesion.book_convention_rounds.ends_at
-                )}`
-              : "Senza periodo"}
+            {formatRoundLabel(adhesion.book_convention_rounds)}
           </dd>
         </div>
       </dl>
