@@ -40,6 +40,122 @@ type GeneralConvention = {
   is_book_convention: boolean | null;
 };
 
+function BookConventionsEntryCard() {
+  return (
+    <Link
+      href="/convenzioni-libri"
+      className="conv-card conv-card-books"
+      aria-label="Vai alla sezione Convenzioni Libri"
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: ".4rem",
+        }}
+      >
+        <span
+          style={{
+            fontSize: ".68rem",
+            fontWeight: 700,
+            letterSpacing: ".06em",
+            textTransform: "uppercase",
+            background: "rgba(7,26,82,.55)",
+            color: "#fff",
+            border: "1px solid rgba(255,255,255,.2)",
+            padding: ".32rem .75rem",
+            borderRadius: "999px",
+          }}
+        >
+          Sezione dedicata
+        </span>
+
+        <span
+          aria-hidden="true"
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: "12px",
+            background: "rgba(7,26,82,.55)",
+            border: "1px solid rgba(255,255,255,.2)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            flexShrink: 0,
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M4.5 5.75A2.75 2.75 0 0 1 7.25 3H11a2 2 0 0 1 2 2v15a2.5 2.5 0 0 0-2.5-2.5H4.5V5.75Z"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M19.5 5.75A2.75 2.75 0 0 0 16.75 3H15a2 2 0 0 0-2 2v15a2.5 2.5 0 0 1 2.5-2.5h4V5.75Z"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </div>
+
+      <h3
+        style={{
+          fontSize: "1.12rem",
+          fontWeight: 700,
+          letterSpacing: "-.01em",
+          color: "#fff",
+          lineHeight: 1.3,
+          marginTop: ".2rem",
+        }}
+      >
+        Convenzioni Libri
+      </h3>
+
+      <p style={{ fontSize: ".85rem", fontWeight: 600, color: "#CDEEFF", margin: 0 }}>
+        Catalogo riservato agli studenti ASTRA
+      </p>
+
+      <p
+        style={{
+          fontSize: ".88rem",
+          color: "#fff",
+          lineHeight: 1.65,
+          marginTop: ".4rem",
+          flex: 1,
+        }}
+      >
+        Consulta libri singoli e bundle disponibili, suddivisi per area di studio e anno di corso.
+      </p>
+
+      <div
+        style={{
+          marginTop: "auto",
+          paddingTop: ".8rem",
+          borderTop: "1px solid rgba(255,255,255,.16)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: ".8rem",
+        }}
+      >
+        <span style={{ fontSize: ".82rem", fontWeight: 700, color: "#fff" }}>
+          Vai alle Convenzioni Libri
+        </span>
+        <span className="book-card-arrow" aria-hidden="true">
+          →
+        </span>
+      </div>
+    </Link>
+  );
+}
+
 function SkeletonCard() {
   return (
     <div
@@ -162,7 +278,7 @@ export default function ConvenzioniPage() {
       if (!active) return;
 
       if (error) {
-        setLoadError("Non è stato possibile caricare le convenzioni. Riprova tra poco.");
+        setLoadError("Non è stato possibile caricare le altre convenzioni. Riprova tra poco.");
         setLoading(false);
         return;
       }
@@ -305,6 +421,52 @@ export default function ConvenzioniPage() {
           border-color: rgba(8,16,42,.12);
         }
 
+        .conv-card-books {
+          position: relative;
+          isolation: isolate;
+          overflow: hidden;
+          color: #fff;
+          text-decoration: none;
+          border-color: rgba(255,255,255,.24);
+          background:
+            radial-gradient(circle at 86% 8%, rgba(82,214,255,.35) 0%, rgba(82,214,255,0) 42%),
+            linear-gradient(135deg, #071A52 0%, #1246A3 62%, #076C99 100%);
+          box-shadow: 0 8px 28px rgba(18,70,163,.18);
+        }
+
+        .conv-card-books:hover {
+          border-color: rgba(255,255,255,.42);
+          box-shadow: 0 18px 48px rgba(18,70,163,.28);
+        }
+
+        .conv-card-books:focus-visible {
+          outline: 3px solid #071A52;
+          outline-offset: 3px;
+        }
+
+        .book-card-arrow {
+          width: 32px;
+          height: 32px;
+          border-radius: 999px;
+          background: rgba(255,255,255,.15);
+          border: 1px solid rgba(255,255,255,.2);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex: 0 0 32px;
+          font-size: 1rem;
+          transition: transform .18s ease, background .18s ease;
+        }
+
+        .conv-card-books:hover .book-card-arrow {
+          transform: translateX(3px);
+          background: rgba(255,255,255,.22);
+        }
+
+        .conv-grid-state {
+          grid-column: 1 / -1;
+        }
+
         .card-cta:hover {
           background: rgba(8,16,42,.04) !important;
           border-color: rgba(8,16,42,.25) !important;
@@ -398,34 +560,10 @@ export default function ConvenzioniPage() {
             per accedere alle offerte online.
           </p>
 
-          <Link
-            href="/convenzioni-libri"
-            className="card-cta"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: ".55rem",
-              width: "fit-content",
-              marginTop: "1.6rem",
-              padding: ".65rem 1.15rem",
-              border: "1px solid rgba(8,16,42,.14)",
-              borderRadius: "999px",
-              background: "#fff",
-              color: "#08102A",
-              fontSize: ".84rem",
-              fontWeight: 700,
-              textDecoration: "none",
-              boxShadow: "0 2px 12px rgba(8,16,42,.04)",
-            }}
-          >
-            Vai alle Convenzioni Libri
-            <span aria-hidden="true">→</span>
-          </Link>
-
           {!loading && convenzioni.length > 0 && (
             <div style={{ display: "flex", gap: "2.5rem", marginTop: "2.5rem", flexWrap: "wrap" }}>
               {[
-                [String(convenzioni.length), "Convenzioni attive"],
+                [String(convenzioni.length), "Convenzioni partner attive"],
                 [String(categories.length), "Categorie"],
               ].map(([n, l]) => (
                 <div key={l} style={{ display: "flex", flexDirection: "column", gap: ".2rem" }}>
@@ -573,8 +711,12 @@ export default function ConvenzioniPage() {
           >
             <p style={{ fontSize: ".82rem", color: "#6B7280", fontWeight: 500 }}>
               {filtered.length === 0
-                ? "Nessun risultato"
-                : `${filtered.length} risultato${filtered.length > 1 ? "i" : ""}`}{" "}
+                ? "Nessuna convenzione partner trovata"
+                : `${filtered.length} ${
+                  filtered.length > 1
+                    ? "convenzioni partner trovate"
+                    : "convenzione partner trovata"
+                }`}{" "}
               per &quot;{searchTerm}&quot;
             </p>
           </div>
@@ -584,57 +726,52 @@ export default function ConvenzioniPage() {
           className="conv-page-content"
           style={{ maxWidth: 1100, margin: "0 auto", padding: "0 3rem 6rem" }}
         >
-          {loadError ? (
-            <div className="empty-state">
-              <p
-                style={{
-                  fontWeight: 600,
-                  fontSize: "1.05rem",
-                  color: "#8B1D1D",
-                  marginBottom: ".5rem",
-                }}
-              >
-                {loadError}
-              </p>
-            </div>
-          ) : loading ? (
-            <div
-              className="conv-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
-                gap: "1.25rem",
-              }}
-            >
-              {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            className="conv-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
+              gap: "1.25rem",
+            }}
+          >
+            <BookConventionsEntryCard />
+
+            {loadError ? (
+              <div className="empty-state conv-grid-state">
+                <p
+                  style={{
+                    fontWeight: 600,
+                    fontSize: "1.05rem",
+                    color: "#8B1D1D",
+                    marginBottom: ".5rem",
+                  }}
+                >
+                  {loadError}
+                </p>
+              </div>
+            ) : loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
                 <SkeletonCard key={i} />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="empty-state">
-              <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🔍</div>
-              <p
-                style={{
-                  fontWeight: 600,
-                  fontSize: "1.1rem",
-                  color: "#08102A",
-                  marginBottom: ".5rem",
-                }}
-              >
-                Nessuna convenzione trovata
-              </p>
-              <p style={{ fontSize: ".9rem" }}>Prova a cambiare i filtri o la ricerca.</p>
-            </div>
-          ) : (
-            <div
-              className="conv-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
-                gap: "1.25rem",
-              }}
-            >
-              {filtered.map((c) => {
+              ))
+            ) : filtered.length === 0 ? (
+              <div className="empty-state conv-grid-state">
+                <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🔍</div>
+                <p
+                  style={{
+                    fontWeight: 600,
+                    fontSize: "1.1rem",
+                    color: "#08102A",
+                    marginBottom: ".5rem",
+                  }}
+                >
+                  Nessun’altra convenzione trovata
+                </p>
+                <p style={{ fontSize: ".9rem" }}>
+                  Prova a cambiare i filtri o la ricerca. La sezione Convenzioni Libri resta sempre disponibile.
+                </p>
+              </div>
+            ) : (
+              filtered.map((c) => {
                 const catStyle = getCategoryStyle(c.categoria);
                 const initials = c.partner?.slice(0, 2).toUpperCase() ?? "??";
 
@@ -806,9 +943,9 @@ export default function ConvenzioniPage() {
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          )}
+              })
+            )}
+          </div>
         </section>
       </div>
     </>

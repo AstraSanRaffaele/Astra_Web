@@ -1,6 +1,7 @@
 "use client";
 
-import { BookOpen, Check, Package } from "lucide-react";
+import { useState } from "react";
+import { BookOpen, Check, Package, Plus } from "lucide-react";
 import {
   BOOK_YEAR_LABELS,
   PRODUCT_TYPE_LABELS,
@@ -11,7 +12,7 @@ import {
 const AVAILABILITY_LABELS: Record<Exclude<BookAvailabilityReason, null>, string> = {
   convention_inactive: "Convenzione chiusa",
   round_inactive: "Raccolta non aperta",
-  not_in_round: "Non disponibile nella raccolta",
+  not_in_round: "Non disponibile in questa raccolta",
   price_unavailable: "Prezzo non disponibile",
 };
 
@@ -35,121 +36,134 @@ export default function BookProductCard({
   selectionDisabled: boolean;
   onToggle: (productId: number) => void;
 }) {
+  const [failedCoverUrl, setFailedCoverUrl] = useState<string | null>(null);
   const unavailable = !product.is_available;
   const disabled = unavailable || selectionDisabled;
   const isBundle = product.product_type === "bundle";
+  const visibleBundleItems = product.bundle_items.slice(0, 4);
+  const remainingBundleItems = Math.max(
+    product.bundle_items.length - visibleBundleItems.length,
+    0
+  );
+  const unavailableLabel = product.availability_reason
+    ? AVAILABILITY_LABELS[product.availability_reason]
+    : "Selezione non disponibile";
 
   return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      disabled={disabled}
-      onClick={() => onToggle(product.id)}
-      className={`group relative flex min-h-44 w-full flex-col rounded-[1.35rem] border p-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#1A3399]/20 sm:p-5 ${
-        selected
-          ? "border-[#1A3399] bg-[#F4F6FF] shadow-[0_10px_30px_rgba(14,31,107,.08)]"
-          : "border-[rgba(14,31,107,.1)] bg-white hover:-translate-y-0.5 hover:border-[rgba(14,31,107,.24)] hover:shadow-[0_10px_28px_rgba(14,31,107,.06)]"
-      } ${disabled ? "cursor-not-allowed opacity-60 hover:translate-y-0 hover:shadow-none" : "cursor-pointer"}`}
+    <article
+      className={`conv-card book-product-card${selected ? " selected" : ""}${
+        disabled ? " unavailable" : ""
+      }`}
+      aria-labelledby={`book-product-${product.id}`}
     >
-      <div className="flex w-full items-start gap-3.5">
-        <span
-          className="flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[rgba(14,31,107,.1)] bg-[#F4F6FB] bg-contain bg-center bg-no-repeat text-[#64709A] shadow-[0_4px_14px_rgba(14,31,107,.06)]"
-          style={
-            product.cover_image
-              ? { backgroundImage: `url(${JSON.stringify(product.cover_image)})` }
-              : undefined
-          }
-          role={product.cover_image ? "img" : undefined}
-          aria-label={product.cover_image ? `Copertina di ${product.title}` : undefined}
-        >
-          {!product.cover_image ? (
-            isBundle ? (
-              <Package size={23} strokeWidth={1.7} aria-hidden="true" />
+      <div className="book-product-media">
+        <span className={`book-product-type${isBundle ? " bundle" : ""}`}>
+          {isBundle ? (
+            <Package size={12} aria-hidden="true" />
+          ) : (
+            <BookOpen size={12} aria-hidden="true" />
+          )}
+          {isBundle
+            ? `Bundle · ${product.bundle_items.length} libri`
+            : PRODUCT_TYPE_LABELS[product.product_type]}
+        </span>
+
+        <span className="book-product-selected-mark" aria-hidden="true">
+          <Check size={15} strokeWidth={2.6} />
+        </span>
+
+        {product.cover_image && failedCoverUrl !== product.cover_image ? (
+          // Le URL sono normalizzate server-side sul solo bucket Supabase dedicato.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.cover_image}
+            alt=""
+            className="book-product-cover"
+            loading="lazy"
+            decoding="async"
+            onError={() => setFailedCoverUrl(product.cover_image)}
+          />
+        ) : (
+          <div className="book-cover-placeholder" aria-hidden="true">
+            {isBundle ? (
+              <Package size={30} strokeWidth={1.45} />
             ) : (
-              <BookOpen size={23} strokeWidth={1.7} aria-hidden="true" />
-            )
-          ) : null}
-        </span>
+              <BookOpen size={30} strokeWidth={1.45} />
+            )}
+            <span>{isBundle ? "Bundle ASTRA" : "Edizione ASTRA"}</span>
+          </div>
+        )}
+      </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex w-full items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <span
-                className={`inline-flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                  isBundle
-                    ? "bg-[#0E1F6B] text-white"
-                    : "bg-[#E8EDFB] text-[#0E1F6B]"
-                }`}
-                aria-hidden="true"
-              >
-                {isBundle ? <Package size={15} /> : <BookOpen size={15} />}
-              </span>
-              <span
-                className={`text-[.66rem] font-bold uppercase tracking-[.16em] ${
-                  isBundle ? "text-[#0E1F6B]" : "text-[#6B7280]"
-                }`}
-              >
-                {isBundle
-                  ? `Bundle · ${product.bundle_items.length} libri`
-                  : PRODUCT_TYPE_LABELS[product.product_type]}
-              </span>
-            </div>
+      <div className="book-product-body">
+        <h3 id={`book-product-${product.id}`} className="book-product-title">
+          {product.title}
+        </h3>
 
-            <span
-              className={`flex size-6 shrink-0 items-center justify-center rounded-full border transition ${
-                selected
-                  ? "border-[#0E1F6B] bg-[#0E1F6B] text-white"
-                  : "border-[rgba(14,31,107,.18)] bg-white text-transparent"
-              }`}
-              aria-hidden="true"
-            >
-              <Check size={13} strokeWidth={2.5} />
+        {product.description ? (
+          <p className="book-product-description">{product.description}</p>
+        ) : null}
+
+        {isBundle && product.bundle_items.length > 0 ? (
+          <div className="book-bundle-items">
+            <p className="book-bundle-items-label">Inclusi nel bundle</p>
+            <ul>
+              {visibleBundleItems.map((item, index) => (
+                <li key={`${product.id}-${index}-${item}`}>
+                  <span className="book-bundle-dot" aria-hidden="true" />
+                  <span>{item}</span>
+                </li>
+              ))}
+              {remainingBundleItems > 0 ? (
+                <li>
+                  <span className="book-bundle-dot" aria-hidden="true" />
+                  <span>Altri {remainingBundleItems} prodotti inclusi</span>
+                </li>
+              ) : null}
+            </ul>
+          </div>
+        ) : null}
+
+        <div className="book-product-footer">
+          <div>
+            <span className="book-product-year">
+              {BOOK_YEAR_LABELS[product.reference_year]}
             </span>
+            <strong className="book-product-price">{formatPrice(product.price)}</strong>
           </div>
 
-          <div className="mt-3 min-w-0">
-            <h3 className="text-[1rem] leading-snug font-bold text-[#08102A] sm:text-[1.04rem]">
-              {product.title}
-            </h3>
-            {product.description ? (
-              <p className="mt-1.5 line-clamp-2 text-[.82rem] leading-relaxed text-[#6B7280]">
-                {product.description}
-              </p>
-            ) : null}
-          </div>
+          <button
+            type="button"
+            aria-pressed={selected}
+            aria-label={
+              selected
+                ? `Rimuovi ${product.title} dalla selezione`
+                : disabled
+                  ? `${product.title}: ${
+                    unavailable ? unavailableLabel : "selezione non disponibile"
+                  }`
+                  : `Aggiungi ${product.title} alla selezione`
+            }
+            disabled={disabled}
+            onClick={() => onToggle(product.id)}
+            className={`book-product-action${selected ? " selected" : ""}`}
+          >
+            {disabled ? (
+              unavailable ? unavailableLabel : "Non selezionabile"
+            ) : selected ? (
+              <>
+                <Check size={14} aria-hidden="true" />
+                Selezionato
+              </>
+            ) : (
+              <>
+                <Plus size={14} aria-hidden="true" />
+                Aggiungi
+              </>
+            )}
+          </button>
         </div>
       </div>
-
-      {isBundle && product.bundle_items.length > 0 ? (
-        <div className="mt-3 rounded-xl bg-[rgba(14,31,107,.045)] px-3 py-2.5">
-          <p className="mb-1 text-[.64rem] font-bold uppercase tracking-[.12em] text-[#2E4080]">
-            Prodotti inclusi
-          </p>
-          <ul className="space-y-1 text-[.76rem] leading-snug text-[#44506D]">
-            {product.bundle_items.map((item) => (
-              <li key={item} className="flex gap-2">
-                <span className="mt-[.42rem] size-1 shrink-0 rounded-full bg-[#1A3399]" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-        <span className="text-[.72rem] font-semibold text-[#6B7280]">
-          {BOOK_YEAR_LABELS[product.reference_year]}
-        </span>
-        <span className="text-[1.05rem] font-extrabold tracking-[-.02em] text-[#08102A]">
-          {formatPrice(product.price)}
-        </span>
-      </div>
-
-      {unavailable && product.availability_reason ? (
-        <div className="absolute inset-x-4 bottom-4 rounded-lg bg-[#F2F3F6] px-3 py-2 text-center text-[.72rem] font-bold text-[#596174] sm:inset-x-5">
-          {AVAILABILITY_LABELS[product.availability_reason]}
-        </div>
-      ) : null}
-    </button>
+    </article>
   );
 }

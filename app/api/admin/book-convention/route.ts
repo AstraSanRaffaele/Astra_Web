@@ -1541,8 +1541,6 @@ export async function DELETE(req: NextRequest) {
         return privateJson({ error: "Convenzione libri non trovata." }, 404);
       }
 
-      const coverPaths = await listConventionProductImages(supabase, conventionId);
-
       const { data: deletionSummary, error: conventionDeleteError } = await supabase
         .rpc("delete_book_convention_with_history", {
           p_convention_id: conventionId,
@@ -1559,21 +1557,58 @@ export async function DELETE(req: NextRequest) {
           );
         }
 
+        if (conventionDeleteError.code === "P0002") {
+          return privateJson({ error: "Convenzione libri non trovata." }, 404);
+        }
+
         throw conventionDeleteError;
       }
 
+      const validDeletionSummary =
+        deletionSummary !== null &&
+        typeof deletionSummary === "object" &&
+        !Array.isArray(deletionSummary) &&
+        (deletionSummary as Record<string, unknown>).deleted === true;
+
+      if (!validDeletionSummary) {
+        throw new Error(
+          "La procedura di cancellazione non ha confermato l’eliminazione della convenzione."
+        );
+      }
+
       let coverCleanupFailed = false;
+      const removedCoverPaths = new Set<string>();
 
-      for (let index = 0; index < coverPaths.length; index += 100) {
-        const { error: coverDeleteError } = await supabase.storage
-          .from(PRODUCT_IMAGE_BUCKET)
-          .remove(coverPaths.slice(index, index + 100));
+      // Lo storico nel database è già stato cancellato atomicamente. La pulizia
+      // Storage resta separata: un problema temporaneo sui file non deve lasciare
+      // la convenzione in uno stato parzialmente eliminato.
+      for (let cleanupPass = 0; cleanupPass < 2; cleanupPass += 1) {
+        try {
+          const coverPaths = (await listConventionProductImages(supabase, conventionId))
+            .filter(path => !removedCoverPaths.has(path));
 
-        if (coverDeleteError) {
+          for (let index = 0; index < coverPaths.length; index += 100) {
+            const paths = coverPaths.slice(index, index + 100);
+            const { error: coverDeleteError } = await supabase.storage
+              .from(PRODUCT_IMAGE_BUCKET)
+              .remove(paths);
+
+            if (coverDeleteError) {
+              coverCleanupFailed = true;
+              logRouteError(
+                `Errore pulizia copertine convenzione libri ${conventionId}`,
+                coverDeleteError
+              );
+              continue;
+            }
+
+            paths.forEach(path => removedCoverPaths.add(path));
+          }
+        } catch (coverListError) {
           coverCleanupFailed = true;
           logRouteError(
-            `Errore pulizia copertine convenzione libri ${conventionId}`,
-            coverDeleteError
+            `Errore lettura copertine convenzione libri ${conventionId}`,
+            coverListError
           );
         }
       }

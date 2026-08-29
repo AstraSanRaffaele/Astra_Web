@@ -1126,13 +1126,14 @@ export default function AdminConventionManager({
     if (deleteConfirmationId === null) return;
 
     const trigger = deleteTriggerRef.current;
+    const main = adminMainRef.current;
     const focusFrame = window.requestAnimationFrame(() => {
       deleteCheckboxRef.current?.focus();
     });
 
     return () => {
       window.cancelAnimationFrame(focusFrame);
-      const fallbackTarget = trigger?.isConnected ? trigger : adminMainRef.current;
+      const fallbackTarget = trigger?.isConnected ? trigger : main;
       window.requestAnimationFrame(() => fallbackTarget?.focus());
     };
   }, [deleteConfirmationId]);
@@ -1168,7 +1169,10 @@ export default function AdminConventionManager({
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
 
-      if (event.shiftKey && document.activeElement === first) {
+      if (!dialog.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
@@ -1514,8 +1518,9 @@ export default function AdminConventionManager({
     }
   }
 
-  async function handleDelete(conv: Convenzione) {
+  async function handleDelete(conv: Convenzione, trigger?: HTMLButtonElement) {
     if (booksScope) {
+      deleteTriggerRef.current = trigger ?? null;
       setDeleteConfirmation({ convention: conv, acknowledged: false });
       setDeleteConfirmationError("");
       return;
@@ -1834,10 +1839,13 @@ export default function AdminConventionManager({
           }}
         >
           <div
+            ref={deleteDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-book-convention-title"
             aria-describedby="delete-book-convention-description"
+            aria-busy={deletingId === deleteConfirmation.convention.id}
+            tabIndex={-1}
             onClick={event => event.stopPropagation()}
             style={{
               width: "min(100%, 540px)",
@@ -1877,6 +1885,7 @@ export default function AdminConventionManager({
 
             <label style={{ display: "flex", alignItems: "flex-start", gap: ".7rem", marginTop: "1rem", border: "1px solid rgba(153,27,27,.16)", borderRadius: ".9rem", background: "#fff8f8", padding: ".85rem", color: "#641b1b", fontSize: ".8rem", fontWeight: 750, lineHeight: 1.5, cursor: deletingId === null ? "pointer" : "not-allowed" }}>
               <input
+                ref={deleteCheckboxRef}
                 type="checkbox"
                 checked={deleteConfirmation.acknowledged}
                 disabled={deletingId !== null}
@@ -1898,7 +1907,7 @@ export default function AdminConventionManager({
               </div>
             ) : null}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: ".65rem", marginTop: "1.2rem", flexWrap: "wrap" }}>
+            <div className="book-delete-dialog-actions" style={{ display: "flex", justifyContent: "flex-end", gap: ".65rem", marginTop: "1.2rem", flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={() => {
@@ -1917,9 +1926,11 @@ export default function AdminConventionManager({
                 style={{ minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: ".5rem", border: "none", background: deleteConfirmation.acknowledged && deletingId === null ? "#991b1b" : "#d3a5a5", color: "white", borderRadius: ".8rem", padding: ".65rem 1rem", fontWeight: 850, cursor: deleteConfirmation.acknowledged && deletingId === null ? "pointer" : "not-allowed" }}
               >
                 <Trash2 size={16} aria-hidden="true" />
-                {deletingId === deleteConfirmation.convention.id
-                  ? "Eliminazione in corso..."
-                  : "Elimina convenzione e storico"}
+                <span aria-live="polite">
+                  {deletingId === deleteConfirmation.convention.id
+                    ? "Eliminazione in corso..."
+                    : "Elimina convenzione e storico"}
+                </span>
               </button>
             </div>
           </div>
@@ -1992,7 +2003,13 @@ export default function AdminConventionManager({
         </div>
       )}
 
-      <main style={{ minHeight: "100vh", background: "linear-gradient(180deg,#f7f9fc 0%,#eef3fb 100%)", padding: "8.5rem 1.5rem 4rem" }}>
+      <main
+        ref={adminMainRef}
+        tabIndex={-1}
+        aria-hidden={deleteConfirmation ? true : undefined}
+        inert={deleteConfirmation ? true : undefined}
+        style={{ minHeight: "100vh", background: "linear-gradient(180deg,#f7f9fc 0%,#eef3fb 100%)", padding: "8.5rem 1.5rem 4rem" }}
+      >
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
 
           {/* ── Hero ── */}
@@ -2094,19 +2111,19 @@ export default function AdminConventionManager({
           {(error || success || warning) && (
             <div style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}>
               {error && (
-                <div style={{ background: "rgba(190,39,39,.08)", color: "#8b1d1d", border: "1px solid rgba(190,39,39,.14)", borderRadius: "1rem", padding: ".9rem 1.1rem", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div role="alert" style={{ background: "rgba(190,39,39,.08)", color: "#8b1d1d", border: "1px solid rgba(190,39,39,.14)", borderRadius: "1rem", padding: ".9rem 1.1rem", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   {error}
                   <button onClick={() => setError("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#8b1d1d", fontSize: "1rem" }}>✕</button>
                 </div>
               )}
               {success && (
-                <div style={{ background: "rgba(12,122,77,.08)", color: "#0b6b46", border: "1px solid rgba(12,122,77,.14)", borderRadius: "1rem", padding: ".9rem 1.1rem", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div role="status" aria-live="polite" style={{ background: "rgba(12,122,77,.08)", color: "#0b6b46", border: "1px solid rgba(12,122,77,.14)", borderRadius: "1rem", padding: ".9rem 1.1rem", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   {success}
                   <button onClick={() => setSuccess("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#0b6b46", fontSize: "1rem" }}>✕</button>
                 </div>
               )}
               {warning && (
-                <div style={{ background: "#fff8e8", color: "#73551a", border: "1px solid #ead8ad", borderRadius: "1rem", padding: ".9rem 1.1rem", fontWeight: 650, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
+                <div role="status" aria-live="polite" style={{ background: "#fff8e8", color: "#73551a", border: "1px solid #ead8ad", borderRadius: "1rem", padding: ".9rem 1.1rem", fontWeight: 650, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
                   {warning}
                   <button onClick={() => setWarning("")} aria-label="Chiudi avviso" style={{ background: "none", border: "none", cursor: "pointer", color: "#73551a", fontSize: "1rem" }}>✕</button>
                 </div>
@@ -2467,7 +2484,7 @@ export default function AdminConventionManager({
                           Modifica
                         </button>
                         <button
-                          onClick={() => handleDelete(c)}
+                          onClick={event => void handleDelete(c, event.currentTarget)}
                           disabled={deleting}
                           title={booksScope ? "Elimina definitivamente convenzione e storico" : undefined}
                           style={{ border: "1px solid rgba(190,39,39,.18)", background: deleting ? "rgba(190,39,39,.05)" : "white", color: deleting ? "#b57b7b" : "#8b1d1d", borderRadius: "999px", padding: ".5rem 1rem", fontWeight: 700, fontSize: ".82rem", cursor: deleting ? "wait" : "pointer", transition: "background .18s" }}
@@ -2675,6 +2692,11 @@ export default function AdminConventionManager({
         }
 
         @media (max-width: 520px) {
+          .book-delete-dialog-actions button {
+            width: 100%;
+            flex: 1 1 100%;
+          }
+
           .conv-admin-row {
             display: grid !important;
             grid-template-columns: 44px 1fr;

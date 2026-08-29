@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   CircleAlert,
   RotateCcw,
+  Search,
+  X,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,7 @@ import {
   type StudyArea,
 } from "@/lib/book-convention";
 import AdhesionDialog from "./adhesion-dialog";
+import BookConventionStyles from "./book-convention-styles";
 import BookProductCard from "./book-product-card";
 import OrderSummary from "./order-summary";
 
@@ -36,27 +39,52 @@ function formatRoundDate(value: string) {
   }).format(new Date(value));
 }
 
+function hasDisplayableEndDate(value: string) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) && date.getUTCFullYear() < 9000;
+}
+
+function normalizeSearchValue(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("it")
+    .trim();
+}
+
 function PageSkeleton() {
   return (
-    <main className="min-h-screen bg-[#F8F7F3] px-4 pt-28 pb-16 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl animate-pulse">
-        <div className="h-3 w-28 rounded-full bg-[#E2E5EC]" />
-        <div className="mt-5 h-12 w-72 max-w-full rounded-2xl bg-[#E2E5EC]" />
-        <div className="mt-4 h-4 w-full max-w-2xl rounded-full bg-[#E7E9EE]" />
-        <div className="mt-2 h-4 w-4/5 max-w-xl rounded-full bg-[#E7E9EE]" />
-        <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div>
-            <div className="h-14 rounded-2xl bg-[#E2E5EC]" />
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {[0, 1, 2, 3].map((item) => (
-                <div key={item} className="h-52 rounded-[1.35rem] bg-[#E7E9EE]" />
-              ))}
+    <>
+      <BookConventionStyles />
+      <main className="book-page" aria-busy="true" aria-label="Caricamento catalogo libri">
+        <section className="conv-hero book-hero book-shell">
+          <div className="h-11 w-40 rounded-full bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
+          <div className="book-hero-grid">
+            <div>
+              <div className="h-3 w-36 rounded-full bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
+              <div className="mt-5 h-24 w-full max-w-xl rounded-[1.5rem] bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
+              <div className="mt-5 h-4 w-full max-w-2xl rounded-full bg-[#E7E9EE]" style={{ animation: "sk 1.4s ease infinite" }} />
+              <div className="mt-2 h-4 w-4/5 max-w-xl rounded-full bg-[#E7E9EE]" style={{ animation: "sk 1.4s ease infinite" }} />
             </div>
+            <div className="h-40 rounded-[1.5rem] bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
           </div>
-          <div className="h-72 rounded-[1.5rem] bg-[#E2E5EC]" />
-        </div>
-      </div>
-    </main>
+        </section>
+
+        <section className="book-shop book-shell">
+          <div className="book-loading-grid">
+            <div>
+              <div className="h-48 rounded-[1.75rem] bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {[0, 1, 2, 3].map((item) => (
+                  <div key={item} className="book-skeleton-card" />
+                ))}
+              </div>
+            </div>
+            <div className="h-80 rounded-[1.5rem] bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
+          </div>
+        </section>
+      </main>
+    </>
   );
 }
 
@@ -70,6 +98,7 @@ export default function BookConventionClient({
   const [data, setData] = useState<BookConventionApiResponse | null>(null);
   const [activeArea, setActiveArea] = useState<StudyArea>(STUDY_AREAS[0]);
   const [activeYear, setActiveYear] = useState<BookYear>(BOOK_YEARS[0]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -180,13 +209,32 @@ export default function BookConventionClient({
     if (firstYearWithProducts) setActiveYear(firstYearWithProducts);
   }, [activeArea, activeYear, catalog]);
 
+  const normalizedSearch = useMemo(
+    () => normalizeSearchValue(searchTerm),
+    [searchTerm]
+  );
+
   const visibleProducts = useMemo(
     () =>
-      catalog.filter(
-        (product) =>
-          product.study_area === activeArea && product.reference_year === activeYear
-      ),
-    [activeArea, activeYear, catalog]
+      catalog.filter((product) => {
+        if (
+          product.study_area !== activeArea ||
+          product.reference_year !== activeYear
+        ) {
+          return false;
+        }
+
+        if (!normalizedSearch) return true;
+
+        return normalizeSearchValue(
+          [
+            product.title,
+            product.description ?? "",
+            product.bundle_items.join(" "),
+          ].join(" ")
+        ).includes(normalizedSearch);
+      }),
+    [activeArea, activeYear, catalog, normalizedSearch]
   );
 
   const selectedProducts = useMemo(() => {
@@ -231,6 +279,7 @@ export default function BookConventionClient({
 
     setSelectedConventionId(conventionId);
     setSelectedIds([]);
+    setSearchTerm("");
     setSuccessMessage("");
     setDialogOpen(false);
     void loadConvention(false, conventionId);
@@ -240,78 +289,90 @@ export default function BookConventionClient({
 
   if (loadState === "error" || !data?.convention) {
     return (
-      <main className="min-h-screen bg-[#F8F7F3] px-4 pt-32 pb-20 sm:px-6">
-        <div className="mx-auto max-w-xl rounded-[1.5rem] border border-[rgba(14,31,107,.1)] bg-white p-6 text-center shadow-[0_12px_36px_rgba(14,31,107,.06)] sm:p-8">
-          <CircleAlert className="mx-auto text-[#9A3B3B]" size={28} />
-          <h1
-            className="mt-4 text-3xl font-bold text-[#08102A]"
-            style={{ fontFamily: "'Cormorant Garamond', serif" }}
-          >
-            Convenzione non disponibile
-          </h1>
-          <p className="mt-2 text-[.85rem] leading-relaxed text-[#6B7280]">
-            {loadError || "La sezione non può essere caricata in questo momento."}
-          </p>
-          <Button
-            type="button"
-            onClick={() => void loadConvention(false, selectedConventionId ?? undefined)}
-            className="mt-5 h-10 rounded-full bg-[#0E1F6B] px-5 text-white hover:bg-[#1A3399]"
-          >
-            <RotateCcw size={14} />
-            Riprova
-          </Button>
-        </div>
-      </main>
+      <>
+        <BookConventionStyles />
+        <main className="book-page">
+          <section className="conv-hero book-hero book-shell">
+            <Link href="/convenzioni" className="book-back-link">
+              <ArrowLeft size={14} aria-hidden="true" />
+              Tutte le convenzioni
+            </Link>
+
+            <div className="mx-auto mt-10 max-w-xl rounded-[1.75rem] border border-[rgba(14,31,107,.1)] bg-white p-7 text-center shadow-[0_12px_36px_rgba(14,31,107,.06)] sm:p-9">
+              <CircleAlert className="mx-auto text-[#9A3B3B]" size={30} />
+              <h1
+                className="mt-4 text-4xl leading-none font-bold text-[#08102A]"
+                style={{ fontFamily: "'Cormorant Garamond', serif" }}
+              >
+                Convenzione non disponibile
+              </h1>
+              <p className="mt-3 text-[.86rem] leading-relaxed text-[#596174]">
+                {loadError || "La sezione non può essere caricata in questo momento."}
+              </p>
+              <Button
+                type="button"
+                onClick={() =>
+                  void loadConvention(false, selectedConventionId ?? undefined)
+                }
+                className="mt-6 h-11 rounded-full bg-[#0E1F6B] px-5 text-white hover:bg-[#1A3399]"
+              >
+                <RotateCcw size={14} />
+                Riprova
+              </Button>
+            </div>
+          </section>
+        </main>
+      </>
     );
   }
 
   const convention = data.convention;
   const activeAdhesion = data.activeAdhesion ?? null;
+  const availableProducts = catalog.filter((product) => product.is_available).length;
+  const bundleCount = catalog.filter((product) => product.product_type === "bundle").length;
+  const activeRoundHasProducts = Boolean(data.activeRound && availableProducts > 0);
 
   return (
-    <main className="min-h-screen bg-[#F8F7F3] text-[#08102A]">
-      <section className="px-4 pt-28 pb-16 sm:px-6 lg:px-8 lg:pt-32 lg:pb-24">
-        <div className="mx-auto max-w-6xl">
-          <Link
-            href="/convenzioni"
-            className="inline-flex items-center gap-1.5 text-[.72rem] font-bold text-[#2E4080] no-underline transition hover:text-[#0E1F6B]"
-          >
-            <ArrowLeft size={13} />
+    <>
+      <BookConventionStyles />
+      <main className="book-page">
+        <section className="conv-hero book-hero book-shell">
+          <Link href="/convenzioni" className="book-back-link">
+            <ArrowLeft size={14} aria-hidden="true" />
             Tutte le convenzioni
           </Link>
 
-          <header className="mt-5 grid items-end gap-5 border-b border-[rgba(14,31,107,.1)] pb-7 md:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="max-w-3xl">
-              <p className="text-[.66rem] font-bold uppercase tracking-[.22em] text-[#2E4080]">
-                Area riservata agli associati
+          <div className="book-hero-grid">
+            <header>
+              <p className="conv-hero-eyebrow text-[.68rem] font-bold uppercase tracking-[.22em] text-[#2E4080]">
+                Convenzioni Libri · Area riservata
               </p>
-              <h1
-                className="mt-2 text-[clamp(2.65rem,6vw,4.4rem)] leading-[.95] font-bold tracking-[-.035em] text-[#08102A]"
-                style={{ fontFamily: "'Cormorant Garamond', serif" }}
-              >
-                {convention.titolo || "Convenzioni Libri"}
+              <h1 className="conv-hero-h1 book-hero-title">
+                I libri per
+                <br />
+                <span>il tuo percorso.</span>
               </h1>
-              <p className="mt-4 max-w-2xl text-[.9rem] leading-relaxed text-[#596174] sm:text-[.96rem]">
+              <p className="book-convention-name">{convention.titolo || "Convenzioni Libri"}</p>
+              <p className="conv-hero-sub book-hero-description">
                 {convention.descrizione ||
-                  "Seleziona i libri o i bundle disponibili per il tuo percorso di studi e invia la richiesta di adesione."}
+                  "Scegli libri singoli e bundle per il tuo corso di studi e invia la richiesta di adesione."}
               </p>
               {convention.partner ? (
-                <p className="mt-2 text-[.72rem] font-semibold text-[#7B8290]">
+                <p className="mt-3 text-[.72rem] font-semibold text-[#596174]">
                   In collaborazione con {convention.partner}
                 </p>
               ) : null}
-            </div>
+            </header>
 
-            <div className="flex flex-col gap-2 md:items-end md:text-right">
+            <aside className="book-hero-meta" aria-label="Stato della convenzione libri">
+              <span className="book-meta-label">Convenzione selezionata</span>
               {(data.conventions?.length ?? 0) > 1 ? (
-                <label className="block w-full min-w-0 md:w-72">
-                  <span className="mb-1 block text-left text-[.64rem] font-bold uppercase tracking-[.12em] text-[#596174]">
-                    Convenzione
-                  </span>
+                <>
                   <select
                     value={selectedConventionId ?? convention.id}
                     onChange={(event) => selectConvention(Number(event.target.value))}
-                    className="h-11 w-full rounded-xl border border-[rgba(14,31,107,.14)] bg-white px-3 text-[.78rem] font-semibold text-[#08102A] outline-none focus:border-[#1A3399] focus:ring-3 focus:ring-[#1A3399]/10"
+                    className="book-select"
+                    aria-label="Seleziona la convenzione libri"
                   >
                     {data.conventions?.map((item) => (
                       <option key={item.id} value={item.id}>
@@ -319,154 +380,213 @@ export default function BookConventionClient({
                       </option>
                     ))}
                   </select>
-                </label>
-              ) : null}
+                  <p className="book-switch-note">
+                    Cambiando convenzione, la selezione corrente verrà svuotata.
+                  </p>
+                </>
+              ) : (
+                <p className="text-[.82rem] leading-snug font-bold text-[#08102A]">
+                  {convention.titolo || "Convenzioni Libri"}
+                </p>
+              )}
 
               {data.activeRound ? (
-                <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(14,31,107,.12)] bg-white px-3.5 py-2 text-[.72rem] font-semibold text-[#344363]">
-                  <CalendarDays size={14} className="text-[#2E4080]" />
-                  Raccolta aperta dal {formatRoundDate(data.activeRound.starts_at)}
+                <div className="book-round-status">
+                  <CalendarDays size={17} className="mt-0.5 shrink-0 text-[#2E4080]" />
+                  <p>
+                    <strong className="block text-[#08102A]">Raccolta ordini aperta</strong>
+                    Dal {formatRoundDate(data.activeRound.starts_at)}
+                    {hasDisplayableEndDate(data.activeRound.ends_at)
+                      ? ` al ${formatRoundDate(data.activeRound.ends_at)}`
+                      : ""}
+                  </p>
                 </div>
               ) : (
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#E7D7B5] bg-[#FFF9ED] px-3.5 py-2 text-[.72rem] font-semibold text-[#73551A]">
-                  <CalendarDays size={14} />
-                  Nessuna raccolta aperta
+                <div className="book-round-status closed">
+                  <CalendarDays size={17} className="mt-0.5 shrink-0" />
+                  <p>
+                    <strong className="block">Raccolta ordini chiusa</strong>
+                    Il catalogo resta consultabile.
+                  </p>
                 </div>
               )}
-            </div>
-          </header>
 
-          <div className="mt-6 space-y-3">
-            {successMessage ? (
-              <Alert className="rounded-2xl border-[#CFE6D6] bg-[#F2FAF4] p-4 text-[#145C31]">
-                <CheckCircle2 size={18} />
-                <AlertTitle>Adesione completata</AlertTitle>
-                <AlertDescription className="text-[#477257]">{successMessage}</AlertDescription>
-              </Alert>
-            ) : null}
-
-            {activeAdhesion && !successMessage ? (
-              <Alert className="rounded-2xl border-[#CFE6D6] bg-[#F2FAF4] p-4 text-[#145C31]">
-                <CheckCircle2 size={18} />
-                <AlertTitle>Adesione già registrata</AlertTitle>
-                <AlertDescription className="text-[#477257]">
-                  Hai già aderito per la raccolta attiva. Puoi consultare qui sotto il catalogo e il riepilogo della richiesta.
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            {!data.canAdhere && !activeAdhesion ? (
-              <Alert className="rounded-2xl border-[#E7D7B5] bg-[#FFF9ED] p-4 text-[#73551A]">
-                <CircleAlert size={18} />
-                <AlertTitle>Adesioni non aperte</AlertTitle>
-                <AlertDescription className="text-[#806934]">
-                  Il catalogo resta consultabile, ma al momento non è possibile selezionare o inviare una richiesta.
-                </AlertDescription>
-              </Alert>
-            ) : null}
+              <div className="mt-4 flex gap-5 border-t border-[rgba(8,16,42,.07)] pt-4">
+                <div>
+                  <strong className="block text-xl text-[#08102A]">{catalog.length}</strong>
+                  <span className="text-[.66rem] font-semibold text-[#596174]">Proposte</span>
+                </div>
+                <div>
+                  <strong className="block text-xl text-[#08102A]">{bundleCount}</strong>
+                  <span className="text-[.66rem] font-semibold text-[#596174]">Bundle</span>
+                </div>
+              </div>
+            </aside>
           </div>
+        </section>
 
-          {catalog.length === 0 ? (
-            <div className="mt-8 rounded-[1.5rem] border border-dashed border-[rgba(14,31,107,.18)] bg-white px-5 py-14 text-center">
-              <p className="text-[.9rem] font-bold text-[#344363]">Nessun libro disponibile</p>
-              <p className="mt-1 text-[.78rem] text-[#7B8290]">
-                Il catalogo della convenzione non contiene ancora elementi attivi.
-              </p>
+        <div className="book-shell book-notices" aria-live="polite">
+          {successMessage ? (
+            <Alert className="rounded-2xl border-[#CFE6D6] bg-[#F2FAF4] p-4 text-[#145C31]">
+              <CheckCircle2 size={18} />
+              <AlertTitle>Adesione completata</AlertTitle>
+              <AlertDescription className="text-[#477257]">
+                {successMessage}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {activeAdhesion && !successMessage ? (
+            <Alert className="rounded-2xl border-[#CFE6D6] bg-[#F2FAF4] p-4 text-[#145C31]">
+              <CheckCircle2 size={18} />
+              <AlertTitle>Adesione già registrata</AlertTitle>
+              <AlertDescription className="text-[#477257]">
+                La richiesta per questa raccolta è già stata inviata. Nel riepilogo trovi i dati dell’ordine registrato.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {!data.canAdhere && !activeAdhesion ? (
+            <Alert className="rounded-2xl border-[#E7D7B5] bg-[#FFF9ED] p-4 text-[#73551A]">
+              <CircleAlert size={18} />
+              <AlertTitle>
+                {!data.activeRound
+                  ? "Raccolta ordini non aperta"
+                  : !activeRoundHasProducts
+                    ? "Catalogo in aggiornamento"
+                    : "Adesioni temporaneamente non disponibili"}
+              </AlertTitle>
+              <AlertDescription className="text-[#73551A]">
+                {!data.activeRound
+                  ? "Puoi consultare prezzi e proposte, ma la selezione sarà disponibile alla prossima apertura."
+                  : !activeRoundHasProducts
+                    ? "La raccolta è aperta, ma al momento non contiene prodotti selezionabili."
+                    : "Aggiorna la pagina tra poco oppure contatta ASTRA per maggiori informazioni."}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        </div>
+
+        {catalog.length === 0 ? (
+          <section className="book-shell book-shop">
+            <div className={activeAdhesion ? "book-shop-layout" : undefined}>
+              <div className="book-empty-catalog">
+                <p className="text-[.95rem] font-bold text-[#344363]">
+                  Nessun libro disponibile
+                </p>
+                <p className="mx-auto mt-2 max-w-lg text-[.8rem] leading-relaxed text-[#596174]">
+                  Il catalogo della convenzione non contiene ancora libri o bundle attivi.
+                </p>
+              </div>
+
+              {activeAdhesion ? (
+                <OrderSummary
+                  products={[]}
+                  total={0}
+                  canAdhere={false}
+                  activeAdhesion={activeAdhesion}
+                  onRemove={toggleProduct}
+                  onProceed={() => undefined}
+                />
+              ) : null}
             </div>
-          ) : (
-            <div className="mt-8 grid gap-7 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-              <div className="min-w-0">
-                <div className="md:hidden">
-                  <label htmlFor="study-area" className="mb-1.5 block text-[.7rem] font-bold text-[#344363]">
-                    Area di studio
-                  </label>
-                  <select
-                    id="study-area"
-                    value={activeArea}
-                    onChange={(event) => setActiveArea(event.target.value as StudyArea)}
-                    className="h-12 w-full rounded-xl border border-[rgba(14,31,107,.14)] bg-white px-3.5 text-[.82rem] font-semibold text-[#08102A] outline-none focus:border-[#1A3399] focus:ring-3 focus:ring-[#1A3399]/10"
-                  >
-                    {STUDY_AREAS.map((area) => (
-                      <option key={area} value={area}>
-                        {STUDY_AREA_LABELS[area]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="hidden grid-cols-3 gap-2 rounded-2xl border border-[rgba(14,31,107,.09)] bg-white p-1.5 md:grid">
-                  {STUDY_AREAS.map((area) => {
-                    const active = activeArea === area;
-                    const count = catalog.filter((product) => product.study_area === area).length;
-
-                    return (
+          </section>
+        ) : (
+          <section className="book-shell book-shop" aria-labelledby="book-catalog-title">
+            <div className="book-shop-layout">
+              <div className="book-catalog">
+                <div className="conv-search-wrap book-toolbar">
+                  <div className="book-search-field">
+                    <Search className="book-search-icon" size={17} aria-hidden="true" />
+                    <input
+                      type="search"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      className="conv-search"
+                      placeholder="Cerca titolo, ISBN o contenuto del bundle…"
+                      aria-label="Cerca nel catalogo libri"
+                    />
+                    {searchTerm ? (
                       <button
-                        key={area}
                         type="button"
-                        onClick={() => setActiveArea(area)}
-                        aria-pressed={active}
-                        className={`min-h-11 rounded-xl px-3 py-2 text-[.73rem] leading-snug font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A3399]/20 ${
-                          active
-                            ? "bg-[#0E1F6B] text-white shadow-[0_5px_14px_rgba(14,31,107,.16)]"
-                            : "text-[#596174] hover:bg-[#F1F3F8] hover:text-[#0E1F6B]"
-                        }`}
+                        onClick={() => setSearchTerm("")}
+                        className="book-clear-search"
+                        aria-label="Cancella ricerca"
                       >
-                        {STUDY_AREA_LABELS[area]}
-                        <span className={`ml-1.5 text-[.62rem] ${active ? "text-white/65" : "text-[#A0A6B2]"}`}>
-                          {count}
-                        </span>
+                        <X size={14} aria-hidden="true" />
                       </button>
-                    );
-                  })}
+                    ) : null}
+                  </div>
+
+                  <div className="book-filter-group">
+                    <span className="book-filter-label">Area di studio</span>
+                    <div className="book-filter-scroll" role="group" aria-label="Filtra per area di studio">
+                      {STUDY_AREAS.map((area) => {
+                        const count = catalog.filter(
+                          (product) => product.study_area === area
+                        ).length;
+                        const active = activeArea === area;
+
+                        return (
+                          <button
+                            key={area}
+                            type="button"
+                            onClick={() => setActiveArea(area)}
+                            aria-pressed={active}
+                            disabled={count === 0}
+                            className={`cat-pill${active ? " active" : ""}`}
+                          >
+                            {STUDY_AREA_LABELS[area]}
+                            <span className="book-pill-count">{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="book-filter-group">
+                    <span className="book-filter-label">Anno di corso</span>
+                    <div className="book-filter-scroll" role="group" aria-label="Filtra per anno di corso">
+                      {BOOK_YEARS.map((year) => {
+                        const count = catalog.filter(
+                          (product) =>
+                            product.study_area === activeArea &&
+                            product.reference_year === year
+                        ).length;
+                        const active = activeYear === year;
+
+                        return (
+                          <button
+                            key={year}
+                            type="button"
+                            onClick={() => setActiveYear(year)}
+                            aria-pressed={active}
+                            disabled={count === 0}
+                            className={`cat-pill${active ? " active" : ""}`}
+                          >
+                            {BOOK_YEAR_LABELS[year]}
+                            <span className="book-pill-count">{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="mt-5 flex gap-1 overflow-x-auto border-b border-[rgba(14,31,107,.1)] pb-px">
-                  {BOOK_YEARS.map((year) => {
-                    const active = activeYear === year;
-                    const count = catalog.filter(
-                      (product) =>
-                        product.study_area === activeArea && product.reference_year === year
-                    ).length;
-
-                    return (
-                      <button
-                        key={year}
-                        type="button"
-                        onClick={() => setActiveYear(year)}
-                        aria-pressed={active}
-                        className={`relative shrink-0 px-3 py-3 text-[.76rem] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A3399]/20 ${
-                          active ? "text-[#0E1F6B]" : "text-[#7B8290] hover:text-[#344363]"
-                        }`}
-                      >
-                        {BOOK_YEAR_LABELS[year]}
-                        <span className="ml-1 text-[.62rem] text-[#A0A6B2]">{count}</span>
-                        {active ? (
-                          <span className="absolute inset-x-2 bottom-[-1px] h-0.5 rounded-full bg-[#0E1F6B]" />
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-5 flex items-end justify-between gap-4">
+                <div className="book-results-head">
                   <div>
-                    <p className="text-[.66rem] font-bold uppercase tracking-[.16em] text-[#2E4080]">
-                      {STUDY_AREA_LABELS[activeArea]}
-                    </p>
-                    <h2
-                      className="mt-1 text-[1.65rem] leading-tight font-bold text-[#08102A]"
-                      style={{ fontFamily: "'Cormorant Garamond', serif" }}
-                    >
+                    <p className="book-results-eyebrow">{STUDY_AREA_LABELS[activeArea]}</p>
+                    <h2 id="book-catalog-title" className="book-results-title">
                       {BOOK_YEAR_LABELS[activeYear]}
                     </h2>
                   </div>
-                  <p className="shrink-0 text-[.7rem] font-semibold text-[#8A909D]">
+                  <p className="book-results-count" aria-live="polite">
                     {visibleProducts.length} {visibleProducts.length === 1 ? "proposta" : "proposte"}
                   </p>
                 </div>
 
                 {visibleProducts.length > 0 ? (
-                  <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                  <div className="conv-grid book-product-grid">
                     {visibleProducts.map((product) => (
                       <BookProductCard
                         key={product.id}
@@ -478,13 +598,26 @@ export default function BookConventionClient({
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-[1.35rem] border border-dashed border-[rgba(14,31,107,.16)] bg-white px-5 py-10 text-center">
-                    <p className="text-[.82rem] font-semibold text-[#596174]">
-                      Nessuna proposta per quest’anno
+                  <div className="book-empty-catalog">
+                    <p className="text-[.88rem] font-bold text-[#344363]">
+                      {normalizedSearch
+                        ? "Nessun prodotto corrisponde alla ricerca"
+                        : "Nessuna proposta per questi filtri"}
                     </p>
-                    <p className="mt-1 text-[.72rem] text-[#8A909D]">
-                      Seleziona un altro anno o un’altra area di studio.
+                    <p className="mx-auto mt-2 max-w-md text-[.76rem] leading-relaxed text-[#596174]">
+                      {normalizedSearch
+                        ? "Prova con un titolo, un autore o un ISBN differente."
+                        : "Seleziona un’altra area di studio o un altro anno di corso."}
                     </p>
+                    {normalizedSearch ? (
+                      <button
+                        type="button"
+                        onClick={() => setSearchTerm("")}
+                        className="book-inline-button"
+                      >
+                        Cancella ricerca
+                      </button>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -498,26 +631,25 @@ export default function BookConventionClient({
                 onProceed={() => setDialogOpen(true)}
               />
             </div>
-          )}
-        </div>
-      </section>
+          </section>
+        )}
 
-      {data.activeRound ? (
-        <AdhesionDialog
-          open={dialogOpen}
-          conventionId={convention.id}
-          roundId={data.activeRound.id}
-          products={selectedProducts}
-          total={total}
-          profile={data.profile}
-          initialFiscalCodeOrVat={data.latestAdhesion?.fiscal_code_or_vat}
-          initialAddress={data.latestAdhesion?.billing_shipping_address}
-          onClose={() => setDialogOpen(false)}
-          onCompleted={handleCompleted}
-          onUnauthorized={goToLogin}
-        />
-      ) : null}
-
-    </main>
+        {data.activeRound ? (
+          <AdhesionDialog
+            open={dialogOpen}
+            conventionId={convention.id}
+            roundId={data.activeRound.id}
+            products={selectedProducts}
+            total={total}
+            profile={data.profile}
+            initialFiscalCodeOrVat={data.latestAdhesion?.fiscal_code_or_vat}
+            initialAddress={data.latestAdhesion?.billing_shipping_address}
+            onClose={() => setDialogOpen(false)}
+            onCompleted={handleCompleted}
+            onUnauthorized={goToLogin}
+          />
+        ) : null}
+      </main>
+    </>
   );
 }
