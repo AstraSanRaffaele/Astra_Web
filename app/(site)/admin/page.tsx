@@ -272,42 +272,6 @@ export default function AdminPage() {
                 </a>
               </nav>
             </div>
-
-            <div className="card mobile-hide">
-              <div className="sectionHead">
-                <span className="section-tag">Nuovi iscritti</span>
-                <h2 className="sectionTitle">Utenti recenti</h2>
-              </div>
-
-              <div className="tableWrap">
-                <table className="usersTable">
-                  <thead>
-                    <tr>
-                      <th>Nome</th>
-                      <th>Mail</th>
-                      <th>Facoltà</th>
-                      <th>Ruolo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentUsers.map((user) => (
-                      <tr key={user.id}>
-                        <td>
-                          {user.nome} {user.cognome}
-                        </td>
-                        <td>{user.email_istituzionale}</td>
-                        <td>{user.facolta}</td>
-                        <td>
-                          <span className={`tableBadge ${user.role === "admin" ? "admin" : "user"}`}>
-                            {user.role}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
           </div>
         </section>
       </div>
