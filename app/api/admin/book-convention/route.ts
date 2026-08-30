@@ -22,6 +22,8 @@ type IncomingBook = {
   id?: number | string | null;
   title?: unknown;
   price?: unknown;
+  original_price?: unknown;
+  isbn?: unknown;
   reference_year?: unknown;
   description?: unknown;
   sort_order?: unknown;
@@ -35,6 +37,8 @@ type NormalizedBookInput = {
   id: number | null;
   title: string;
   price: number;
+  original_price: number | null | undefined;
+  isbn: string | null | undefined;
   reference_year: BookYear;
   description: string | null;
   sort_order: number;
@@ -49,6 +53,8 @@ type ExistingBookRow = {
   convention_id: number;
   title: string;
   price: number | string | null;
+  original_price: number | string | null;
+  isbn: string | null;
   reference_year: BookYear;
   description: string | null;
   sort_order: number | null;
@@ -66,7 +72,6 @@ type AdminAuthResult =
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PRODUCT_IMAGE_BUCKET = "book-conventions";
-const BOOK_CONVENTION_CATEGORY = "Libri_e_Materiale_Didattico";
 const MAX_PRODUCT_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_PRODUCT_IMAGE_REQUEST_SIZE = MAX_PRODUCT_IMAGE_SIZE + 128 * 1024;
 const OPEN_COLLECTION_ENDS_AT = "9999-12-31T23:59:59.999Z";
@@ -75,6 +80,8 @@ const PRODUCT_IMAGE_EXTENSIONS = {
   "image/png": "png",
   "image/webp": "webp",
 } as const;
+
+type DeliveryMode = "university" | "home";
 
 function privateJson(body: object, status = 200) {
   return NextResponse.json(body, {
@@ -189,6 +196,32 @@ function isStudyArea(value: unknown): value is StudyArea {
   return typeof value === "string" && STUDY_AREAS.includes(value as StudyArea);
 }
 
+function isDeliveryMode(value: unknown): value is DeliveryMode {
+  return value === "university" || value === "home";
+}
+
+function normalizeIsbn(value: unknown) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (typeof value !== "string") {
+    throw new Error("ISBN non valido.");
+  }
+
+  const rawIsbn = value.trim();
+  if (!/^[0-9Xx\s-]*$/.test(rawIsbn)) {
+    throw new Error("L’ISBN contiene caratteri non validi.");
+  }
+
+  const isbn = rawIsbn.toUpperCase().replace(/[\s-]/g, "");
+  if (!isbn) return null;
+
+  if (!/^(?:[0-9]{13}|[0-9]{9}[0-9X])$/.test(isbn)) {
+    throw new Error("L’ISBN deve contenere 10 o 13 caratteri validi.");
+  }
+
+  return isbn;
+}
+
 function normalizeStringArray(
   value: unknown,
   fieldLabel: string,
@@ -262,6 +295,11 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
       : parsePositiveInteger(book.id);
     const requestedTitle = cleanString(book.title);
     const price = parseNullableNumber(book.price);
+    const originalPrice =
+      book.original_price === undefined
+        ? undefined
+        : parseNullableNumber(book.original_price);
+    const isbn = normalizeIsbn(book.isbn);
     const description = cleanString(book.description);
     const sortOrder = parseInteger(book.sort_order) ?? index;
     const studyArea =
@@ -301,6 +339,25 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
       throw new Error(`Prezzo non valido per: ${title}`);
     }
 
+    if (
+      book.original_price !== undefined &&
+      book.original_price !== null &&
+      book.original_price !== "" &&
+      originalPrice === null
+    ) {
+      throw new Error(`Prezzo originale non valido per: ${title}`);
+    }
+
+    if (
+      originalPrice !== undefined &&
+      originalPrice !== null &&
+      (originalPrice < price || originalPrice > 1_000_000)
+    ) {
+      throw new Error(
+        `Il prezzo originale di “${title}” non può essere inferiore al prezzo convenzionato.`
+      );
+    }
+
     if (!isBookYear(book.reference_year)) {
       throw new Error(`Anno di riferimento non valido per: ${title}`);
     }
@@ -333,6 +390,8 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
       id,
       title,
       price,
+      original_price: originalPrice,
+      isbn,
       reference_year: book.reference_year,
       description: description || null,
       sort_order: sortOrder,
@@ -374,8 +433,8 @@ function validateResolvedProduct(product: {
 }
 async function getConventionOrNull(supabase: SupabaseClient, conventionId: number) {
   const { data, error } = await supabase
-    .from("convenzioni")
-    .select("id, titolo, is_book_convention, attiva")
+    .from("book_conventions")
+    .select("id, titolo, descrizione, ordine, attiva")
     .eq("id", conventionId)
     .maybeSingle();
 
@@ -503,7 +562,7 @@ async function uploadProductCover(supabase: SupabaseClient, req: NextRequest) {
       .maybeSingle(),
   ]);
 
-  if (!convention || convention.is_book_convention !== true) {
+  if (!convention) {
     return privateJson({ error: "Convenzione libri non trovata." }, 404);
   }
 
@@ -593,14 +652,22 @@ async function openCollection(
   body: Record<string, unknown>
 ) {
   const conventionId = parsePositiveInteger(body.convention_id);
+  const deliveryMode = body.delivery_mode;
 
   if (!conventionId) {
     return privateJson({ error: "Convenzione non valida." }, 400);
   }
 
+  if (!isDeliveryMode(deliveryMode)) {
+    return privateJson(
+      { error: "Seleziona una modalità di consegna valida." },
+      400
+    );
+  }
+
   const convention = await getConventionOrNull(supabase, conventionId);
 
-  if (!convention || convention.is_book_convention !== true) {
+  if (!convention) {
     return privateJson({ error: "Convenzione libri non trovata." }, 404);
   }
 
@@ -608,7 +675,7 @@ async function openCollection(
   const nowIso = now.toISOString();
   const { data: existingCollection, error: existingCollectionError } = await supabase
     .from("book_convention_rounds")
-    .select("id, starts_at, ends_at")
+    .select("id, starts_at, ends_at, delivery_mode")
     .eq("convention_id", conventionId)
     .gt("ends_at", nowIso)
     .order("starts_at", { ascending: true })
@@ -653,8 +720,9 @@ async function openCollection(
       convention_id: conventionId,
       starts_at: nowIso,
       ends_at: OPEN_COLLECTION_ENDS_AT,
+      delivery_mode: deliveryMode,
     })
-    .select("id, convention_id, starts_at, ends_at")
+    .select("id, convention_id, starts_at, ends_at, delivery_mode, created_at")
     .single();
 
   if (createError) {
@@ -678,10 +746,9 @@ async function openCollection(
     );
 
     const { error: activateError } = await supabase
-      .from("convenzioni")
+      .from("book_conventions")
       .update({ attiva: true })
-      .eq("id", conventionId)
-      .eq("is_book_convention", true);
+      .eq("id", conventionId);
 
     if (activateError) throw activateError;
   } catch (error) {
@@ -723,7 +790,7 @@ async function closeCollection(
 
   const convention = await getConventionOrNull(supabase, conventionId);
 
-  if (!convention || convention.is_book_convention !== true) {
+  if (!convention) {
     return privateJson({ error: "Convenzione libri non trovata." }, 404);
   }
 
@@ -731,7 +798,7 @@ async function closeCollection(
   const nowIso = now.toISOString();
   let activeRoundQuery = supabase
     .from("book_convention_rounds")
-    .select("id, convention_id, starts_at, ends_at")
+    .select("id, convention_id, starts_at, ends_at, delivery_mode, created_at")
     .eq("convention_id", conventionId)
     .lte("starts_at", nowIso)
     .gt("ends_at", nowIso)
@@ -758,7 +825,7 @@ async function closeCollection(
     .eq("id", activeRound.id)
     .eq("convention_id", conventionId)
     .gt("ends_at", nowIso)
-    .select("id, convention_id, starts_at, ends_at")
+    .select("id, convention_id, starts_at, ends_at, delivery_mode, created_at")
     .maybeSingle();
 
   if (closeError) throw closeError;
@@ -782,7 +849,7 @@ async function getBooksWithRoundIds(
   let booksQuery = supabase
     .from("book_convention_books")
     .select(
-      "id, convention_id, title, price, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image, created_at, updated_at"
+      "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image, created_at, updated_at"
     )
     .order("study_area", { ascending: true })
     .order("reference_year", { ascending: true })
@@ -871,11 +938,8 @@ export async function GET(req: NextRequest) {
     const rangeTo = rangeFrom + pageSize - 1;
 
     let conventionsQuery = supabase
-      .from("convenzioni")
-      .select(
-        "id, titolo, partner, categoria, descrizione, vantaggio, link, ordine, attiva, is_book_convention, convenzione_libri, created_at, updated_at"
-      )
-      .eq("is_book_convention", true)
+      .from("book_conventions")
+      .select("id, titolo, descrizione, ordine, attiva, created_at, updated_at")
       .order("ordine", { ascending: true })
       .order("id", { ascending: true });
 
@@ -912,12 +976,11 @@ export async function GET(req: NextRequest) {
         convention_id,
         starts_at,
         ends_at,
+        delivery_mode,
         created_at,
-        convenzioni (
+        book_conventions (
           id,
-          titolo,
-          partner,
-          categoria
+          titolo
         )
       `)
       .in("convention_id", conventionIds)
@@ -947,17 +1010,16 @@ export async function GET(req: NextRequest) {
           corso_di_laurea,
           anno_di_laurea
         ),
-        convenzioni (
-          id,
-          titolo,
-          partner,
-          categoria
-        ),
         book_convention_rounds (
           id,
           starts_at,
           ends_at,
-          created_at
+          delivery_mode,
+          created_at,
+          book_conventions (
+            id,
+            titolo
+          )
         )
       `, { count: "exact" })
       .in("convention_id", conventionIds)
@@ -1058,7 +1120,7 @@ export async function POST(req: NextRequest) {
 
       const convention = await getConventionOrNull(supabase, conventionId);
 
-      if (!convention || convention.is_book_convention !== true) {
+      if (!convention) {
         return privateJson({ error: "Convenzione libri non trovata." }, 404);
       }
 
@@ -1083,10 +1145,9 @@ export async function POST(req: NextRequest) {
       }
 
       const { error: updateError } = await supabase
-        .from("convenzioni")
+        .from("book_conventions")
         .update({ attiva: body.is_active })
-        .eq("id", conventionId)
-        .eq("is_book_convention", true);
+        .eq("id", conventionId);
 
       if (updateError) throw updateError;
 
@@ -1107,7 +1168,7 @@ export async function POST(req: NextRequest) {
       }
 
       const convention = await getConventionOrNull(supabase, conventionId);
-      if (!convention || convention.is_book_convention !== true) {
+      if (!convention) {
         return privateJson({ error: "Convenzione libri non trovata." }, 404);
       }
 
@@ -1145,13 +1206,12 @@ export async function POST(req: NextRequest) {
       : null;
     const requestedTitle = cleanString(body.title);
     const description = cleanString(body.description);
-    const partner = cleanString(body.partner);
 
     if (body.convention_id && !conventionId) {
       return privateJson({ error: "Convenzione non valida." }, 400);
     }
 
-    if (description.length > 6000 || partner.length > 240) {
+    if (description.length > 6000) {
       return privateJson({ error: "Uno o più campi della convenzione sono troppo lunghi." }, 400);
     }
 
@@ -1177,7 +1237,7 @@ export async function POST(req: NextRequest) {
     if (savedConventionId) {
       const existingConvention = await getConventionOrNull(supabase, savedConventionId);
 
-      if (!existingConvention || existingConvention.is_book_convention !== true) {
+      if (!existingConvention) {
         return privateJson({ error: "Convenzione libri non trovata." }, 404);
       }
 
@@ -1202,42 +1262,37 @@ export async function POST(req: NextRequest) {
       const conventionPatch: Record<string, unknown> = {
         titolo: title,
         descrizione: description || null,
-        partner: partner || null,
-        categoria: BOOK_CONVENTION_CATEGORY,
-        is_book_convention: true,
-        convenzione_libri: true,
       };
 
       if (typeof body.attiva === "boolean") conventionPatch.attiva = body.attiva;
-      if (typeof body.vantaggio === "string") {
-        conventionPatch.vantaggio = cleanString(body.vantaggio) || null;
-      }
-      if (typeof body.link === "string") conventionPatch.link = cleanString(body.link) || "#";
 
       const ordine = parseInteger(body.ordine);
-      if (ordine !== null) conventionPatch.ordine = ordine;
+      if (ordine !== null) {
+        if (ordine < 0 || ordine > 100_000) {
+          return privateJson({ error: "Ordine della convenzione non valido." }, 400);
+        }
+        conventionPatch.ordine = ordine;
+      }
 
       const { error: conventionError } = await supabase
-        .from("convenzioni")
+        .from("book_conventions")
         .update(conventionPatch)
         .eq("id", savedConventionId);
 
       if (conventionError) throw conventionError;
     } else {
       const ordine = parseInteger(body.ordine) ?? 0;
+      if (ordine < 0 || ordine > 100_000) {
+        return privateJson({ error: "Ordine della convenzione non valido." }, 400);
+      }
+
       const { data: createdConvention, error: conventionError } = await supabase
-        .from("convenzioni")
+        .from("book_conventions")
         .insert({
           titolo: title,
           descrizione: description || null,
-          partner: partner || null,
-          categoria: BOOK_CONVENTION_CATEGORY,
-          vantaggio: cleanString(body.vantaggio) || null,
-          link: cleanString(body.link) || "#",
           ordine,
           attiva: typeof body.attiva === "boolean" ? body.attiva : true,
-          is_book_convention: true,
-          convenzione_libri: true,
         })
         .select("id")
         .single();
@@ -1251,7 +1306,7 @@ export async function POST(req: NextRequest) {
     const currentBooksResult = await supabase
       .from("book_convention_books")
       .select(
-        "id, convention_id, title, price, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+        "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
       )
       .eq("convention_id", savedConventionId);
 
@@ -1305,6 +1360,23 @@ export async function POST(req: NextRequest) {
       const bundleItems = productType === "bundle" ? requestedBundleItems : [];
       const studyArea = book.study_area ?? existing?.study_area ?? STUDY_AREAS[0];
       const isActive = book.is_active ?? existing?.is_active ?? true;
+      const isbn = book.isbn !== undefined ? book.isbn : existing?.isbn ?? null;
+      const originalPrice =
+        book.original_price !== undefined
+          ? book.original_price
+          : parseNullableNumber(existing?.original_price);
+
+      if (
+        originalPrice !== null &&
+        (originalPrice < book.price || originalPrice > 1_000_000)
+      ) {
+        return privateJson(
+          {
+            error: `Il prezzo originale di “${book.title}” non può essere inferiore al prezzo convenzionato.`,
+          },
+          400
+        );
+      }
 
       validateResolvedProduct({
         title: book.title,
@@ -1315,6 +1387,8 @@ export async function POST(req: NextRequest) {
       const productPayload = {
         title: book.title,
         price: book.price,
+        original_price: originalPrice,
+        isbn,
         reference_year: book.reference_year,
         description: book.description,
         sort_order: book.sort_order,
@@ -1355,28 +1429,6 @@ export async function POST(req: NextRequest) {
       savedBookIds.push(savedBookId);
 
     }
-
-    const { data: finalBooks, error: finalBooksError } = await supabase
-      .from("book_convention_books")
-      .select("id, title, price, is_active")
-      .eq("convention_id", savedConventionId)
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true });
-
-    if (finalBooksError) throw finalBooksError;
-
-    const { error: legacySnapshotError } = await supabase
-      .from("convenzioni")
-      .update({
-        book_titles: (finalBooks ?? []).map((book) => String(book.title)),
-        book_items: (finalBooks ?? []).map((book) => ({
-          title: String(book.title),
-          price: Number(book.price ?? 0),
-        })),
-      })
-      .eq("id", savedConventionId);
-
-    if (legacySnapshotError) throw legacySnapshotError;
 
     return privateJson({
       ok: true,
@@ -1537,7 +1589,7 @@ export async function DELETE(req: NextRequest) {
 
       const convention = await getConventionOrNull(supabase, conventionId);
 
-      if (!convention || convention.is_book_convention !== true) {
+      if (!convention) {
         return privateJson({ error: "Convenzione libri non trovata." }, 404);
       }
 

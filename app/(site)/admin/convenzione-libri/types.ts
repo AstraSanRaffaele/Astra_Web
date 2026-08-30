@@ -1,5 +1,6 @@
 import type {
   BookYear,
+  DeliveryMode,
   PaymentMethod,
   ProductType,
   StudyArea,
@@ -17,11 +18,9 @@ export type AdminProfile = {
 export type AdminBookConvention = {
   id: number;
   titolo?: string | null;
-  partner?: string | null;
-  categoria?: string | null;
   descrizione?: string | null;
   attiva?: boolean | null;
-  is_book_convention?: boolean | null;
+  ordine?: number | null;
 };
 
 export type AdminBookConventionRound = {
@@ -30,7 +29,8 @@ export type AdminBookConventionRound = {
   starts_at: string;
   ends_at: string;
   created_at?: string;
-  convenzioni?: AdminBookConvention | null;
+  delivery_mode?: DeliveryMode | string | null;
+  book_conventions?: AdminBookConvention | null;
 };
 
 export type AdminBookConventionProduct = {
@@ -38,6 +38,8 @@ export type AdminBookConventionProduct = {
   convention_id: number;
   title: string;
   price: number | string | null;
+  original_price?: number | string | null;
+  isbn?: string | null;
   reference_year: BookYear;
   description: string | null;
   sort_order: number | null;
@@ -53,6 +55,8 @@ export type SelectedProductSnapshot = {
   id?: number;
   title?: string;
   price?: number | string | null;
+  original_price?: number | string | null;
+  isbn?: string | null;
   reference_year?: BookYear;
   description?: string | null;
   product_type?: ProductType;
@@ -64,6 +68,8 @@ export type SelectedProductSnapshot = {
 export type LegacyBookItem = {
   title?: string;
   price?: number | string | null;
+  original_price?: number | string | null;
+  isbn?: string | null;
 };
 
 export type AdminBookAdhesion = {
@@ -80,7 +86,7 @@ export type AdminBookAdhesion = {
   book_items?: LegacyBookItem[] | null;
   created_at: string;
   profiles: AdminProfile | null;
-  convenzioni: AdminBookConvention | null;
+  book_conventions?: AdminBookConvention | null;
   round_id: string | null;
   book_convention_rounds: Omit<AdminBookConventionRound, "convention_id"> | null;
 };
@@ -89,6 +95,8 @@ export type DisplaySelectedProduct = {
   id?: number;
   title: string;
   price: number | null;
+  original_price: number | null;
+  isbn: string | null;
   reference_year?: BookYear;
   description?: string | null;
   product_type: ProductType;
@@ -120,6 +128,7 @@ export type AdhesionFilters = {
   productId: number | "all";
   year: BookYear | "all";
   studyArea: StudyArea | "all";
+  deliveryMode: DeliveryMode | "all";
   dateFrom: string;
   dateTo: string;
 };

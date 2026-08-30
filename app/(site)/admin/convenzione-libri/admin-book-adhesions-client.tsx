@@ -12,6 +12,7 @@ import {
   ExternalLink,
   FilterX,
   Package,
+  PiggyBank,
   RefreshCw,
   Search,
   SlidersHorizontal,
@@ -21,6 +22,8 @@ import {
 import {
   BOOK_YEARS,
   BOOK_YEAR_LABELS,
+  DELIVERY_MODES,
+  DELIVERY_MODE_LABELS,
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   PRODUCT_TYPE_LABELS,
@@ -34,9 +37,13 @@ import {
   adhesionHasProduct,
   formatDate,
   formatDateOnly,
+  formatDeliveryMode,
   formatPaymentMethod,
   formatPrice,
   formatRoundLabel,
+  getAdhesionConventionTitle,
+  getAdhesionOriginalTotal,
+  getAdhesionSavings,
   getAdhesionTotal,
   getConventionTitle,
   getFullName,
@@ -64,6 +71,7 @@ const EMPTY_FILTERS: AdhesionFilters = {
   productId: "all",
   year: "all",
   studyArea: "all",
+  deliveryMode: "all",
   dateFrom: "",
   dateTo: "",
 };
@@ -217,6 +225,12 @@ export default function AdminBookAdhesionsClient({
       if (filters.conventionId !== "all" && adhesion.convention_id !== filters.conventionId) return false;
       if (filters.roundId !== "all" && adhesion.round_id !== filters.roundId) return false;
       if (
+        filters.deliveryMode !== "all" &&
+        adhesion.book_convention_rounds?.delivery_mode !== filters.deliveryMode
+      ) {
+        return false;
+      }
+      if (
         filters.paymentMethod !== "all" &&
         adhesion.payment_method !== filters.paymentMethod
       ) {
@@ -286,10 +300,15 @@ export default function AdminBookAdhesionsClient({
       (sum, adhesion) => sum + getAdhesionTotal(adhesion, data.books),
       0
     );
+    const totalSavings = filteredAdhesions.reduce(
+      (sum, adhesion) => sum + getAdhesionSavings(adhesion, data.books),
+      0
+    );
 
     return {
       productCount,
       totalValue,
+      totalSavings,
       average: filteredAdhesions.length > 0 ? totalValue / filteredAdhesions.length : 0,
     };
   }, [data.books, filteredAdhesions]);
@@ -333,17 +352,25 @@ export default function AdminBookAdhesionsClient({
         "Indirizzo spedizione / fatturazione",
         "Convenzione",
         "Raccolta",
+        "Modalità consegna",
         "Metodo pagamento",
         "Prodotti",
+        "ISBN",
         "Tipi prodotto",
         "Contenuto bundle",
         "Aree di studio",
         "Anni di riferimento",
-        "Totale EUR",
+        "Prezzi originali EUR",
+        "Prezzi convenzionati EUR",
+        "Risparmi per prodotto EUR",
+        "Totale originale EUR",
+        "Risparmio totale EUR",
+        "Totale convenzionato EUR",
       ],
       ...filteredAdhesions.map((adhesion) => {
         const products = getSelectedProducts(adhesion, data.books);
         const profile = adhesion.profiles;
+        const originalTotal = getAdhesionOriginalTotal(adhesion, data.books);
         return [
           adhesion.id,
           adhesion.user_id,
@@ -354,10 +381,14 @@ export default function AdminBookAdhesionsClient({
           String(profile?.anno_di_laurea ?? ""),
           adhesion.fiscal_code_or_vat || "",
           adhesion.billing_shipping_address || "",
-          getConventionTitle(adhesion.convenzioni),
+          getAdhesionConventionTitle(adhesion),
           formatRoundLabel(adhesion.book_convention_rounds),
+          formatDeliveryMode(adhesion.book_convention_rounds?.delivery_mode),
           formatPaymentMethod(adhesion.payment_method),
           products.map((product) => `${product.title} (${formatPrice(product.price)})`).join(" | "),
+          products
+            .map((product) => `${product.title}: ${product.isbn || "—"}`)
+            .join(" | "),
           products.map((product) => PRODUCT_TYPE_LABELS[product.product_type]).join(" | "),
           products
             .filter((product) => product.bundle_items.length > 0)
@@ -375,6 +406,28 @@ export default function AdminBookAdhesionsClient({
             )
             .filter(Boolean)
             .join(" | "),
+          products
+            .map((product) =>
+              `${product.title}: ${
+                product.original_price === null ? "" : product.original_price.toFixed(2)
+              }`
+            )
+            .join(" | "),
+          products
+            .map(
+              (product) =>
+                `${product.title}: ${product.price === null ? "" : product.price.toFixed(2)}`
+            )
+            .join(" | "),
+          products
+            .map((product) => {
+              const originalPrice = product.original_price ?? product.price;
+              if (originalPrice === null || product.price === null) return `${product.title}: `;
+              return `${product.title}: ${Math.max(0, originalPrice - product.price).toFixed(2)}`;
+            })
+            .join(" | "),
+          originalTotal === null ? "" : originalTotal.toFixed(2),
+          getAdhesionSavings(adhesion, data.books).toFixed(2),
           getAdhesionTotal(adhesion, data.books).toFixed(2),
         ];
       }),
@@ -535,9 +588,27 @@ export default function AdminBookAdhesionsClient({
               {availableRounds.map((round) => (
                 <option key={round.id} value={round.id}>
                   {filters.conventionId === "all"
-                    ? `${getConventionTitle(round.convenzioni)} · `
+                    ? `${getConventionTitle(round.book_conventions)} · `
                     : ""}
                   {formatRoundLabel(round)}
+                </option>
+              ))}
+            </FilterSelect>
+
+            <FilterSelect
+              label="Consegna"
+              value={filters.deliveryMode}
+              onChange={(value) =>
+                updateFilter(
+                  "deliveryMode",
+                  value as AdhesionFilters["deliveryMode"]
+                )
+              }
+            >
+              <option value="all">Tutte</option>
+              {DELIVERY_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {DELIVERY_MODE_LABELS[mode]}
                 </option>
               ))}
             </FilterSelect>
@@ -631,10 +702,11 @@ export default function AdminBookAdhesionsClient({
           </div>
         </section>
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Riepilogo adesioni filtrate">
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Riepilogo adesioni filtrate">
           <MetricCard icon={<UsersRound />} label="Adesioni" value={String(filteredAdhesions.length)} />
           <MetricCard icon={<Package />} label="Proposte selezionate" value={String(metrics.productCount)} />
           <MetricCard icon={<WalletCards />} label="Valore adesioni" value={formatPrice(metrics.totalValue)} />
+          <MetricCard icon={<PiggyBank />} label="Risparmio utenti" value={formatPrice(metrics.totalSavings)} />
           <MetricCard icon={<ArrowDownUp />} label="Media per adesione" value={formatPrice(metrics.average)} />
         </section>
 
@@ -790,6 +862,7 @@ function AdhesionTableRow({
   onOpen: () => void;
 }) {
   const products = getSelectedProducts(adhesion, catalog);
+  const savings = getAdhesionSavings(adhesion, catalog);
 
   return (
     <tr className="bg-white transition hover:bg-[#f8fafc]">
@@ -805,9 +878,14 @@ function AdhesionTableRow({
         <ProductSummary products={products} />
       </td>
       <td className="max-w-[260px] px-4 py-3 text-xs text-[#475569]">
-        <strong className="block truncate text-[#334155]">{getConventionTitle(adhesion.convenzioni)}</strong>
+        <strong className="block truncate text-[#334155]">
+          {getAdhesionConventionTitle(adhesion)}
+        </strong>
         <span className="block truncate">
           {formatRoundLabel(adhesion.book_convention_rounds)}
+        </span>
+        <span className="block truncate font-semibold text-[#1847a3]">
+          {formatDeliveryMode(adhesion.book_convention_rounds?.delivery_mode)}
         </span>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-xs font-bold text-[#475569]">
@@ -815,6 +893,11 @@ function AdhesionTableRow({
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-sm font-extrabold text-[#0f766e]">
         {formatPrice(getAdhesionTotal(adhesion, catalog))}
+        {savings > 0 && (
+          <span className="block text-[10px] font-bold text-[#047857]">
+            risparmio {formatPrice(savings)}
+          </span>
+        )}
       </td>
       <td className="px-4 py-3 text-right">
         <button
@@ -840,6 +923,7 @@ function AdhesionMobileCard({
   onOpen: () => void;
 }) {
   const products = getSelectedProducts(adhesion, catalog);
+  const savings = getAdhesionSavings(adhesion, catalog);
 
   return (
     <article className="p-4 sm:p-5">
@@ -848,7 +932,16 @@ function AdhesionMobileCard({
           <h3 className="truncate font-extrabold text-[#102d63]">{getFullName(adhesion.profiles)}</h3>
           <p className="truncate text-xs text-[#64748b]">{getProfileEmail(adhesion.profiles)}</p>
         </div>
-        <strong className="shrink-0 text-sm text-[#0f766e]">{formatPrice(getAdhesionTotal(adhesion, catalog))}</strong>
+        <div className="shrink-0 text-right">
+          <strong className="block text-sm text-[#0f766e]">
+            {formatPrice(getAdhesionTotal(adhesion, catalog))}
+          </strong>
+          {savings > 0 && (
+            <span className="block text-[10px] font-bold text-[#047857]">
+              risparmio {formatPrice(savings)}
+            </span>
+          )}
+        </div>
       </div>
       <ProductSummary products={products} />
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-[#e8edf4] pt-3 text-xs">
@@ -864,6 +957,12 @@ function AdhesionMobileCard({
           <dt className="font-semibold text-[#94a3b8]">Raccolta</dt>
           <dd className="mt-0.5 font-bold text-[#475569]">
             {formatRoundLabel(adhesion.book_convention_rounds)}
+          </dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="font-semibold text-[#94a3b8]">Consegna</dt>
+          <dd className="mt-0.5 font-bold text-[#1847a3]">
+            {formatDeliveryMode(adhesion.book_convention_rounds?.delivery_mode)}
           </dd>
         </div>
       </dl>

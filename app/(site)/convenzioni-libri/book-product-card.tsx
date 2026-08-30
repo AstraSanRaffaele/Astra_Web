@@ -48,6 +48,20 @@ export default function BookProductCard({
   const unavailableLabel = product.availability_reason
     ? AVAILABILITY_LABELS[product.availability_reason]
     : "Selezione non disponibile";
+  const conventionPrice =
+    typeof product.price === "number" && Number.isFinite(product.price)
+      ? product.price
+      : null;
+  const originalPrice =
+    typeof product.original_price === "number" &&
+    Number.isFinite(product.original_price)
+      ? product.original_price
+      : null;
+  const hasDiscount =
+    originalPrice !== null &&
+    conventionPrice !== null &&
+    originalPrice > conventionPrice;
+  const saving = hasDiscount ? originalPrice - conventionPrice : 0;
 
   return (
     <article
@@ -100,6 +114,10 @@ export default function BookProductCard({
           {product.title}
         </h3>
 
+        {product.isbn ? (
+          <p className="book-product-isbn">ISBN {product.isbn}</p>
+        ) : null}
+
         {product.description ? (
           <p className="book-product-description">{product.description}</p>
         ) : null}
@@ -129,7 +147,16 @@ export default function BookProductCard({
             <span className="book-product-year">
               {BOOK_YEAR_LABELS[product.reference_year]}
             </span>
-            <strong className="book-product-price">{formatPrice(product.price)}</strong>
+            {hasDiscount ? (
+              <span className="book-product-original-price">
+                Prezzo originale {formatPrice(originalPrice)}
+              </span>
+            ) : null}
+            <span className="book-product-convention-label">Prezzo convenzione</span>
+            <strong className="book-product-price">{formatPrice(conventionPrice)}</strong>
+            {hasDiscount ? (
+              <span className="book-product-saving">Risparmi {formatPrice(saving)}</span>
+            ) : null}
           </div>
 
           <button

@@ -11,7 +11,12 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PAYMENT_METHOD_LABELS, type PaymentMethod } from "@/lib/book-convention";
+import {
+  DELIVERY_MODE_LABELS,
+  PAYMENT_METHOD_LABELS,
+  type DeliveryMode,
+  type PaymentMethod,
+} from "@/lib/book-convention";
 import type {
   BookConventionAdhesion,
   BookConventionCatalogBook,
@@ -50,6 +55,23 @@ function formatPaymentMethod(value: string | null) {
   return value.replaceAll("_", " ");
 }
 
+function getOriginalPrice(
+  price: number | null | undefined,
+  originalPrice: number | null | undefined
+) {
+  if (
+    typeof price !== "number" ||
+    !Number.isFinite(price) ||
+    typeof originalPrice !== "number" ||
+    !Number.isFinite(originalPrice) ||
+    originalPrice <= price
+  ) {
+    return null;
+  }
+
+  return originalPrice;
+}
+
 function SummaryCover({ product }: { product: BookConventionCatalogBook }) {
   const [failed, setFailed] = useState(false);
   const isBundle = product.product_type === "bundle";
@@ -81,6 +103,7 @@ export default function OrderSummary({
   total,
   canAdhere,
   activeAdhesion,
+  deliveryMode,
   onRemove,
   onProceed,
 }: {
@@ -88,6 +111,7 @@ export default function OrderSummary({
   total: number;
   canAdhere: boolean;
   activeAdhesion: BookConventionAdhesion | null;
+  deliveryMode: DeliveryMode | null;
   onRemove: (productId: number) => void;
   onProceed: () => void;
 }) {
@@ -95,6 +119,11 @@ export default function OrderSummary({
   const mobileContentId = useId();
   const itemLabel = `${products.length} ${products.length === 1 ? "elemento" : "elementi"}`;
   const adhesionProducts = activeAdhesion?.selected_books ?? [];
+  const originalTotal = products.reduce((sum, product) => {
+    const originalPrice = getOriginalPrice(product.price, product.original_price);
+    return sum + (originalPrice ?? product.price ?? 0);
+  }, 0);
+  const totalSaving = Math.max(0, originalTotal - total);
 
   return (
     <div className="min-w-0 lg:contents">
@@ -195,10 +224,22 @@ export default function OrderSummary({
                           <p className="mt-1 text-[.6rem] font-bold uppercase tracking-[.1em] text-[#596174]">
                             {product.product_type === "bundle" ? "Bundle" : "Libro"}
                           </p>
+                          {product.isbn ? (
+                            <p className="mt-1 text-[.62rem] text-[#7B8290]">
+                              ISBN {product.isbn}
+                            </p>
+                          ) : null}
                         </div>
-                        <strong className="shrink-0 text-[.73rem] text-[#2E4080]">
-                          {formatPrice(product.price)}
-                        </strong>
+                        <span className="shrink-0 text-right">
+                          {getOriginalPrice(product.price, product.original_price) ? (
+                            <span className="block text-[.62rem] text-[#8A909D] line-through">
+                              {formatPrice(product.original_price)}
+                            </span>
+                          ) : null}
+                          <strong className="block text-[.73rem] text-[#2E4080]">
+                            {formatPrice(product.price)}
+                          </strong>
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -211,6 +252,14 @@ export default function OrderSummary({
                       {formatDate(activeAdhesion.created_at)}
                     </dd>
                   </div>
+                  {deliveryMode ? (
+                    <div className="flex justify-between gap-4">
+                      <dt className="font-semibold text-[#596174]">Consegna</dt>
+                      <dd className="text-right font-semibold text-[#24304B]">
+                        {DELIVERY_MODE_LABELS[deliveryMode]}
+                      </dd>
+                    </div>
+                  ) : null}
                   <div className="flex justify-between gap-4">
                     <dt className="font-semibold text-[#596174]">Pagamento</dt>
                     <dd className="text-right font-semibold capitalize text-[#24304B]">
@@ -260,6 +309,10 @@ export default function OrderSummary({
               <div className="max-h-[min(42dvh,20rem)] overflow-y-auto overscroll-contain px-4 py-1 sm:px-5 lg:max-h-80">
                 {products.map((product) => {
                   const isBundle = product.product_type === "bundle";
+                  const originalPrice = getOriginalPrice(
+                    product.price,
+                    product.original_price
+                  );
 
                   return (
                     <div
@@ -277,6 +330,11 @@ export default function OrderSummary({
                             {isBundle ? "Bundle" : "Libro"}
                           </span>
                           <span className="text-[.72rem] font-bold text-[#2E4080]">
+                            {originalPrice ? (
+                              <span className="mr-1.5 font-medium text-[#8A909D] line-through">
+                                {formatPrice(originalPrice)}
+                              </span>
+                            ) : null}
                             {formatPrice(product.price)}
                           </span>
                         </div>
@@ -305,6 +363,11 @@ export default function OrderSummary({
                   <strong className="mt-0.5 block text-[1.3rem] leading-none tracking-[-.035em] text-[#08102A]">
                     {formatPrice(total)}
                   </strong>
+                  {totalSaving > 0 ? (
+                    <span className="mt-1.5 block text-[.66rem] font-bold text-[#16713A]">
+                      Risparmio convenzione {formatPrice(totalSaving)}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex max-w-40 items-start gap-1.5 text-right text-[.64rem] leading-snug text-[#596174] lg:max-w-none">
                   <ShieldCheck

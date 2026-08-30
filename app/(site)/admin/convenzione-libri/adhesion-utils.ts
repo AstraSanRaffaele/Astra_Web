@@ -1,7 +1,9 @@
 import {
+  DELIVERY_MODE_LABELS,
   PAYMENT_METHOD_LABELS,
   PRODUCT_TYPES,
   normalizeBookConventionCoverUrl,
+  type DeliveryMode,
   type PaymentMethod,
   type ProductType,
 } from "@/lib/book-convention";
@@ -38,6 +40,11 @@ export function formatPaymentMethod(value: string | null | undefined) {
   return PAYMENT_METHOD_LABELS[value as PaymentMethod] ?? value.replaceAll("_", " ");
 }
 
+export function formatDeliveryMode(value: string | null | undefined) {
+  if (!value) return "—";
+  return DELIVERY_MODE_LABELS[value as DeliveryMode] ?? value.replaceAll("_", " ");
+}
+
 export function formatDate(value: string) {
   return new Date(value).toLocaleString("it-IT", {
     day: "2-digit",
@@ -58,6 +65,14 @@ export function formatDateOnly(value: string) {
 
 export function getConventionTitle(convention: AdminBookConvention | null | undefined) {
   return convention?.titolo?.trim() || "Convenzione libri";
+}
+
+export function getAdhesionConvention(adhesion: AdminBookAdhesion) {
+  return adhesion.book_conventions ?? adhesion.book_convention_rounds?.book_conventions ?? null;
+}
+
+export function getAdhesionConventionTitle(adhesion: AdminBookAdhesion) {
+  return getConventionTitle(getAdhesionConvention(adhesion));
 }
 
 export function formatRoundLabel(
@@ -126,6 +141,11 @@ function normalizeSnapshot(
     ? snapshot.product_type
     : catalogProduct?.product_type ?? (bundleItems.length > 0 ? "bundle" : "book");
   const snapshotHasPrice = Object.prototype.hasOwnProperty.call(snapshot, "price");
+  const snapshotHasOriginalPrice = Object.prototype.hasOwnProperty.call(
+    snapshot,
+    "original_price"
+  );
+  const snapshotHasIsbn = Object.prototype.hasOwnProperty.call(snapshot, "isbn");
   const snapshotHasDescription = Object.prototype.hasOwnProperty.call(snapshot, "description");
   const snapshotHasCover = Object.prototype.hasOwnProperty.call(snapshot, "cover_image");
 
@@ -133,6 +153,10 @@ function normalizeSnapshot(
     id: typeof snapshot.id === "number" ? snapshot.id : catalogProduct?.id,
     title,
     price: toFiniteNumber(snapshotHasPrice ? snapshot.price : catalogProduct?.price),
+    original_price: toFiniteNumber(
+      snapshotHasOriginalPrice ? snapshot.original_price : catalogProduct?.original_price
+    ),
+    isbn: String(snapshotHasIsbn ? snapshot.isbn ?? "" : catalogProduct?.isbn ?? "").trim() || null,
     reference_year: snapshot.reference_year ?? catalogProduct?.reference_year,
     description: snapshotHasDescription
       ? snapshot.description ?? null
@@ -158,7 +182,7 @@ export function getSelectedProducts(
 
   if (Array.isArray(adhesion.book_items) && adhesion.book_items.length > 0) {
     return adhesion.book_items
-      .map((item) => normalizeSnapshot({ title: item.title, price: item.price }, catalog))
+      .map((item) => normalizeSnapshot(item, catalog))
       .filter((product): product is DisplaySelectedProduct => product !== null);
   }
 
@@ -193,6 +217,40 @@ export function getAdhesionTotal(
   );
 }
 
+export function getProductSavings(product: DisplaySelectedProduct) {
+  if (
+    product.price === null ||
+    product.original_price === null ||
+    product.original_price <= product.price
+  ) {
+    return 0;
+  }
+
+  return product.original_price - product.price;
+}
+
+export function getAdhesionSavings(
+  adhesion: AdminBookAdhesion,
+  catalog: AdminBookConventionProduct[]
+) {
+  return getSelectedProducts(adhesion, catalog).reduce(
+    (sum, product) => sum + getProductSavings(product),
+    0
+  );
+}
+
+export function getAdhesionOriginalTotal(
+  adhesion: AdminBookAdhesion,
+  catalog: AdminBookConventionProduct[]
+) {
+  const products = getSelectedProducts(adhesion, catalog);
+  const hasOriginalPrice = products.some((product) => product.original_price !== null);
+  if (!hasOriginalPrice) return null;
+
+  return getAdhesionTotal(adhesion, catalog) +
+    products.reduce((sum, product) => sum + getProductSavings(product), 0);
+}
+
 export function adhesionHasProduct(
   adhesion: AdminBookAdhesion,
   productId: number,
@@ -218,13 +276,17 @@ export function matchesAdhesionSearch(
     getProfileEmail(adhesion.profiles),
     getProfileCourse(adhesion.profiles),
     String(getProfileYear(adhesion.profiles)),
-    getConventionTitle(adhesion.convenzioni),
-    adhesion.convenzioni?.partner ?? "",
+    getAdhesionConventionTitle(adhesion),
     adhesion.fiscal_code_or_vat ?? "",
     adhesion.billing_shipping_address ?? "",
     formatPaymentMethod(adhesion.payment_method),
+    formatDeliveryMode(adhesion.book_convention_rounds?.delivery_mode),
     products
-      .flatMap((product) => [product.title, ...product.bundle_items])
+      .flatMap((product) => [
+        product.title,
+        product.isbn ?? "",
+        ...product.bundle_items,
+      ])
       .join(" "),
   ];
 

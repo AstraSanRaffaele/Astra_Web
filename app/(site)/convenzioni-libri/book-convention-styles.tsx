@@ -591,6 +591,14 @@ export default function BookConventionStyles() {
         -webkit-line-clamp: 3;
       }
 
+      .book-product-isbn {
+        margin-top: .35rem;
+        color: #2E4080;
+        font-size: .65rem;
+        font-weight: 750;
+        letter-spacing: .06em;
+      }
+
       .book-bundle-items {
         margin-top: .75rem;
         border-radius: .85rem;
@@ -654,6 +662,37 @@ export default function BookConventionStyles() {
         font-size: 1.18rem;
         font-weight: 800;
         letter-spacing: -.025em;
+      }
+
+      .book-product-convention-label {
+        display: block;
+        margin-top: .48rem;
+        color: #2E4080;
+        font-size: .59rem;
+        font-weight: 750;
+        letter-spacing: .085em;
+        line-height: 1.2;
+        text-transform: uppercase;
+      }
+
+      .book-product-original-price {
+        display: block;
+        margin-top: .35rem;
+        color: #7B8290;
+        font-size: .64rem;
+        font-weight: 650;
+        text-decoration: line-through;
+      }
+
+      .book-product-saving {
+        display: inline-flex;
+        margin-top: .3rem;
+        border-radius: 999px;
+        background: #EAF7EE;
+        padding: .2rem .48rem;
+        color: #166534;
+        font-size: .61rem;
+        font-weight: 800;
       }
 
       .book-product-action {

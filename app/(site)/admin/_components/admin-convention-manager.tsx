@@ -8,9 +8,11 @@ import { createClient } from "@/lib/supabase/client";
 import {
   BOOK_YEAR_LABELS,
   BOOK_YEARS,
+  DELIVERY_MODE_LABELS,
   STUDY_AREAS,
   STUDY_AREA_LABELS,
   type BookYear,
+  type DeliveryMode,
   type ProductType,
   type StudyArea,
 } from "@/lib/book-convention";
@@ -19,11 +21,11 @@ import {
 type Convenzione = {
   id: number;
   titolo: string;
-  partner: string;
-  descrizione: string;
-  vantaggio: string;
-  categoria: string;
-  link: string;
+  partner?: string | null;
+  descrizione?: string | null;
+  vantaggio?: string | null;
+  categoria?: string | null;
+  link?: string | null;
   ordine: number;
   attiva: boolean;
   is_book_convention: boolean | null;
@@ -41,6 +43,8 @@ type BookConventionBook = {
   convention_id?: number | null;
   title: string;
   price: number | null;
+  original_price: number | null;
+  isbn: string | null;
   reference_year: BookYear;
   description: string | null;
   sort_order: number;
@@ -61,6 +65,7 @@ type BookConventionRound = {
   starts_at: string;
   ends_at: string;
   created_at: string;
+  delivery_mode: DeliveryMode;
 };
 
 type BookConventionAdminApiResponse = {
@@ -97,6 +102,12 @@ type CollectionConfirmation = {
   exportAfterClose: boolean;
 };
 
+type OpenCollectionConfirmation = {
+  conventionId: number;
+  conventionTitle: string;
+  deliveryMode: DeliveryMode;
+};
+
 type BookConventionDeleteConfirmation = {
   convention: Convenzione;
   acknowledged: boolean;
@@ -131,6 +142,8 @@ function createEmptyBook(sortOrder = 0): BookConventionBook {
     id: null,
     title: "",
     price: 0,
+    original_price: null,
+    isbn: null,
     reference_year: "primo_anno",
     description: "",
     sort_order: sortOrder,
@@ -163,6 +176,14 @@ function buildAutomaticProductTitle(includedBooks: string[]) {
   return fullTitle.length <= 240
     ? fullTitle
     : `${fullTitle.slice(0, 239).trimEnd()}…`;
+}
+
+function normalizeIsbn(value: string | null | undefined) {
+  return value?.trim().toUpperCase().replace(/[^0-9X]/g, "") ?? "";
+}
+
+function isValidIsbn(value: string) {
+  return /^\d{13}$/.test(value) || /^\d{9}[\dX]$/.test(value);
 }
 
 function getAutomaticBookConventionTitle(form: ConvForm) {
@@ -242,13 +263,13 @@ function ConvModal({
     mode === "edit" && initial
       ? {
         titolo: initial.titolo,
-        partner: initial.partner,
-        descrizione: initial.descrizione,
-        vantaggio: initial.vantaggio,
+        partner: initial.partner ?? "",
+        descrizione: initial.descrizione ?? "",
+        vantaggio: initial.vantaggio ?? "",
         categoria: scope === "books"
-          ? initial.categoria || BOOK_CONVENTION_CATEGORY
-          : initial.categoria,
-        link: initial.link,
+          ? BOOK_CONVENTION_CATEGORY
+          : initial.categoria ?? "",
+        link: initial.link ?? "#",
         ordine: String(initial.ordine),
         attiva: initial.attiva,
         is_book_convention: scope === "books",
@@ -259,6 +280,12 @@ function ConvModal({
               convention_id: book.convention_id ?? initial.id,
               title: book.title ?? "",
               price: typeof book.price === "number" && Number.isFinite(book.price) ? book.price : 0,
+              original_price:
+                typeof book.original_price === "number" &&
+                Number.isFinite(book.original_price)
+                  ? book.original_price
+                  : null,
+              isbn: book.isbn ?? null,
               reference_year: book.reference_year ?? "primo_anno",
               description: book.description ?? "",
               sort_order: book.sort_order ?? index,
@@ -269,23 +296,7 @@ function ConvModal({
               round_ids: Array.isArray(book.round_ids) ? book.round_ids : [],
               cover_image: book.cover_image ?? null,
             }))
-            : Array.isArray(initial.book_items) && initial.book_items.length > 0
-              ? initial.book_items.map((item, index) => ({
-                id: null,
-                convention_id: initial.id,
-                title: item.title,
-                price: typeof item.price === "number" && Number.isFinite(item.price) ? item.price : 0,
-                reference_year: "primo_anno" as BookYear,
-                description: "",
-                sort_order: index,
-                product_type: "book" as ProductType,
-                bundle_items: [],
-                study_area: "medicina_chirurgia" as StudyArea,
-                is_active: true,
-                round_ids: [],
-                cover_image: null,
-              }))
-              : [],
+            : [],
       }
       : {
         ...EMPTY_FORM,
@@ -516,6 +527,26 @@ function ConvModal({
       const invalidPrice = form.books.find(book => book.price === null || !Number.isFinite(Number(book.price)) || Number(book.price) < 0);
       if (invalidPrice) {
         setErr("Ogni libro/promozione deve avere un prezzo valido.");
+        return;
+      }
+
+      const invalidOriginalPrice = form.books.find(
+        book =>
+          book.original_price !== null &&
+          (!Number.isFinite(Number(book.original_price)) ||
+            Number(book.original_price) < Number(book.price ?? 0))
+      );
+      if (invalidOriginalPrice) {
+        setErr("Il prezzo originale deve essere uguale o superiore al prezzo convenzionato.");
+        return;
+      }
+
+      const invalidIsbn = form.books.find(book => {
+        const isbn = normalizeIsbn(book.isbn);
+        return Boolean(isbn) && !isValidIsbn(isbn);
+      });
+      if (invalidIsbn) {
+        setErr("L’ISBN deve contenere 10 o 13 caratteri validi.");
         return;
       }
 
@@ -966,7 +997,7 @@ function ConvModal({
                           ) : null}
                         </div>
 
-                        <div className="book-admin-grid-3" style={{ display: "grid", gridTemplateColumns: "1.4fr .8fr .9fr", gap: ".75rem" }}>
+                        <div className="book-admin-grid-title" style={{ display: "grid", gridTemplateColumns: "1.4fr .8fr", gap: ".75rem" }}>
                           {isBundle ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
                               <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Titolo pubblico del bundle</label>
@@ -977,7 +1008,33 @@ function ConvModal({
                           ) : (
                             <MField label="Titolo libro *" value={book.title} onChange={v => updateBook(index, { title: v })} placeholder="es. Anatomia Gray" />
                           )}
-                          <MField label="Prezzo *" type="number" value={String(book.price ?? "")} onChange={v => updateBook(index, { price: v === "" ? null : Number(v) })} placeholder="45" />
+                          <MField
+                            label="ISBN"
+                            value={book.isbn ?? ""}
+                            onChange={value => updateBook(index, { isbn: value || null })}
+                            placeholder={isBundle ? "Facoltativo per il bundle" : "9781234567890"}
+                          />
+                        </div>
+
+                        <div className="book-admin-grid-3" style={{ display: "grid", gridTemplateColumns: ".9fr .9fr .9fr", gap: ".75rem" }}>
+                          <MField
+                            label="Prezzo originale"
+                            type="number"
+                            value={String(book.original_price ?? "")}
+                            onChange={value => updateBook(index, {
+                              original_price: value === "" ? null : Number(value),
+                            })}
+                            placeholder="60"
+                          />
+                          <MField
+                            label="Prezzo convenzionato *"
+                            type="number"
+                            value={String(book.price ?? "")}
+                            onChange={value => updateBook(index, {
+                              price: value === "" ? null : Number(value),
+                            })}
+                            placeholder="45"
+                          />
                           <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
                             <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Anno *</label>
                             <select
@@ -1076,7 +1133,12 @@ function MField({ label, value, onChange, type = "text", placeholder }: { label:
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
       <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>{label}</label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      <input
+        type={type}
+        step={type === "number" ? "0.01" : undefined}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
         style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: "#102a56", borderRadius: "12px", padding: ".8rem 1rem", fontSize: ".95rem", outline: "none", width: "100%", transition: "border-color .18s" }} />
     </div>
   );
@@ -1113,6 +1175,8 @@ export default function AdminConventionManager({
   const [rounds, setRounds] = useState<BookConventionRound[]>([]);
   const [bookConventionBooks, setBookConventionBooks] = useState<Record<number, BookConventionBook[]>>({});
   const [collectionActionKey, setCollectionActionKey] = useState<string | null>(null);
+  const [openCollectionConfirmation, setOpenCollectionConfirmation] =
+    useState<OpenCollectionConfirmation | null>(null);
   const [collectionConfirmation, setCollectionConfirmation] = useState<CollectionConfirmation | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<BookConventionDeleteConfirmation | null>(null);
   const [deleteConfirmationError, setDeleteConfirmationError] = useState("");
@@ -1282,18 +1346,18 @@ export default function AdminConventionManager({
     const titolo = booksScope
       ? getAutomaticBookConventionTitle(form)
       : form.titolo.trim();
-    const partner = booksScope ? "" : form.partner.trim();
-    const descriptionValue = booksScope ? "" : form.descrizione.trim();
-    const advantageValue = booksScope ? "" : form.vantaggio.trim();
-    const categoria = booksScope
-      ? BOOK_CONVENTION_CATEGORY
-      : form.categoria.trim();
-    const linkValue = booksScope ? "#" : form.link.trim();
-    const ordineValue = booksScope ? "0" : form.ordine.trim();
+    const partner = form.partner.trim();
+    const descriptionValue = form.descrizione.trim();
+    const advantageValue = form.vantaggio.trim();
+    const categoria = form.categoria.trim();
+    const linkValue = form.link.trim();
+    const ordineValue = form.ordine.trim();
 
     if (!titolo) return { ok: false, message: "Il titolo è obbligatorio." };
     if (!booksScope && !partner) return { ok: false, message: "Il partner è obbligatorio." };
-    if (!categoria) return { ok: false, message: "Seleziona una categoria." };
+    if (!booksScope && !categoria) {
+      return { ok: false, message: "Seleziona una categoria." };
+    }
 
     if (!booksScope && linkValue && linkValue !== "#") {
       try {
@@ -1331,11 +1395,7 @@ export default function AdminConventionManager({
           body: JSON.stringify({
             convention_id: editingId,
             title: titolo,
-            partner,
             description: descriptionValue,
-            vantaggio: advantageValue,
-            categoria,
-            link: linkValue || "#",
             ordine: Number(ordineValue || "0"),
             attiva: form.attiva,
             books: form.books.map((book, index) => {
@@ -1347,6 +1407,11 @@ export default function AdminConventionManager({
                 id: book.id ?? null,
                 title: buildAutomaticProductTitle(includedBooks),
                 price: Number(book.price ?? 0),
+                original_price:
+                  book.original_price === null
+                    ? null
+                    : Number(book.original_price),
+                isbn: normalizeIsbn(book.isbn) || null,
                 reference_year: book.reference_year,
                 description: book.description?.trim() || null,
                 sort_order: Number(book.sort_order ?? index),
@@ -1663,7 +1728,7 @@ export default function AdminConventionManager({
     }
   }
 
-  async function openCollection(conventionId: number) {
+  async function openCollection(conventionId: number, deliveryMode: DeliveryMode) {
     const actionKey = `open:${conventionId}`;
     setCollectionActionKey(actionKey);
     setError("");
@@ -1677,6 +1742,7 @@ export default function AdminConventionManager({
         body: JSON.stringify({
           action: "open_collection",
           convention_id: conventionId,
+          delivery_mode: deliveryMode,
         }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
@@ -1700,6 +1766,7 @@ export default function AdminConventionManager({
       }
 
       await fetchConvenzioni();
+      setOpenCollectionConfirmation(null);
       setSuccess(payload.message || "Nuova raccolta ordini aperta.");
     } catch (error) {
       console.error("Errore apertura raccolta:", error);
@@ -1779,13 +1846,20 @@ export default function AdminConventionManager({
     if (filter === "disattive") list = list.filter(c => !c.attiva);
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(c => c.titolo.toLowerCase().includes(q) || c.partner.toLowerCase().includes(q) || c.categoria.toLowerCase().includes(q));
+      list = list.filter(c =>
+        c.titolo.toLowerCase().includes(q) ||
+        (c.partner ?? "").toLowerCase().includes(q) ||
+        (c.categoria ?? "").toLowerCase().includes(q)
+      );
     }
     return list;
   }, [convenzioni, filter, search]);
 
   const attive = convenzioni.filter(c => c.attiva).length;
-  const categories = useMemo(() => [...new Set(convenzioni.map(c => c.categoria).filter(Boolean))], [convenzioni]);
+  const categories = useMemo(
+    () => [...new Set(convenzioni.map(c => c.categoria).filter(Boolean))],
+    [convenzioni]
+  );
   const catalogProducts = useMemo(
     () => Object.values(bookConventionBooks).flat(),
     [bookConventionBooks]
@@ -1931,6 +2005,119 @@ export default function AdminConventionManager({
                     ? "Eliminazione in corso..."
                     : "Elimina convenzione e storico"}
                 </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {openCollectionConfirmation && (
+        <div
+          role="presentation"
+          onClick={() => {
+            if (!collectionActionKey) setOpenCollectionConfirmation(null);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 290,
+            display: "grid",
+            placeItems: "center",
+            padding: "1rem",
+            background: "rgba(8,16,42,.52)",
+            backdropFilter: "blur(6px)",
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="open-collection-title"
+            onClick={event => event.stopPropagation()}
+            style={{
+              width: "min(100%, 520px)",
+              borderRadius: "1.4rem",
+              border: "1px solid rgba(15,47,110,.1)",
+              background: "white",
+              padding: "1.35rem",
+              boxShadow: "0 24px 70px rgba(8,16,42,.24)",
+            }}
+          >
+            <p style={{ margin: 0, color: "#2E4080", fontSize: ".68rem", fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase" }}>
+              Nuova raccolta ordini
+            </p>
+            <h2 id="open-collection-title" style={{ margin: ".45rem 0 0", color: "#0f2f6e", fontSize: "1.25rem" }}>
+              Come saranno consegnati i libri di “{openCollectionConfirmation.conventionTitle}”?
+            </h2>
+            <p style={{ margin: ".65rem 0 0", color: "#6b7280", fontSize: ".82rem", lineHeight: 1.55 }}>
+              La modalità resterà associata a questa raccolta e sarà mostrata agli studenti durante l’adesione.
+            </p>
+
+            <fieldset style={{ display: "grid", gap: ".7rem", margin: "1rem 0 0", padding: 0, border: 0 }}>
+              <legend style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
+                Modalità di consegna
+              </legend>
+              {(["university", "home"] as const).map(deliveryMode => {
+                const selected = openCollectionConfirmation.deliveryMode === deliveryMode;
+                return (
+                  <label
+                    key={deliveryMode}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: ".75rem",
+                      minHeight: 62,
+                      border: `1px solid ${selected ? "#1847a3" : "rgba(15,47,110,.12)"}`,
+                      borderRadius: "1rem",
+                      background: selected ? "#f2f6ff" : "white",
+                      padding: ".85rem",
+                      cursor: collectionActionKey ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="delivery_mode"
+                      value={deliveryMode}
+                      checked={selected}
+                      disabled={Boolean(collectionActionKey)}
+                      onChange={() => setOpenCollectionConfirmation(current =>
+                        current ? { ...current, deliveryMode } : current
+                      )}
+                      style={{ marginTop: ".18rem", accentColor: "#1847a3" }}
+                    />
+                    <span>
+                      <strong style={{ display: "block", color: "#0f2f6e", fontSize: ".84rem" }}>
+                        {DELIVERY_MODE_LABELS[deliveryMode]}
+                      </strong>
+                      <small style={{ display: "block", marginTop: ".2rem", color: "#6b7280", fontSize: ".72rem", lineHeight: 1.45 }}>
+                        {deliveryMode === "home"
+                          ? "Nel checkout verranno richiesti indirizzo completo e dati di spedizione."
+                          : "Non verrà richiesto l’indirizzo; le istruzioni per il ritiro saranno comunicate da ASTRA."}
+                      </small>
+                    </span>
+                  </label>
+                );
+              })}
+            </fieldset>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: ".65rem", marginTop: "1.2rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => setOpenCollectionConfirmation(null)}
+                disabled={Boolean(collectionActionKey)}
+                style={{ minHeight: 44, border: "1px solid rgba(15,47,110,.14)", background: "white", color: "#0f2f6e", borderRadius: 999, padding: ".65rem 1rem", fontWeight: 800, cursor: collectionActionKey ? "not-allowed" : "pointer" }}
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={() => void openCollection(
+                  openCollectionConfirmation.conventionId,
+                  openCollectionConfirmation.deliveryMode
+                )}
+                disabled={Boolean(collectionActionKey)}
+                style={{ minHeight: 44, border: "none", background: collectionActionKey ? "#8ca4d7" : "#1847a3", color: "white", borderRadius: 999, padding: ".65rem 1.1rem", fontWeight: 800, cursor: collectionActionKey ? "wait" : "pointer" }}
+              >
+                {collectionActionKey ? "Apertura..." : "Apri raccolta"}
               </button>
             </div>
           </div>
@@ -2157,7 +2344,7 @@ export default function AdminConventionManager({
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Cerca per titolo, partner o categoria..."
+                placeholder={booksScope ? "Cerca per titolo..." : "Cerca per titolo, partner o categoria..."}
                 style={{ width: "100%", padding: ".85rem 1rem .85rem 2.6rem", border: "1px solid rgba(15,47,110,.1)", borderRadius: "999px", background: "white", fontSize: ".92rem", color: "#102a56", outline: "none" }}
               />
               {search && (
@@ -2181,9 +2368,11 @@ export default function AdminConventionManager({
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
                 {filtered.map(c => {
-                  const catStyle = getCatStyle(c.categoria);
+                  const catStyle = getCatStyle(c.categoria ?? "");
                   const deleting = deletingId === c.id;
-                  const initials = c.partner?.slice(0, 2).toUpperCase() ?? "??";
+                  const initials = booksScope
+                    ? "LB"
+                    : c.partner?.slice(0, 2).toUpperCase() ?? "??";
                   const conventionProducts = bookConventionBooks[c.id] ?? [];
                   const activeProducts = conventionProducts.filter(product => product.is_active);
                   const bundleCount = activeProducts.filter(product => product.product_type === "bundle").length;
@@ -2248,9 +2437,11 @@ export default function AdminConventionManager({
                           >
                             {c.titolo}
                           </h3>
-                          <span style={{ fontSize: ".68rem", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", background: catStyle.bg, color: catStyle.text, padding: ".22rem .65rem", borderRadius: "999px" }}>
-                            {formatCategoryLabel(c.categoria)}
-                          </span>
+                          {!booksScope && c.categoria ? (
+                            <span style={{ fontSize: ".68rem", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", background: catStyle.bg, color: catStyle.text, padding: ".22rem .65rem", borderRadius: "999px" }}>
+                              {formatCategoryLabel(c.categoria)}
+                            </span>
+                          ) : null}
                           {booksScope && (
                             <span
                               style={{
@@ -2273,8 +2464,10 @@ export default function AdminConventionManager({
                             </span>
                           )}
                         </div>
-                        <p style={{ margin: 0, fontSize: ".84rem", color: "#2E4080", fontWeight: 600 }}>{c.partner}</p>
-                        {c.vantaggio && (
+                        {!booksScope && c.partner ? (
+                          <p style={{ margin: 0, fontSize: ".84rem", color: "#2E4080", fontWeight: 600 }}>{c.partner}</p>
+                        ) : null}
+                        {!booksScope && c.vantaggio && (
                           <p
                             style={{
                               margin: ".25rem 0 0",
@@ -2346,6 +2539,9 @@ export default function AdminConventionManager({
                                     <p style={{ margin: ".2rem 0 0", color: "#6b7280", fontSize: ".74rem" }}>
                                       Aperta il {formatDateTime(activeRound.starts_at)} · {activeRoundProductCount} prodotti inclusi
                                     </p>
+                                    <p style={{ margin: ".2rem 0 0", color: "#2E4080", fontSize: ".7rem", fontWeight: 800 }}>
+                                      {DELIVERY_MODE_LABELS[activeRound.delivery_mode]}
+                                    </p>
                                   </div>
                                   <div className="book-collection-actions" style={{ display: "flex", gap: ".45rem", flexWrap: "wrap" }}>
                                     <button
@@ -2388,7 +2584,11 @@ export default function AdminConventionManager({
                                 <button
                                   className="book-collection-primary-action"
                                   type="button"
-                                  onClick={() => void openCollection(c.id)}
+                                  onClick={() => setOpenCollectionConfirmation({
+                                    conventionId: c.id,
+                                    conventionTitle: c.titolo,
+                                    deliveryMode: "university",
+                                  })}
                                   disabled={collectionBusy || activeProducts.length === 0 || upcomingRounds.length > 0}
                                   style={{ border: "none", background: collectionBusy || activeProducts.length === 0 || upcomingRounds.length > 0 ? "#8ca4d7" : "#1847a3", color: "white", borderRadius: 999, padding: ".6rem .9rem", fontWeight: 800, fontSize: ".75rem", cursor: collectionBusy ? "wait" : activeProducts.length === 0 || upcomingRounds.length > 0 ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}
                                 >
@@ -2421,6 +2621,7 @@ export default function AdminConventionManager({
                                     <div key={round.id} style={{ display: "flex", justifyContent: "space-between", gap: ".7rem", alignItems: "center", flexWrap: "wrap", background: "white", border: "1px solid rgba(15,47,110,.07)", borderRadius: ".75rem", padding: ".55rem .65rem" }}>
                                       <span style={{ color: "#374151", fontSize: ".72rem", fontWeight: 700 }}>
                                         Raccolta {roundNumberById.get(round.id)} · {formatDateOnly(round.starts_at)} – {formatDateOnly(round.ends_at)}
+                                        {` · ${DELIVERY_MODE_LABELS[round.delivery_mode]}`}
                                       </span>
                                       <Link
                                         className="book-collection-export-link"
@@ -2666,6 +2867,7 @@ export default function AdminConventionManager({
           }
 
           .book-admin-grid-3,
+          .book-admin-grid-title,
           .book-admin-grid-2,
           .book-admin-grid-description,
           .book-admin-cover,

@@ -18,6 +18,7 @@ import {
   BOOK_YEAR_LABELS,
   STUDY_AREAS,
   STUDY_AREA_LABELS,
+  DELIVERY_MODE_LABELS,
   type BookConventionApiResponse,
   type BookConventionCatalogBook,
   type BookYear,
@@ -229,6 +230,7 @@ export default function BookConventionClient({
         return normalizeSearchValue(
           [
             product.title,
+            product.isbn ?? "",
             product.description ?? "",
             product.bundle_items.join(" "),
           ].join(" ")
@@ -357,11 +359,6 @@ export default function BookConventionClient({
                 {convention.descrizione ||
                   "Scegli libri singoli e bundle per il tuo corso di studi e invia la richiesta di adesione."}
               </p>
-              {convention.partner ? (
-                <p className="mt-3 text-[.72rem] font-semibold text-[#596174]">
-                  In collaborazione con {convention.partner}
-                </p>
-              ) : null}
             </header>
 
             <aside className="book-hero-meta" aria-label="Stato della convenzione libri">
@@ -399,6 +396,9 @@ export default function BookConventionClient({
                     {hasDisplayableEndDate(data.activeRound.ends_at)
                       ? ` al ${formatRoundDate(data.activeRound.ends_at)}`
                       : ""}
+                    <span className="mt-1 block text-[.7rem] font-semibold text-[#596174]">
+                      {DELIVERY_MODE_LABELS[data.activeRound.delivery_mode]}
+                    </span>
                   </p>
                 </div>
               ) : (
@@ -485,6 +485,7 @@ export default function BookConventionClient({
                   total={0}
                   canAdhere={false}
                   activeAdhesion={activeAdhesion}
+                  deliveryMode={data.activeRound?.delivery_mode ?? null}
                   onRemove={toggleProduct}
                   onProceed={() => undefined}
                 />
@@ -627,6 +628,7 @@ export default function BookConventionClient({
                 total={total}
                 canAdhere={canAdhere}
                 activeAdhesion={activeAdhesion}
+                deliveryMode={data.activeRound?.delivery_mode ?? null}
                 onRemove={toggleProduct}
                 onProceed={() => setDialogOpen(true)}
               />
@@ -644,6 +646,7 @@ export default function BookConventionClient({
             profile={data.profile}
             initialFiscalCodeOrVat={data.latestAdhesion?.fiscal_code_or_vat}
             initialAddress={data.latestAdhesion?.billing_shipping_address}
+            deliveryMode={data.activeRound.delivery_mode}
             onClose={() => setDialogOpen(false)}
             onCompleted={handleCompleted}
             onUnauthorized={goToLogin}

@@ -12,6 +12,8 @@ import {
   BOOK_CONVENTION_BANK_DETAILS,
   BOOK_YEAR_LABELS,
   BOOK_YEARS,
+  DELIVERY_MODE_LABELS,
+  DELIVERY_MODES,
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHODS,
   PRODUCT_TYPE_LABELS,
@@ -21,7 +23,9 @@ import {
   type BookConventionBook,
   type BookConventionCatalogBook,
   type BookConventionRound,
+  type BookConventionSummary,
   type BookYear,
+  type DeliveryMode,
   type PaymentMethod,
   type ProductType,
   type StudyArea,
@@ -71,6 +75,12 @@ function isStudyArea(value: unknown): value is StudyArea {
   return typeof value === "string" && STUDY_AREAS.includes(value as StudyArea);
 }
 
+function isDeliveryMode(value: unknown): value is DeliveryMode {
+  return (
+    typeof value === "string" && DELIVERY_MODES.includes(value as DeliveryMode)
+  );
+}
+
 function normalizeBundleItems(value: unknown) {
   if (!Array.isArray(value)) return [];
 
@@ -80,8 +90,72 @@ function normalizeBundleItems(value: unknown) {
 }
 
 function parseDatabasePrice(value: unknown) {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    return null;
+  }
+
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function normalizeIsbn(value: unknown) {
+  const isbn = cleanRequiredString(value)
+    .toUpperCase()
+    .replace(/[\s-]/g, "");
+
+  return /^(?:[0-9]{13}|[0-9]{9}[0-9X])$/.test(isbn) ? isbn : null;
+}
+
+function normalizeConventionRow(value: unknown): BookConventionSummary | null {
+  if (!value || typeof value !== "object") return null;
+
+  const row = value as Record<string, unknown>;
+  const id = Number(row.id);
+  const titolo = cleanRequiredString(row.titolo);
+  const ordine = Number(row.ordine);
+
+  if (!Number.isInteger(id) || id <= 0 || !titolo) return null;
+
+  return {
+    id,
+    titolo,
+    descrizione: cleanRequiredString(row.descrizione) || null,
+    attiva: row.attiva === true,
+    ordine: Number.isInteger(ordine) ? ordine : 0,
+  };
+}
+
+function normalizeRoundRow(value: unknown): BookConventionRound | null {
+  if (!value || typeof value !== "object") return null;
+
+  const row = value as Record<string, unknown>;
+  const id = cleanRequiredString(row.id);
+  const conventionId = Number(row.convention_id);
+  const startsAt = cleanRequiredString(row.starts_at);
+  const endsAt = cleanRequiredString(row.ends_at);
+
+  if (
+    !id ||
+    !Number.isInteger(conventionId) ||
+    conventionId <= 0 ||
+    !startsAt ||
+    !endsAt ||
+    !isDeliveryMode(row.delivery_mode)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    convention_id: conventionId,
+    starts_at: startsAt,
+    ends_at: endsAt,
+    delivery_mode: row.delivery_mode,
+  };
 }
 
 function normalizeBookRow(value: unknown): BookConventionBook | null {
@@ -106,12 +180,14 @@ function normalizeBookRow(value: unknown): BookConventionBook | null {
   }
 
   const sortOrder = Number(row.sort_order);
+  const price = parseDatabasePrice(row.price);
+  const originalPrice = parseDatabasePrice(row.original_price);
 
   return {
     id,
     convention_id: conventionId,
     title,
-    price: parseDatabasePrice(row.price),
+    price,
     reference_year: row.reference_year,
     description: cleanRequiredString(row.description) || null,
     sort_order: Number.isInteger(sortOrder) ? sortOrder : null,
@@ -120,6 +196,11 @@ function normalizeBookRow(value: unknown): BookConventionBook | null {
     study_area: row.study_area,
     is_active: row.is_active === true,
     cover_image: normalizeBookConventionCoverUrl(row.cover_image),
+    isbn: normalizeIsbn(row.isbn),
+    original_price:
+      originalPrice !== null && (price === null || originalPrice >= price)
+        ? originalPrice
+        : null,
   };
 }
 
@@ -240,7 +321,7 @@ function getUserProfileForReceipt(
 function buildBookConventionReceiptHtml(params: {
   profile: BookReceiptProfile;
   fiscalCodeOrVat: string;
-  billingShippingAddress: string;
+  billingShippingAddress: string | null;
   paymentMethod: PaymentMethod;
   selectedBooks: BookConventionBook[];
   totalPrice: number;
@@ -256,23 +337,67 @@ function buildBookConventionReceiptHtml(params: {
     activeRound,
   } = params;
 
+  const originalTotalInCents = selectedBooks.reduce((sum, book) => {
+    const conventionPrice = book.price ?? 0;
+    const originalPrice = book.original_price;
+
+    return (
+      sum +
+      priceToCents(
+        typeof originalPrice === "number" && originalPrice >= conventionPrice
+          ? originalPrice
+          : conventionPrice
+      )
+    );
+  }, 0);
+  const totalSavings =
+    Math.max(0, originalTotalInCents - priceToCents(totalPrice)) / 100;
+
   const orderedBooksRows = selectedBooks
     .map((book) => {
-      const price = typeof book.price === "number" && Number.isFinite(book.price) ? book.price : 0;
+      const price =
+        typeof book.price === "number" && Number.isFinite(book.price)
+          ? book.price
+          : 0;
+      const originalPrice =
+        typeof book.original_price === "number" &&
+        Number.isFinite(book.original_price)
+          ? book.original_price
+          : null;
+      const saving =
+        originalPrice !== null && originalPrice > price
+          ? originalPrice - price
+          : 0;
       const bundleContents =
         book.product_type === "bundle" && book.bundle_items.length > 0
           ? `<div style="margin-top: 4px; color: #6b7280; font-size: 12px;">Include: ${escapeHtml(book.bundle_items.join(", "))}</div>`
+          : "";
+      const isbn = book.isbn
+        ? `<div style="margin-top: 4px; color: #6b7280; font-size: 12px;">ISBN ${escapeHtml(book.isbn)}</div>`
+        : "";
+      const savingLabel =
+        saving > 0
+          ? `<div style="margin-top: 3px; color: #16794b; font-size: 11px; font-weight: 600;">Risparmio ${escapeHtml(formatEuro(saving))}</div>`
           : "";
 
       return `
         <tr>
           <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">
             <strong>${escapeHtml(book.title)}</strong>
+            ${isbn}
             ${bundleContents}
           </td>
-          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(PRODUCT_TYPE_LABELS[book.product_type])}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(BOOK_YEAR_LABELS[book.reference_year])}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${escapeHtml(formatEuro(price))}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">
+            ${escapeHtml(PRODUCT_TYPE_LABELS[book.product_type])}<br />
+            <span style="color: #6b7280; font-size: 12px;">${escapeHtml(BOOK_YEAR_LABELS[book.reference_year])}</span>
+          </td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; color: #6b7280;">
+            ${originalPrice === null ? "—" : `<span style="text-decoration: ${saving > 0 ? "line-through" : "none"};">${escapeHtml(formatEuro(originalPrice))}</span>`}
+          </td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">
+            <strong>${escapeHtml(formatEuro(price))}</strong>
+            ${savingLabel}
+          </td>
         </tr>
       `;
     })
@@ -284,7 +409,8 @@ function buildBookConventionReceiptHtml(params: {
         <div style="margin-top: 24px; padding: 16px; border-radius: 12px; background: #eef4ff; border: 1px solid #c7d7fe;">
           <h3 style="margin: 0 0 8px; color: #0f2f6e; font-size: 16px;">Coordinate per il bonifico</h3>
           <p style="margin: 0; color: #1f2937;">
-            IBAN: <strong>${escapeHtml(BOOK_CONVENTION_BANK_DETAILS.bank)} – IBAN ${escapeHtml(BOOK_CONVENTION_BANK_DETAILS.iban)}</strong><br />
+            Banca: <strong>${escapeHtml(BOOK_CONVENTION_BANK_DETAILS.bank)}</strong><br />
+            IBAN: <strong>${escapeHtml(BOOK_CONVENTION_BANK_DETAILS.iban)}</strong><br />
             Intestatario: <strong>${escapeHtml(BOOK_CONVENTION_BANK_DETAILS.accountHolder)}</strong><br />
             Causale: <strong>Adesione convenzione libri - ${escapeHtml(profile.firstName)} ${escapeHtml(profile.lastName)}</strong>
           </p>
@@ -293,6 +419,25 @@ function buildBookConventionReceiptHtml(params: {
       : "";
 
   const roundStart = new Date(activeRound.starts_at).toLocaleDateString("it-IT");
+  const deliveryLabel = DELIVERY_MODE_LABELS[activeRound.delivery_mode];
+  const deliveryAddressRow =
+    activeRound.delivery_mode === "home"
+      ? `
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Indirizzo di consegna</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; white-space: pre-line;">${escapeHtml(billingShippingAddress || "-")}</td>
+              </tr>
+        `
+      : "";
+  const savingsTotalRow =
+    totalSavings > 0
+      ? `
+              <tr>
+                <td colspan="3" style="padding: 8px 10px; text-align: right; color: #16794b;"><strong>Risparmio totale</strong></td>
+                <td style="padding: 8px 10px; text-align: right; color: #16794b;"><strong>${escapeHtml(formatEuro(totalSavings))}</strong></td>
+              </tr>
+        `
+      : "";
 
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.5; color: #111827; background: #f7f7f7; padding: 24px;">
@@ -323,9 +468,10 @@ function buildBookConventionReceiptHtml(params: {
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(fiscalCodeOrVat)}</td>
               </tr>
               <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Indirizzo spedizione/fatturazione</strong></td>
-                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; white-space: pre-line;">${escapeHtml(billingShippingAddress)}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Modalità di consegna</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(deliveryLabel)}</td>
               </tr>
+              ${deliveryAddressRow}
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Metodo di pagamento</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(PAYMENT_METHOD_LABELS[paymentMethod])}</td>
@@ -342,9 +488,9 @@ function buildBookConventionReceiptHtml(params: {
             <thead>
               <tr>
                 <th align="left" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Titolo</th>
-                <th align="left" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Tipo</th>
-                <th align="left" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Anno</th>
-                <th align="right" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Prezzo</th>
+                <th align="left" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Tipologia</th>
+                <th align="right" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Originale</th>
+                <th align="right" style="padding: 10px; border-bottom: 2px solid #d1d5db; background: #f9fafb;">Convenzione</th>
               </tr>
             </thead>
             <tbody>
@@ -353,6 +499,7 @@ function buildBookConventionReceiptHtml(params: {
                 <td colspan="3" style="padding: 12px 10px; text-align: right;"><strong>Totale</strong></td>
                 <td style="padding: 12px 10px; text-align: right;"><strong>${escapeHtml(formatEuro(totalPrice))}</strong></td>
               </tr>
+              ${savingsTotalRow}
             </tbody>
           </table>
 
@@ -371,7 +518,7 @@ async function sendBookConventionReceiptEmail(params: {
   to: string;
   profile: BookReceiptProfile;
   fiscalCodeOrVat: string;
-  billingShippingAddress: string;
+  billingShippingAddress: string | null;
   paymentMethod: PaymentMethod;
   selectedBooks: BookConventionBook[];
   totalPrice: number;
@@ -453,7 +600,7 @@ async function getActiveRound(supabase: SupabaseClient, conventionId: number) {
 
   const { data, error } = await supabase
     .from("book_convention_rounds")
-    .select("id, convention_id, starts_at, ends_at")
+    .select("id, convention_id, starts_at, ends_at, delivery_mode")
     .eq("convention_id", conventionId)
     .lte("starts_at", now)
     .gt("ends_at", now)
@@ -463,7 +610,14 @@ async function getActiveRound(supabase: SupabaseClient, conventionId: number) {
 
   if (error) throw error;
 
-  return data as BookConventionRound | null;
+  if (!data) return null;
+
+  const round = normalizeRoundRow(data);
+  if (!round) {
+    throw new Error("Configurazione della raccolta libri non valida.");
+  }
+
+  return round;
 }
 
 function privateJson(body: object, status = 200) {
@@ -508,9 +662,8 @@ export async function GET(req: NextRequest) {
   try {
     const serviceClient = getServiceClient();
     const { data: conventionRows, error: conventionError } = await serviceClient
-      .from("convenzioni")
-      .select("id, titolo, partner, descrizione, attiva, is_book_convention, ordine")
-      .eq("is_book_convention", true)
+      .from("book_conventions")
+      .select("id, titolo, descrizione, attiva, ordine")
       .eq("attiva", true)
       .order("ordine", { ascending: true })
       .order("id", { ascending: true })
@@ -518,7 +671,11 @@ export async function GET(req: NextRequest) {
 
     if (conventionError) throw conventionError;
 
-    const conventions = conventionRows ?? [];
+    const conventions = (conventionRows ?? [])
+      .map((item) => normalizeConventionRow(item))
+      .filter(
+        (item): item is BookConventionSummary => item !== null
+      );
     const convention = requestedConventionId
       ? conventions.find((item) => Number(item.id) === requestedConventionId) ?? null
       : conventions[0] ?? null;
@@ -535,13 +692,13 @@ export async function GET(req: NextRequest) {
     const [roundsResult, booksResult, adhesionsResult, profileResult] = await Promise.all([
       serviceClient
         .from("book_convention_rounds")
-        .select("id, convention_id, starts_at, ends_at")
+        .select("id, convention_id, starts_at, ends_at, delivery_mode")
         .eq("convention_id", conventionId)
         .order("starts_at", { ascending: true }),
       serviceClient
         .from("book_convention_books")
         .select(
-          "id, convention_id, title, price, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+          "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
         )
         .eq("convention_id", conventionId)
         .eq("is_active", true)
@@ -567,6 +724,14 @@ export async function GET(req: NextRequest) {
     if (booksResult.error) throw booksResult.error;
     if (adhesionsResult.error) throw adhesionsResult.error;
     if (profileResult.error) throw profileResult.error;
+
+    const rounds = (roundsResult.data ?? []).map((round) => {
+      const normalizedRound = normalizeRoundRow(round);
+      if (!normalizedRound) {
+        throw new Error("Configurazione di una raccolta libri non valida.");
+      }
+      return normalizedRound;
+    });
 
     const availableBookIds = new Set<number>();
     const conventionIsActive = convention.attiva === true;
@@ -622,7 +787,7 @@ export async function GET(req: NextRequest) {
       convention,
       conventions,
       activeRound,
-      rounds: roundsResult.data ?? [],
+      rounds,
       canAdhere:
         conventionIsActive && Boolean(activeRound) && selectableBooks.length > 0,
       books: selectableBooks,
@@ -663,8 +828,8 @@ export async function POST(req: NextRequest) {
   }
 
   let body: {
-    convention_id?: number | string | null;
-    round_id?: string | null;
+    convention_id?: unknown;
+    round_id?: unknown;
     selected_book_ids?: unknown;
     payment_method?: unknown;
     fiscal_code_or_vat?: unknown;
@@ -672,12 +837,23 @@ export async function POST(req: NextRequest) {
   } = {};
 
   try {
-    body = await req.json();
+    const parsedBody: unknown = await req.json();
+    if (
+      parsedBody &&
+      typeof parsedBody === "object" &&
+      !Array.isArray(parsedBody)
+    ) {
+      body = parsedBody;
+    }
   } catch {
     body = {};
   }
 
-  const conventionId = body.convention_id ? Number(body.convention_id) : null;
+  const conventionId =
+    typeof body.convention_id === "number" ||
+    typeof body.convention_id === "string"
+      ? Number(body.convention_id)
+      : null;
   const requestedRoundId = cleanRequiredString(body.round_id);
   const selectedBookIds = cleanBookIds(body.selected_book_ids);
   const paymentMethod = body.payment_method;
@@ -702,13 +878,6 @@ export async function POST(req: NextRequest) {
     return privateJson({ error: "Inserisci un codice fiscale o una partita IVA validi." }, 400);
   }
 
-  if (billingShippingAddress.length < 8 || billingShippingAddress.length > 1000) {
-    return privateJson(
-      { error: "Inserisci un indirizzo di spedizione/fatturazione completo." },
-      400
-    );
-  }
-
   if (!isPaymentMethod(paymentMethod)) {
     return privateJson({ error: "Metodo di pagamento non valido." }, 400);
   }
@@ -716,8 +885,8 @@ export async function POST(req: NextRequest) {
   try {
     const serviceClient = getServiceClient();
     const { data: convention, error: conventionError } = await serviceClient
-      .from("convenzioni")
-      .select("id, attiva, is_book_convention")
+      .from("book_conventions")
+      .select("id, attiva")
       .eq("id", conventionId)
       .maybeSingle();
 
@@ -725,13 +894,6 @@ export async function POST(req: NextRequest) {
 
     if (!convention) {
       return privateJson({ error: "Convenzione non trovata." }, 404);
-    }
-
-    if (!convention.is_book_convention) {
-      return privateJson(
-        { error: "Questa convenzione non è una convenzione libri." },
-        400
-      );
     }
 
     if (convention.attiva !== true) {
@@ -754,11 +916,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const addressForAdhesion =
+      activeRound.delivery_mode === "home" ? billingShippingAddress : null;
+
+    if (
+      activeRound.delivery_mode === "home" &&
+      (billingShippingAddress.length < 8 ||
+        billingShippingAddress.length > 1000)
+    ) {
+      return privateJson(
+        { error: "Inserisci un indirizzo di consegna completo." },
+        400
+      );
+    }
+
     const [booksResult, linksResult] = await Promise.all([
       serviceClient
         .from("book_convention_books")
         .select(
-          "id, convention_id, title, price, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+          "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
         )
         .eq("convention_id", conventionId)
         .eq("is_active", true)
@@ -832,7 +1008,11 @@ export async function POST(req: NextRequest) {
 
     const latestActiveRound = await getActiveRound(serviceClient, conventionId);
 
-    if (!latestActiveRound || latestActiveRound.id !== activeRound.id) {
+    if (
+      !latestActiveRound ||
+      latestActiveRound.id !== activeRound.id ||
+      latestActiveRound.delivery_mode !== activeRound.delivery_mode
+    ) {
       return privateJson(
         { error: "La raccolta ordini è stata chiusa. Aggiorna la pagina prima di riprovare." },
         409
@@ -856,10 +1036,12 @@ export async function POST(req: NextRequest) {
           bundle_items: book.bundle_items,
           study_area: book.study_area,
           cover_image: book.cover_image,
+          isbn: book.isbn,
+          original_price: book.original_price,
         })),
         total_price: totalPrice,
         fiscal_code_or_vat: fiscalCodeOrVat,
-        billing_shipping_address: billingShippingAddress,
+        billing_shipping_address: addressForAdhesion,
         payment_method: paymentMethod,
       })
       .select("id")
@@ -897,7 +1079,7 @@ export async function POST(req: NextRequest) {
         to: profile.email,
         profile,
         fiscalCodeOrVat,
-        billingShippingAddress,
+        billingShippingAddress: addressForAdhesion,
         paymentMethod,
         selectedBooks,
         totalPrice,

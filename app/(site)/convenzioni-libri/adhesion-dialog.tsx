@@ -19,10 +19,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   BOOK_CONVENTION_BANK_DETAILS,
+  DELIVERY_MODE_LABELS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHODS,
   type BookConventionCatalogBook,
   type BookConventionSubmitResponse,
+  type DeliveryMode,
   type PaymentMethod,
 } from "@/lib/book-convention";
 
@@ -31,6 +33,20 @@ function formatPrice(value: number) {
     style: "currency",
     currency: "EUR",
   }).format(value);
+}
+
+function getOriginalPrice(product: BookConventionCatalogBook) {
+  if (
+    typeof product.price !== "number" ||
+    !Number.isFinite(product.price) ||
+    typeof product.original_price !== "number" ||
+    !Number.isFinite(product.original_price) ||
+    product.original_price <= product.price
+  ) {
+    return null;
+  }
+
+  return product.original_price;
 }
 
 const FOCUSABLE_SELECTOR = [
@@ -57,6 +73,7 @@ export default function AdhesionDialog({
   profile,
   initialFiscalCodeOrVat,
   initialAddress,
+  deliveryMode,
   onClose,
   onCompleted,
   onUnauthorized,
@@ -69,6 +86,7 @@ export default function AdhesionDialog({
   profile?: { firstName: string; lastName: string; email: string };
   initialFiscalCodeOrVat?: string | null;
   initialAddress?: string | null;
+  deliveryMode: DeliveryMode;
   onClose: () => void;
   onCompleted: (message: string) => void;
   onUnauthorized: () => void;
@@ -93,11 +111,11 @@ export default function AdhesionDialog({
     if (!open) return;
 
     setFiscalCodeOrVat(initialFiscalCodeOrVat ?? "");
-    setAddress(initialAddress ?? "");
+    setAddress(deliveryMode === "home" ? initialAddress ?? "" : "");
     setPaymentMethod("contanti");
     setConfirmed(false);
     setError("");
-  }, [initialAddress, initialFiscalCodeOrVat, open]);
+  }, [deliveryMode, initialAddress, initialFiscalCodeOrVat, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -200,6 +218,10 @@ export default function AdhesionDialog({
   if (!open) return null;
 
   const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ");
+  const originalTotal = products.reduce((sum, product) => {
+    return sum + (getOriginalPrice(product) ?? product.price ?? 0);
+  }, 0);
+  const totalSaving = Math.max(0, originalTotal - total);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -217,7 +239,7 @@ export default function AdhesionDialog({
       return;
     }
 
-    if (address.trim().length < 8) {
+    if (deliveryMode === "home" && address.trim().length < 8) {
       setError("Inserisci un indirizzo di spedizione/fatturazione completo.");
       return;
     }
@@ -239,7 +261,7 @@ export default function AdhesionDialog({
           selected_book_ids: products.map((product) => product.id),
           payment_method: paymentMethod,
           fiscal_code_or_vat: normalizedFiscalCode,
-          billing_shipping_address: address.trim(),
+          billing_shipping_address: deliveryMode === "home" ? address.trim() : null,
         }),
       });
 
@@ -397,15 +419,23 @@ export default function AdhesionDialog({
                         id="checkout-billing-title"
                         className="mt-0.5 text-[1rem] font-bold text-[#08102A]"
                       >
-                        Fatturazione e spedizione
+                        Fatturazione e consegna
                       </h3>
                       <p className="mt-0.5 text-[.72rem] leading-relaxed text-[#7B8290]">
-                        Inserisci i dati completi che verranno associati alla richiesta.
+                        {deliveryMode === "home"
+                          ? "Inserisci i dati completi per la consegna a domicilio."
+                          : "La raccolta prevede la consegna in università."}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]">
+                  <div
+                    className={`mt-4 grid gap-4 ${
+                      deliveryMode === "home"
+                        ? "sm:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]"
+                        : "sm:grid-cols-2"
+                    }`}
+                  >
                     <label className="block">
                       <span className="mb-1.5 block text-[.73rem] font-bold text-[#24304B]">
                         Codice fiscale o Partita IVA
@@ -427,23 +457,41 @@ export default function AdhesionDialog({
                       />
                     </label>
 
-                    <label className="block">
-                      <span className="mb-1.5 block text-[.73rem] font-bold text-[#24304B]">
-                        Indirizzo di spedizione/fatturazione
-                      </span>
-                      <textarea
-                        name="street-address"
-                        value={address}
-                        onChange={(event) => setAddress(event.target.value)}
-                        placeholder="Via, numero civico, CAP, città e provincia"
-                        autoComplete="street-address"
-                        rows={4}
-                        maxLength={1000}
-                        required
-                        disabled={submitting}
-                        className="min-h-28 w-full resize-y rounded-xl border border-[rgba(14,31,107,.14)] bg-white px-3.5 py-3 text-[.84rem] text-[#08102A] outline-none transition placeholder:text-[#A5AAB5] focus:border-[#1A3399] focus:ring-3 focus:ring-[#1A3399]/10 disabled:cursor-not-allowed disabled:bg-[#F3F4F7] disabled:opacity-70"
-                      />
-                    </label>
+                    {deliveryMode === "home" ? (
+                      <label className="block">
+                        <span className="mb-1.5 block text-[.73rem] font-bold text-[#24304B]">
+                          Indirizzo di spedizione/fatturazione
+                        </span>
+                        <textarea
+                          name="street-address"
+                          value={address}
+                          onChange={(event) => setAddress(event.target.value)}
+                          placeholder="Via, numero civico, CAP, città e provincia"
+                          autoComplete="street-address"
+                          rows={4}
+                          maxLength={1000}
+                          required
+                          disabled={submitting}
+                          className="min-h-28 w-full resize-y rounded-xl border border-[rgba(14,31,107,.14)] bg-white px-3.5 py-3 text-[.84rem] text-[#08102A] outline-none transition placeholder:text-[#A5AAB5] focus:border-[#1A3399] focus:ring-3 focus:ring-[#1A3399]/10 disabled:cursor-not-allowed disabled:bg-[#F3F4F7] disabled:opacity-70"
+                        />
+                      </label>
+                    ) : (
+                      <div className="flex min-h-28 items-start gap-3 rounded-xl border border-[#CCD7F1] bg-[#EEF3FF] p-4">
+                        <MapPin
+                          className="mt-0.5 shrink-0 text-[#0E1F6B]"
+                          size={18}
+                          aria-hidden="true"
+                        />
+                        <div>
+                          <p className="text-[.76rem] font-bold text-[#0E1F6B]">
+                            {DELIVERY_MODE_LABELS[deliveryMode]}
+                          </p>
+                          <p className="mt-1 text-[.72rem] leading-relaxed text-[#44506D]">
+                            Non è necessario inserire un indirizzo. Riceverai le indicazioni per il ritiro tramite i canali ASTRA.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -575,6 +623,7 @@ export default function AdhesionDialog({
                   <div className="max-h-64 overflow-y-auto px-4">
                     {products.map((product) => {
                       const isBundle = product.product_type === "bundle";
+                      const originalPrice = getOriginalPrice(product);
 
                       return (
                         <div
@@ -602,8 +651,15 @@ export default function AdhesionDialog({
                               {isBundle ? "Bundle" : "Libro"}
                             </p>
                           </div>
-                          <span className="shrink-0 text-[.74rem] font-bold text-[#24304B]">
-                            {formatPrice(product.price ?? 0)}
+                          <span className="shrink-0 text-right">
+                            {originalPrice ? (
+                              <span className="block text-[.62rem] text-[#8A909D] line-through">
+                                {formatPrice(originalPrice)}
+                              </span>
+                            ) : null}
+                            <span className="block text-[.74rem] font-bold text-[#24304B]">
+                              {formatPrice(product.price ?? 0)}
+                            </span>
                           </span>
                         </div>
                       );
@@ -620,6 +676,16 @@ export default function AdhesionDialog({
                         {formatPrice(total)}
                       </strong>
                     </div>
+                    {totalSaving > 0 ? (
+                      <div className="mt-2 flex items-center justify-between gap-3 border-t border-dashed border-[rgba(14,31,107,.1)] pt-2 text-[.68rem]">
+                        <span className="font-semibold text-[#596174]">
+                          Risparmio convenzione
+                        </span>
+                        <strong className="text-[#16713A]">
+                          {formatPrice(totalSaving)}
+                        </strong>
+                      </div>
+                    ) : null}
                   </div>
                 </section>
 
@@ -638,7 +704,7 @@ export default function AdhesionDialog({
                     className="mt-0.5 size-[1.1rem] shrink-0 accent-[#0E1F6B]"
                   />
                   <span className="text-[.74rem] leading-relaxed text-[#596174]">
-                    Confermo che i dati inseriti e gli elementi selezionati sono corretti e desidero aderire alla convenzione libri.
+                    Confermo che i dati inseriti, gli elementi selezionati e la modalità di consegna “{DELIVERY_MODE_LABELS[deliveryMode]}” sono corretti e desidero aderire alla convenzione libri.
                   </span>
                 </label>
 

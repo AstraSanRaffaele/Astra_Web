@@ -61,6 +61,15 @@ export const STUDY_AREA_LABELS: Record<StudyArea, string> = {
   professioni_sanitarie: "Professioni sanitarie",
 };
 
+export const DELIVERY_MODES = ["university", "home"] as const;
+
+export type DeliveryMode = (typeof DELIVERY_MODES)[number];
+
+export const DELIVERY_MODE_LABELS: Record<DeliveryMode, string> = {
+  university: "Consegna in università",
+  home: "Consegna a domicilio",
+};
+
 export const BOOK_CONVENTION_BANK_DETAILS = {
   bank: "Intesa San Paolo SPA",
   iban: "IT72D0306951150100000009695",
@@ -105,16 +114,15 @@ export type BookConventionRound = {
   convention_id: number;
   starts_at: string;
   ends_at: string;
+  delivery_mode: DeliveryMode;
 };
 
 export type BookConventionSummary = {
   id: number;
-  titolo: string | null;
-  partner: string | null;
+  titolo: string;
   descrizione: string | null;
   attiva: boolean;
-  is_book_convention: boolean;
-  ordine: number | null;
+  ordine: number;
 };
 
 export type BookConventionBook = {
@@ -130,6 +138,8 @@ export type BookConventionBook = {
   study_area: StudyArea;
   is_active: boolean;
   cover_image: string | null;
+  isbn: string | null;
+  original_price: number | null;
 };
 
 export type BookAvailabilityReason =
@@ -154,6 +164,8 @@ export type SelectedBookSnapshot = {
   bundle_items?: string[];
   study_area?: StudyArea;
   cover_image?: string | null;
+  isbn?: string | null;
+  original_price?: number | null;
 };
 
 export type BookConventionAdhesion = {

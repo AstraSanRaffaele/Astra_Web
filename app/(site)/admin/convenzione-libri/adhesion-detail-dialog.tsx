@@ -9,6 +9,7 @@ import {
   MapPin,
   Package,
   ReceiptText,
+  Truck,
   UserRound,
   X,
 } from "lucide-react";
@@ -19,15 +20,19 @@ import {
 } from "@/lib/book-convention";
 import {
   formatDate,
+  formatDeliveryMode,
   formatPaymentMethod,
   formatPrice,
   formatRoundLabel,
+  getAdhesionConventionTitle,
+  getAdhesionOriginalTotal,
+  getAdhesionSavings,
   getAdhesionTotal,
-  getConventionTitle,
   getFullName,
   getProfileCourse,
   getProfileEmail,
   getProfileYear,
+  getProductSavings,
   getSelectedProducts,
   shortenId,
 } from "./adhesion-utils";
@@ -64,6 +69,9 @@ export default function AdhesionDetailDialog({
 
   const products = getSelectedProducts(adhesion, catalog);
   const total = getAdhesionTotal(adhesion, catalog);
+  const originalTotal = getAdhesionOriginalTotal(adhesion, catalog);
+  const savings = getAdhesionSavings(adhesion, catalog);
+  const deliveryMode = adhesion.book_convention_rounds?.delivery_mode;
   const email = getProfileEmail(adhesion.profiles);
 
   return (
@@ -126,15 +134,21 @@ export default function AdhesionDetailDialog({
 
               <DetailSection icon={<ReceiptText />} title="Fatturazione e spedizione">
                 <DetailRow label="CF / Partita IVA" value={adhesion.fiscal_code_or_vat || "—"} />
+                <DetailRow label="Consegna" value={formatDeliveryMode(deliveryMode)} />
                 <DetailRow
-                  label="Indirizzo"
-                  value={<span className="whitespace-pre-line">{adhesion.billing_shipping_address || "—"}</span>}
+                  label={deliveryMode === "home" ? "Indirizzo domicilio" : "Indirizzo"}
+                  value={
+                    <span className="whitespace-pre-line">
+                      {adhesion.billing_shipping_address ||
+                        (deliveryMode === "university" ? "Non richiesto" : "—")}
+                    </span>
+                  }
                 />
               </DetailSection>
 
               <DetailSection icon={<CalendarDays />} title="Registrazione">
                 <DetailRow label="Data adesione" value={formatDate(adhesion.created_at)} />
-                <DetailRow label="Convenzione" value={getConventionTitle(adhesion.convenzioni)} />
+                <DetailRow label="Convenzione" value={getAdhesionConventionTitle(adhesion)} />
                 <DetailRow
                   label="Raccolta"
                   value={formatRoundLabel(adhesion.book_convention_rounds)}
@@ -198,9 +212,28 @@ export default function AdhesionDetailDialog({
                                   <p className="mt-1 text-xs text-[#64748b]">{STUDY_AREA_LABELS[product.study_area]}</p>
                                 )}
                               </div>
-                              <strong className="shrink-0 text-sm text-[#0f766e]">
-                                {formatPrice(product.price)}
-                              </strong>
+                              <div className="shrink-0 text-right">
+                                {product.original_price !== null && (
+                                  <span className="block text-xs font-semibold text-[#94a3b8] line-through">
+                                    {formatPrice(product.original_price)}
+                                  </span>
+                                )}
+                                <strong className="block text-sm text-[#0f766e]">
+                                  {formatPrice(product.price)}
+                                </strong>
+                              </div>
+                            </div>
+                            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                              {product.isbn && (
+                                <span className="font-mono text-[11px] font-semibold text-[#64748b]">
+                                  ISBN {product.isbn}
+                                </span>
+                              )}
+                              {getProductSavings(product) > 0 && (
+                                <span className="rounded-md bg-[#ecfdf5] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#047857]">
+                                  Risparmio {formatPrice(getProductSavings(product))}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -222,11 +255,36 @@ export default function AdhesionDetailDialog({
                   </div>
                 )}
 
-                <div className="flex items-center justify-between border-t border-[#dfe5ef] bg-[#f8fafc] px-4 py-4">
-                  <span className="font-bold text-[#334155]">Totale salvato</span>
-                  <strong className="text-lg text-[#102d63]">{formatPrice(total)}</strong>
+                <div className="space-y-2 border-t border-[#dfe5ef] bg-[#f8fafc] px-4 py-4">
+                  {originalTotal !== null && (
+                    <div className="flex items-center justify-between gap-4 text-sm text-[#64748b]">
+                      <span>Totale originale</span>
+                      <span className="font-semibold line-through">{formatPrice(originalTotal)}</span>
+                    </div>
+                  )}
+                  {savings > 0 && (
+                    <div className="flex items-center justify-between gap-4 text-sm font-bold text-[#047857]">
+                      <span>Risparmio convenzione</span>
+                      <span>− {formatPrice(savings)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-4 border-t border-[#dfe5ef] pt-3">
+                    <span className="font-bold text-[#334155]">Totale convenzionato</span>
+                    <strong className="text-lg text-[#102d63]">{formatPrice(total)}</strong>
+                  </div>
                 </div>
               </section>
+
+              <DetailSection icon={<Truck />} title="Consegna">
+                <DetailRow label="Modalità" value={formatDeliveryMode(deliveryMode)} />
+                <p className="mt-3 rounded-lg bg-[#edf3ff] px-3 py-2 text-xs leading-5 text-[#27446f]">
+                  {deliveryMode === "home"
+                    ? "L’ordine deve essere spedito all’indirizzo indicato dall’utente."
+                    : deliveryMode === "university"
+                      ? "L’ordine sarà consegnato presso l’università: l’indirizzo di domicilio non è richiesto."
+                      : "La modalità di consegna non è presente nello snapshot della raccolta."}
+                </p>
+              </DetailSection>
 
               <DetailSection icon={<CreditCard />} title="Pagamento">
                 <DetailRow label="Metodo" value={formatPaymentMethod(adhesion.payment_method)} />
