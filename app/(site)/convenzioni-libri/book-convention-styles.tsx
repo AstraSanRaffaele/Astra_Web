@@ -223,17 +223,9 @@ export default function BookConventionStyles() {
         color: #2E4080;
       }
 
-      .book-convention-name {
-        margin-top: 1.35rem;
-        color: #08102A;
-        font-size: .93rem;
-        font-weight: 700;
-        line-height: 1.55;
-      }
-
       .book-hero-description {
         max-width: 700px;
-        margin-top: .55rem;
+        margin-top: 1.35rem;
         color: #6B7280;
         font-size: .92rem;
         line-height: 1.75;
@@ -259,39 +251,11 @@ export default function BookConventionStyles() {
         text-transform: uppercase;
       }
 
-      .book-select {
-        width: 100%;
-        min-height: 44px;
-        border: 1px solid rgba(8,16,42,.12);
-        border-radius: .85rem;
-        background: #fff;
-        padding: .65rem .8rem;
-        color: #08102A;
-        font: inherit;
-        font-size: .8rem;
-        font-weight: 650;
-        outline: none;
-      }
-
-      .book-select:focus {
-        border-color: rgba(46,64,128,.4);
-        box-shadow: 0 0 0 4px rgba(46,64,128,.08);
-      }
-
-      .book-switch-note {
-        margin-top: .45rem;
-        color: #6B7280;
-        font-size: .67rem;
-        line-height: 1.5;
-      }
-
       .book-round-status {
         display: flex;
         align-items: flex-start;
         gap: .65rem;
-        margin-top: .9rem;
-        border-top: 1px solid rgba(8,16,42,.07);
-        padding-top: .9rem;
+        margin-top: .2rem;
         color: #344363;
         font-size: .75rem;
         font-weight: 650;
@@ -792,7 +756,7 @@ export default function BookConventionStyles() {
         animation: sk 1.4s ease infinite;
       }
 
-      @media (max-width: 960px) {
+      @media (max-width: 1023px) {
         .book-hero-grid,
         .book-shop-layout,
         .book-loading-grid {

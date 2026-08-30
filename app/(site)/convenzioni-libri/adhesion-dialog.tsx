@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   BookOpen,
   Building2,
@@ -86,27 +87,21 @@ function getFocusableElements(container: HTMLElement) {
 
 export default function AdhesionDialog({
   open,
-  conventionId,
-  roundId,
   products,
   total,
   profile,
   initialFiscalCodeOrVat,
   initialAddress,
-  deliveryMode,
   onClose,
   onCompleted,
   onUnauthorized,
 }: {
   open: boolean;
-  conventionId: number;
-  roundId: string;
   products: BookConventionCatalogBook[];
   total: number;
   profile?: { firstName: string; lastName: string; email: string };
   initialFiscalCodeOrVat?: string | null;
   initialAddress?: string | null;
-  deliveryMode: DeliveryMode;
   onClose: () => void;
   onCompleted: (message: string) => void;
   onUnauthorized: () => void;
@@ -123,6 +118,46 @@ export default function AdhesionDialog({
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const submittingRef = useRef(submitting);
+  const submissionGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        conventionId: number;
+        roundId: string;
+        deliveryMode: DeliveryMode;
+        products: BookConventionCatalogBook[];
+      }
+    >();
+
+    for (const product of products) {
+      if (!product.active_round_id || !product.delivery_mode) continue;
+
+      const key = `${product.convention_id}:${product.active_round_id}`;
+      const current = groups.get(key);
+
+      if (current) {
+        current.products.push(product);
+      } else {
+        groups.set(key, {
+          conventionId: product.convention_id,
+          roundId: product.active_round_id,
+          deliveryMode: product.delivery_mode,
+          products: [product],
+        });
+      }
+    }
+
+    return Array.from(groups.values());
+  }, [products]);
+  const deliveryModes = useMemo(
+    () => Array.from(new Set(submissionGroups.map((group) => group.deliveryMode))),
+    [submissionGroups]
+  );
+  const requiresAddress = deliveryModes.includes("home");
+  const deliverySummary =
+    deliveryModes.length === 1
+      ? DELIVERY_MODE_LABELS[deliveryModes[0]]
+      : "Consegna in università e a domicilio";
 
   onCloseRef.current = onClose;
   submittingRef.current = submitting;
@@ -131,11 +166,11 @@ export default function AdhesionDialog({
     if (!open) return;
 
     setFiscalCodeOrVat(initialFiscalCodeOrVat ?? "");
-    setAddress(deliveryMode === "home" ? initialAddress ?? "" : "");
+    setAddress(requiresAddress ? initialAddress ?? "" : "");
     setPaymentMethod("contanti");
     setConfirmed(false);
     setError("");
-  }, [deliveryMode, initialAddress, initialFiscalCodeOrVat, open]);
+  }, [initialAddress, initialFiscalCodeOrVat, open, requiresAddress]);
 
   useEffect(() => {
     if (!open) return;
@@ -143,11 +178,13 @@ export default function AdhesionDialog({
     const overlay = overlayRef.current;
     const dialog = dialogRef.current;
     const previousOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
     const inertedElements: Array<{ element: HTMLElement; inert: boolean }> = [];
 
     previousActiveElementRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
 
     if (overlay) {
       let currentElement: HTMLElement = overlay;
@@ -211,6 +248,7 @@ export default function AdhesionDialog({
       window.cancelAnimationFrame(focusFrame);
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
       inertedElements.forEach(({ element, inert }) => {
         element.inert = inert;
       });
@@ -259,8 +297,17 @@ export default function AdhesionDialog({
       return;
     }
 
-    if (deliveryMode === "home" && address.trim().length < 8) {
+    if (requiresAddress && address.trim().length < 8) {
       setError("Inserisci un indirizzo di spedizione/fatturazione completo.");
+      return;
+    }
+
+    if (
+      submissionGroups.length === 0 ||
+      submissionGroups.reduce((count, group) => count + group.products.length, 0) !==
+        products.length
+    ) {
+      setError("Una o più proposte non sono più collegate a una raccolta attiva. Aggiorna la pagina e riprova.");
       return;
     }
 
@@ -270,18 +317,23 @@ export default function AdhesionDialog({
     }
 
     setSubmitting(true);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 30_000);
 
     try {
       const response = await fetch("/api/book-convention", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
-          convention_id: conventionId,
-          round_id: roundId,
-          selected_book_ids: products.map((product) => product.id),
+          submissions: submissionGroups.map((group) => ({
+            convention_id: group.conventionId,
+            round_id: group.roundId,
+            selected_book_ids: group.products.map((product) => product.id),
+          })),
           payment_method: paymentMethod,
           fiscal_code_or_vat: normalizedFiscalCode,
-          billing_shipping_address: deliveryMode === "home" ? address.trim() : null,
+          billing_shipping_address: requiresAddress ? address.trim() : null,
         }),
       });
 
@@ -290,22 +342,43 @@ export default function AdhesionDialog({
         return;
       }
 
-      const payload = (await response.json().catch(() => ({}))) as BookConventionSubmitResponse;
+      const payload = (await response.json().catch(
+        () => ({})
+      )) as BookConventionSubmitResponse;
 
       if (!response.ok) {
-        setError(payload.error || "Non è stato possibile completare l’adesione.");
-        return;
+        throw new Error(
+          payload.error || "Non è stato possibile completare le adesioni."
+        );
       }
 
-      onCompleted(payload.message || "Adesione registrata correttamente.");
-    } catch {
-      setError("Errore di connessione. Controlla la rete e riprova.");
+      const completedGroups = payload.adhesionIds?.length ?? submissionGroups.length;
+      const confirmationEmailSent = payload.emailSent === true;
+      const message =
+        submissionGroups.length > 1
+          ? `${completedGroups} adesioni registrate correttamente.${
+              confirmationEmailSent ? " Controlla la mail per i riepiloghi." : ""
+            }`
+          : confirmationEmailSent
+            ? "Adesione registrata correttamente. Ti abbiamo inviato una mail di conferma."
+            : "Adesione registrata correttamente.";
+
+      onCompleted(message);
+    } catch (submitError) {
+      setError(
+        submitError instanceof DOMException && submitError.name === "AbortError"
+          ? "La conferma sta impiegando troppo tempo. Riprova: un ordine già registrato non verrà duplicato."
+          : submitError instanceof Error
+            ? submitError.message
+            : "Errore di connessione. Controlla la rete e riprova."
+      );
     } finally {
+      window.clearTimeout(timeoutId);
       setSubmitting(false);
     }
   }
 
-  return (
+  return createPortal(
     <div
       ref={overlayRef}
       className="fixed inset-0 z-[200] flex items-end justify-center bg-[rgba(8,16,42,.55)] p-0 backdrop-blur-[6px] sm:items-center sm:p-5"
@@ -442,16 +515,16 @@ export default function AdhesionDialog({
                         Fatturazione e consegna
                       </h3>
                       <p className="mt-0.5 text-[.72rem] leading-relaxed text-[#7B8290]">
-                        {deliveryMode === "home"
-                          ? "Inserisci i dati completi per la consegna a domicilio."
-                          : "La raccolta prevede la consegna in università."}
+                        {requiresAddress
+                          ? "Inserisci i dati completi per le proposte con consegna a domicilio."
+                          : "Le proposte selezionate prevedono la consegna in università."}
                       </p>
                     </div>
                   </div>
 
                   <div
                     className={`mt-4 grid gap-4 ${
-                      deliveryMode === "home"
+                      requiresAddress
                         ? "sm:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]"
                         : "sm:grid-cols-2"
                     }`}
@@ -477,7 +550,7 @@ export default function AdhesionDialog({
                       />
                     </label>
 
-                    {deliveryMode === "home" ? (
+                    {requiresAddress ? (
                       <label className="block">
                         <span className="mb-1.5 block text-[.73rem] font-bold text-[#24304B]">
                           Indirizzo di spedizione/fatturazione
@@ -504,7 +577,7 @@ export default function AdhesionDialog({
                         />
                         <div>
                           <p className="text-[.76rem] font-bold text-[#0E1F6B]">
-                            {DELIVERY_MODE_LABELS[deliveryMode]}
+                            {deliverySummary}
                           </p>
                           <p className="mt-1 text-[.72rem] leading-relaxed text-[#44506D]">
                             Non è necessario inserire un indirizzo. Riceverai le indicazioni per il ritiro tramite i canali ASTRA.
@@ -732,7 +805,7 @@ export default function AdhesionDialog({
                     className="mt-0.5 size-[1.1rem] shrink-0 accent-[#0E1F6B]"
                   />
                   <span className="text-[.74rem] leading-relaxed text-[#596174]">
-                    Confermo che i dati inseriti, gli elementi selezionati e la modalità di consegna “{DELIVERY_MODE_LABELS[deliveryMode]}” sono corretti e desidero aderire alla convenzione libri.
+                    Confermo che i dati inseriti, gli elementi selezionati e la modalità di consegna “{deliverySummary}” sono corretti e desidero aderire alla convenzione libri.
                   </span>
                 </label>
 
@@ -767,7 +840,7 @@ export default function AdhesionDialog({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={submitting || !confirmed}
+                  disabled={submitting}
                   className="h-12 rounded-full bg-[#0E1F6B] px-7 font-bold text-white shadow-[0_8px_20px_rgba(14,31,107,.16)] hover:bg-[#1A3399] focus-visible:ring-[#1A3399]/25"
                 >
                   {submitting ? (
@@ -787,6 +860,7 @@ export default function AdhesionDialog({
           </footer>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -217,20 +217,20 @@ export default function AdminPage() {
                   <span className="adminMenuArrow">→</span>
                 </a>
 
-                <a href="/admin/eventi" className="adminMenuItem">
+                <a href="/admin/convenzione-libri" className="adminMenuItem">
                   <span className="adminMenuIcon">02</span>
                   <span className="adminMenuText">
-                    <strong>Eventi</strong>
-                    <small>Crea e modifica gli eventi</small>
+                    <strong>Convenzioni libri</strong>
+                    <small>Consulta adesioni, catalogo e periodi</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
                 </a>
 
-                <a href="/admin/utenti" className="adminMenuItem">
+                <a href="/admin/eventi" className="adminMenuItem">
                   <span className="adminMenuIcon">03</span>
                   <span className="adminMenuText">
-                    <strong>Utenti</strong>
-                    <small>Visualizza e gestisci gli utenti registrati</small>
+                    <strong>Eventi</strong>
+                    <small>Crea e modifica gli eventi</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
                 </a>
@@ -244,11 +244,11 @@ export default function AdminPage() {
                   <span className="adminMenuArrow">→</span>
                 </a>
 
-                <a href="/admin/convenzione-libri" className="adminMenuItem">
+                <a href="/admin/utenti" className="adminMenuItem">
                   <span className="adminMenuIcon">05</span>
                   <span className="adminMenuText">
-                    <strong>Convenzioni libri</strong>
-                    <small>Consulta adesioni, catalogo e periodi</small>
+                    <strong>Utenti</strong>
+                    <small>Visualizza e gestisci gli utenti registrati</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
                 </a>

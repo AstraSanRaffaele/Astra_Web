@@ -11,6 +11,7 @@ import {
   BOOK_YEARS,
   PAYMENT_METHODS,
   STUDY_AREAS,
+  isBookYearAllowedForStudyArea,
   normalizeBookConventionCoverUrl,
   type BookYear,
   type BookBundleItem,
@@ -405,6 +406,15 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
 
     if (studyArea === null) {
       throw new Error(`Macro-area non valida per: ${title}`);
+    }
+
+    if (
+      studyArea &&
+      !isBookYearAllowedForStudyArea(studyArea, book.reference_year)
+    ) {
+      throw new Error(
+        `L’anno selezionato non è disponibile per la macro-area di “${title}”.`
+      );
     }
 
     if (book.is_active !== undefined && typeof book.is_active !== "boolean") {
@@ -1435,6 +1445,15 @@ export async function POST(req: NextRequest) {
         return privateJson(
           {
             error: `Il prezzo originale di “${book.title}” non può essere inferiore al prezzo convenzionato.`,
+          },
+          400
+        );
+      }
+
+      if (!isBookYearAllowedForStudyArea(studyArea, book.reference_year)) {
+        return privateJson(
+          {
+            error: `L’anno selezionato non è disponibile per la macro-area di “${book.title}”.`,
           },
           400
         );

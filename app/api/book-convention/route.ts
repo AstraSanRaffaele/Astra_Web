@@ -10,6 +10,7 @@ import { cookies } from "next/headers";
 import nodemailer from "nodemailer";
 import {
   BOOK_CONVENTION_BANK_DETAILS,
+  BOOK_YEARS_BY_STUDY_AREA,
   BOOK_YEAR_LABELS,
   BOOK_YEARS,
   DELIVERY_MODE_LABELS,
@@ -46,6 +47,9 @@ type BookProfileRow = {
   email_istituzionale: string | null;
 };
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function isPaymentMethod(value: unknown): value is PaymentMethod {
   return typeof value === "string" && PAYMENT_METHODS.includes(value as PaymentMethod);
 }
@@ -64,6 +68,29 @@ function cleanBookIds(value: unknown) {
         .filter((item) => Number.isInteger(item) && item > 0)
     )
   );
+}
+
+function hasOnlyValidUniqueBookIds(value: unknown) {
+  if (!Array.isArray(value)) return false;
+
+  const parsedIds: number[] = [];
+
+  for (const item of value) {
+    if (
+      !(
+        typeof item === "number" ||
+        (typeof item === "string" && item.trim().length > 0)
+      )
+    ) {
+      return false;
+    }
+
+    const parsedId = Number(item);
+    if (!Number.isInteger(parsedId) || parsedId <= 0) return false;
+    parsedIds.push(parsedId);
+  }
+
+  return new Set(parsedIds).size === parsedIds.length;
 }
 
 function isBookYear(value: unknown): value is BookYear {
@@ -394,7 +421,7 @@ function buildBookConventionReceiptHtml(params: {
   paymentMethod: PaymentMethod;
   selectedBooks: BookConventionBook[];
   totalPrice: number;
-  activeRound: BookConventionRound;
+  activeRounds: BookConventionRound[];
 }) {
   const {
     profile,
@@ -403,7 +430,7 @@ function buildBookConventionReceiptHtml(params: {
     paymentMethod,
     selectedBooks,
     totalPrice,
-    activeRound,
+    activeRounds,
   } = params;
 
   const originalTotalInCents = selectedBooks.reduce((sum, book) => {
@@ -503,10 +530,15 @@ function buildBookConventionReceiptHtml(params: {
       `
       : "";
 
-  const roundStart = new Date(activeRound.starts_at).toLocaleDateString("it-IT");
-  const deliveryLabel = DELIVERY_MODE_LABELS[activeRound.delivery_mode];
+  const deliveryModes = Array.from(
+    new Set(activeRounds.map((round) => round.delivery_mode))
+  );
+  const deliveryLabel =
+    deliveryModes.length === 1
+      ? DELIVERY_MODE_LABELS[deliveryModes[0]]
+      : "Consegna in università e a domicilio";
   const deliveryAddressRow =
-    activeRound.delivery_mode === "home"
+    deliveryModes.includes("home")
       ? `
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Indirizzo di consegna</strong></td>
@@ -514,6 +546,10 @@ function buildBookConventionReceiptHtml(params: {
               </tr>
         `
       : "";
+  const roundLabel =
+    activeRounds.length === 1
+      ? `Aperta dal ${new Date(activeRounds[0].starts_at).toLocaleDateString("it-IT")}`
+      : `${activeRounds.length} raccolte attive`;
   const savingsTotalRow =
     totalSavings > 0
       ? `
@@ -563,7 +599,7 @@ function buildBookConventionReceiptHtml(params: {
               </tr>
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><strong>Raccolta</strong></td>
-                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(`Aperta dal ${roundStart}`)}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(roundLabel)}</td>
               </tr>
             </tbody>
           </table>
@@ -607,7 +643,7 @@ async function sendBookConventionReceiptEmail(params: {
   paymentMethod: PaymentMethod;
   selectedBooks: BookConventionBook[];
   totalPrice: number;
-  activeRound: BookConventionRound;
+  activeRounds: BookConventionRound[];
 }) {
   if (!params.to) return false;
 
@@ -626,6 +662,9 @@ async function sendBookConventionReceiptEmail(params: {
     host,
     port,
     secure: port === 465,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
     auth: {
       user,
       pass,
@@ -643,7 +682,7 @@ async function sendBookConventionReceiptEmail(params: {
       paymentMethod: params.paymentMethod,
       selectedBooks: params.selectedBooks,
       totalPrice: params.totalPrice,
-      activeRound: params.activeRound,
+      activeRounds: params.activeRounds,
     }),
   });
 
@@ -720,7 +759,7 @@ function logRouteError(context: string, error: unknown) {
 
 // GET /api/book-convention
 // Restituisce la convenzione libri, le raccolte disponibili, i libri collegati e l'eventuale adesione dell'utente.
-export async function GET(req: NextRequest) {
+export async function GET() {
   const authClient = await getSupabase();
 
   const {
@@ -729,19 +768,6 @@ export async function GET(req: NextRequest) {
 
   if (!user) {
     return privateJson({ error: "Non autenticato." }, 401);
-  }
-
-  const { searchParams } = req.nextUrl;
-  const conventionIdParam = searchParams.get("convention_id");
-  const requestedConventionId = conventionIdParam ? Number(conventionIdParam) : null;
-
-  if (
-    conventionIdParam &&
-    (!requestedConventionId ||
-      !Number.isInteger(requestedConventionId) ||
-      requestedConventionId <= 0)
-  ) {
-    return privateJson({ error: "Convenzione non valida." }, 400);
   }
 
   try {
@@ -761,16 +787,13 @@ export async function GET(req: NextRequest) {
       .filter(
         (item): item is BookConventionSummary => item !== null
       );
-    const convention = requestedConventionId
-      ? conventions.find((item) => Number(item.id) === requestedConventionId) ?? null
-      : conventions[0] ?? null;
+    const convention = conventions[0] ?? null;
 
     if (!convention) {
       return privateJson({ error: "Convenzione libri non trovata." }, 404);
     }
 
-    const conventionId = Number(convention.id);
-    const activeRound = await getActiveRound(serviceClient, conventionId);
+    const conventionIds = conventions.map((item) => item.id);
     const adhesionFields =
       "id, convention_id, round_id, selected_book_ids, selected_books, total_price, fiscal_code_or_vat, billing_shipping_address, payment_method, created_at";
 
@@ -778,14 +801,14 @@ export async function GET(req: NextRequest) {
       serviceClient
         .from("book_convention_rounds")
         .select("id, convention_id, starts_at, ends_at, delivery_mode")
-        .eq("convention_id", conventionId)
+        .in("convention_id", conventionIds)
         .order("starts_at", { ascending: true }),
       serviceClient
         .from("book_convention_books")
         .select(
           "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
         )
-        .eq("convention_id", conventionId)
+        .in("convention_id", conventionIds)
         .eq("is_active", true)
         .order("study_area", { ascending: true })
         .order("reference_year", { ascending: true })
@@ -795,9 +818,9 @@ export async function GET(req: NextRequest) {
         .from("book_convention_adhesions")
         .select(adhesionFields)
         .eq("user_id", user.id)
-        .eq("convention_id", conventionId)
+        .in("convention_id", conventionIds)
         .order("created_at", { ascending: false })
-        .limit(50),
+        .limit(200),
       serviceClient
         .from("profiles")
         .select("nome, cognome, email_istituzionale")
@@ -818,53 +841,95 @@ export async function GET(req: NextRequest) {
       return normalizedRound;
     });
 
-    const availableBookIds = new Set<number>();
-    const conventionIsActive = convention.attiva === true;
+    const now = Date.now();
+    const activeRoundsByConvention = new Map<number, BookConventionRound>();
 
-    if (conventionIsActive && activeRound) {
+    for (const round of rounds) {
+      const startsAt = new Date(round.starts_at).getTime();
+      const endsAt = new Date(round.ends_at).getTime();
+      if (!(startsAt <= now && now < endsAt)) continue;
+
+      const current = activeRoundsByConvention.get(round.convention_id);
+      if (
+        !current ||
+        new Date(current.starts_at).getTime() < startsAt
+      ) {
+        activeRoundsByConvention.set(round.convention_id, round);
+      }
+    }
+
+    const activeRounds = Array.from(activeRoundsByConvention.values()).sort(
+      (first, second) =>
+        new Date(first.starts_at).getTime() - new Date(second.starts_at).getTime()
+    );
+    const activeRoundIds = activeRounds.map((round) => round.id);
+    const linkedBookRoundKeys = new Set<string>();
+
+    if (activeRoundIds.length > 0) {
       const { data: links, error: linksError } = await serviceClient
         .from("book_convention_book_rounds")
-        .select("book_id")
-        .eq("convention_id", conventionId)
-        .eq("round_id", activeRound.id);
+        .select("book_id, round_id, convention_id")
+        .in("convention_id", conventionIds)
+        .in("round_id", activeRoundIds);
 
       if (linksError) throw linksError;
 
       for (const link of links ?? []) {
         const bookId = Number(link.book_id);
-        if (Number.isInteger(bookId) && bookId > 0) availableBookIds.add(bookId);
+        const roundId = cleanRequiredString(link.round_id);
+        if (Number.isInteger(bookId) && bookId > 0 && roundId) {
+          linkedBookRoundKeys.add(`${roundId}:${bookId}`);
+        }
       }
     }
 
-    const normalizedBooks = (booksResult.data ?? [])
-      .map((book) => normalizeBookRow(book))
-      .filter((book): book is BookConventionBook => book !== null);
-
-    const catalogBooks: BookConventionCatalogBook[] = normalizedBooks.map((book) => {
-      let availabilityReason: BookConventionCatalogBook["availability_reason"] = null;
-
-      if (!conventionIsActive) availabilityReason = "convention_inactive";
-      else if (!activeRound) availabilityReason = "round_inactive";
-      else if (!availableBookIds.has(book.id)) availabilityReason = "not_in_round";
-      else if (book.price === null) availabilityReason = "price_unavailable";
-
-      return {
-        ...book,
-        is_available: availabilityReason === null,
-        availability_reason: availabilityReason,
-      };
-    });
-
-    // Compatibilità con la modale esistente: `books` contiene solo elementi selezionabili.
-    const selectableBooks = catalogBooks.filter((book) => book.is_available);
     const adhesions = (adhesionsResult.data ?? [])
       .map((adhesion) => normalizeAdhesionRow(adhesion))
       .filter(
         (adhesion): adhesion is BookConventionAdhesion => adhesion !== null
       );
-    const activeAdhesion = activeRound
-      ? adhesions.find((adhesion) => adhesion.round_id === activeRound.id) ?? null
-      : null;
+    const activeAdhesions = adhesions.filter((adhesion) => {
+      const activeRound = activeRoundsByConvention.get(adhesion.convention_id);
+      return Boolean(activeRound && adhesion.round_id === activeRound.id);
+    });
+    const adheredRoundIds = new Set(
+      activeAdhesions
+        .map((adhesion) => adhesion.round_id)
+        .filter((roundId): roundId is string => Boolean(roundId))
+    );
+
+    const normalizedBooks = (booksResult.data ?? [])
+      .map((book) => normalizeBookRow(book))
+      .filter((book): book is BookConventionBook => book !== null)
+      .filter((book) =>
+        (BOOK_YEARS_BY_STUDY_AREA[book.study_area] as readonly BookYear[]).includes(
+          book.reference_year
+        )
+      );
+
+    const catalogBooks: BookConventionCatalogBook[] = normalizedBooks.map((book) => {
+      let availabilityReason: BookConventionCatalogBook["availability_reason"] = null;
+      const activeRound = activeRoundsByConvention.get(book.convention_id) ?? null;
+
+      if (!activeRound) availabilityReason = "round_inactive";
+      else if (!linkedBookRoundKeys.has(`${activeRound.id}:${book.id}`)) {
+        availabilityReason = "not_in_round";
+      }
+      else if (book.price === null) availabilityReason = "price_unavailable";
+      else if (adheredRoundIds.has(activeRound.id)) availabilityReason = "already_adhered";
+
+      return {
+        ...book,
+        is_available: availabilityReason === null,
+        availability_reason: availabilityReason,
+        active_round_id: activeRound?.id ?? null,
+        delivery_mode: activeRound?.delivery_mode ?? null,
+      };
+    });
+
+    // Compatibilità con la modale esistente: `books` contiene solo elementi selezionabili.
+    const selectableBooks = catalogBooks.filter((book) => book.is_available);
+    const activeAdhesion = activeAdhesions[0] ?? null;
     const latestAdhesion = adhesions[0] ?? null;
     const receiptProfile = getUserProfileForReceipt(
       user,
@@ -875,10 +940,10 @@ export async function GET(req: NextRequest) {
       ok: true,
       convention,
       conventions,
-      activeRound,
+      activeRound: activeRounds[0] ?? null,
+      activeRounds,
       rounds,
-      canAdhere:
-        conventionIsActive && Boolean(activeRound) && selectableBooks.length > 0,
+      canAdhere: selectableBooks.length > 0,
       books: selectableBooks,
       booksByYear: groupBooksByYear(selectableBooks),
       catalogBooks,
@@ -887,6 +952,7 @@ export async function GET(req: NextRequest) {
       hasAdhered: Boolean(activeAdhesion),
       adhesion: activeAdhesion ?? latestAdhesion,
       activeAdhesion,
+      activeAdhesions,
       latestAdhesion,
       profile: {
         firstName: receiptProfile.firstName,
@@ -903,6 +969,422 @@ export async function GET(req: NextRequest) {
   }
 }
 
+type GroupedAdhesionInput = {
+  conventionId: number;
+  roundId: string;
+  bookIds: number[];
+};
+
+async function submitGroupedAdhesions(params: {
+  serviceClient: SupabaseClient;
+  user: User;
+  submissions: unknown[];
+  paymentMethod: PaymentMethod;
+  fiscalCodeOrVat: string;
+  billingShippingAddress: string;
+}) {
+  const {
+    serviceClient,
+    user,
+    submissions,
+    paymentMethod,
+    fiscalCodeOrVat,
+    billingShippingAddress,
+  } = params;
+
+  if (submissions.length === 0 || submissions.length > 50) {
+    return privateJson({ error: "Selezione delle raccolte non valida." }, 400);
+  }
+
+  const normalizedGroups: GroupedAdhesionInput[] = [];
+
+  for (const rawSubmission of submissions) {
+    if (
+      !rawSubmission ||
+      typeof rawSubmission !== "object" ||
+      Array.isArray(rawSubmission)
+    ) {
+      return privateJson({ error: "Selezione delle raccolte non valida." }, 400);
+    }
+
+    const row = rawSubmission as Record<string, unknown>;
+    const rawConventionId = row.convention_id;
+    if (
+      !(
+        typeof rawConventionId === "number" ||
+        (typeof rawConventionId === "string" && rawConventionId.trim().length > 0)
+      )
+    ) {
+      return privateJson({ error: "Convenzione non valida." }, 400);
+    }
+
+    const conventionId = Number(rawConventionId);
+    const roundId = cleanRequiredString(row.round_id);
+
+    if (!hasOnlyValidUniqueBookIds(row.selected_book_ids)) {
+      return privateJson({ error: "Selezione delle proposte non valida." }, 400);
+    }
+
+    const bookIds = cleanBookIds(row.selected_book_ids);
+
+    if (!Number.isInteger(conventionId) || conventionId <= 0) {
+      return privateJson({ error: "Convenzione non valida." }, 400);
+    }
+
+    if (!UUID_PATTERN.test(roundId)) {
+      return privateJson({ error: "Raccolta non valida." }, 400);
+    }
+
+    if (bookIds.length === 0) {
+      return privateJson({ error: "Seleziona almeno una proposta." }, 400);
+    }
+
+    normalizedGroups.push({ conventionId, roundId, bookIds });
+  }
+
+  const groupKeys = normalizedGroups.map(
+    (group) => `${group.conventionId}:${group.roundId}`
+  );
+  if (new Set(groupKeys).size !== groupKeys.length) {
+    return privateJson({ error: "La stessa raccolta è presente più di una volta." }, 400);
+  }
+
+  const selectedBookIds = normalizedGroups.flatMap((group) => group.bookIds);
+  if (
+    selectedBookIds.length > 50 ||
+    new Set(selectedBookIds).size !== selectedBookIds.length
+  ) {
+    return privateJson({ error: "La selezione contiene troppe proposte o elementi duplicati." }, 400);
+  }
+
+  const conventionIds = Array.from(
+    new Set(normalizedGroups.map((group) => group.conventionId))
+  );
+  const { data: conventionRows, error: conventionsError } = await serviceClient
+    .from("book_conventions")
+    .select("id, attiva")
+    .in("id", conventionIds);
+
+  if (conventionsError) throw conventionsError;
+
+  const activeConventionIds = new Set(
+    (conventionRows ?? [])
+      .filter((convention) => convention.attiva === true)
+      .map((convention) => Number(convention.id))
+  );
+  if (conventionIds.some((conventionId) => !activeConventionIds.has(conventionId))) {
+    return privateJson(
+      { error: "Una o più convenzioni non sono più disponibili." },
+      409
+    );
+  }
+
+  const activeRoundEntries = await Promise.all(
+    conventionIds.map(async (conventionId) => [
+      conventionId,
+      await getActiveRound(serviceClient, conventionId),
+    ] as const)
+  );
+  const activeRoundsByConvention = new Map(activeRoundEntries);
+
+  for (const group of normalizedGroups) {
+    const activeRound = activeRoundsByConvention.get(group.conventionId);
+    if (!activeRound || activeRound.id !== group.roundId) {
+      return privateJson(
+        { error: "Una raccolta è stata chiusa o aggiornata. Ricarica la pagina." },
+        409
+      );
+    }
+  }
+
+  const activeRounds = activeRoundEntries
+    .map(([, round]) => round)
+    .filter((round): round is BookConventionRound => round !== null);
+  const requiresAddress = activeRounds.some(
+    (round) => round.delivery_mode === "home"
+  );
+
+  if (
+    requiresAddress &&
+    (billingShippingAddress.length < 8 || billingShippingAddress.length > 1000)
+  ) {
+    return privateJson(
+      { error: "Inserisci un indirizzo di consegna completo." },
+      400
+    );
+  }
+
+  const [booksResult, linksResult, existingResult] = await Promise.all([
+    serviceClient
+      .from("book_convention_books")
+      .select(
+        "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+      )
+      .eq("is_active", true)
+      .in("id", selectedBookIds),
+    serviceClient
+      .from("book_convention_book_rounds")
+      .select("book_id, convention_id, round_id")
+      .in("book_id", selectedBookIds)
+      .in("convention_id", conventionIds)
+      .in("round_id", normalizedGroups.map((group) => group.roundId)),
+    serviceClient
+      .from("book_convention_adhesions")
+      .select("id, convention_id, round_id")
+      .eq("user_id", user.id)
+      .in("convention_id", conventionIds)
+      .in("round_id", normalizedGroups.map((group) => group.roundId)),
+  ]);
+
+  if (booksResult.error) throw booksResult.error;
+  if (linksResult.error) throw linksResult.error;
+  if (existingResult.error) throw existingResult.error;
+
+  const normalizedBooks = (booksResult.data ?? [])
+    .map((book) => normalizeBookRow(book))
+    .filter((book): book is BookConventionBook => book !== null);
+  const booksById = new Map(normalizedBooks.map((book) => [book.id, book]));
+  const linkKeys = new Set(
+    (linksResult.data ?? []).map(
+      (link) => `${Number(link.convention_id)}:${String(link.round_id)}:${Number(link.book_id)}`
+    )
+  );
+  const existingByGroup = new Map(
+    (existingResult.data ?? []).map((adhesion) => [
+      `${Number(adhesion.convention_id)}:${String(adhesion.round_id)}`,
+      String(adhesion.id),
+    ])
+  );
+
+  for (const group of normalizedGroups) {
+    const selectedBooks = group.bookIds
+      .map((bookId) => booksById.get(bookId))
+      .filter((book): book is BookConventionBook => Boolean(book));
+
+    if (
+      selectedBooks.length !== group.bookIds.length ||
+      selectedBooks.some((book) => book.convention_id !== group.conventionId) ||
+      selectedBooks.some(
+        (book) =>
+          !(BOOK_YEARS_BY_STUDY_AREA[book.study_area] as readonly BookYear[]).includes(
+            book.reference_year
+          )
+      ) ||
+      selectedBooks.some((book) => book.price === null) ||
+      group.bookIds.some(
+        (bookId) =>
+          !linkKeys.has(`${group.conventionId}:${group.roundId}:${bookId}`)
+      )
+    ) {
+      return privateJson(
+        { error: "Una o più proposte selezionate non sono disponibili." },
+        409
+      );
+    }
+  }
+
+  const preparedGroups = normalizedGroups.map((group) => {
+    const selectedBooks = group.bookIds.map((bookId) => booksById.get(bookId)!);
+
+    const activeRound = activeRoundsByConvention.get(group.conventionId);
+    if (!activeRound) {
+      throw new Error("Raccolta attiva non disponibile dopo la validazione.");
+    }
+
+    return {
+      ...group,
+      activeRound,
+      selectedBooks,
+      totalPrice:
+        selectedBooks.reduce(
+          (sum, book) => sum + priceToCents(book.price ?? 0),
+          0
+        ) / 100,
+      existingAdhesionId:
+        existingByGroup.get(`${group.conventionId}:${group.roundId}`) ?? null,
+    };
+  });
+
+  const latestRounds = await Promise.all(
+    conventionIds.map((conventionId) => getActiveRound(serviceClient, conventionId))
+  );
+  if (
+    latestRounds.some((round) => !round) ||
+    latestRounds.some((round, index) => {
+      const previous = activeRoundsByConvention.get(conventionIds[index]);
+      return (
+        !round ||
+        !previous ||
+        round.id !== previous.id ||
+        round.delivery_mode !== previous.delivery_mode
+      );
+    })
+  ) {
+    return privateJson(
+      { error: "Una raccolta è stata chiusa. Aggiorna la pagina prima di riprovare." },
+      409
+    );
+  }
+
+  const groupsToInsert = preparedGroups.filter(
+    (group) => !group.existingAdhesionId
+  );
+  let insertedRows: Array<{ id: string; convention_id: number; round_id: string }> = [];
+
+  if (groupsToInsert.length > 0) {
+    const { data: inserted, error: insertError } = await serviceClient
+      .from("book_convention_adhesions")
+      .insert(
+        groupsToInsert.map((group) => ({
+          user_id: user.id,
+          convention_id: group.conventionId,
+          round_id: group.roundId,
+          selected_book_ids: group.selectedBooks.map((book) => book.id),
+          selected_books: group.selectedBooks.map((book) => ({
+            id: book.id,
+            title: book.title,
+            price: book.price,
+            reference_year: book.reference_year,
+            description: book.description,
+            product_type: book.product_type,
+            bundle_items: book.bundle_items,
+            study_area: book.study_area,
+            cover_image: book.cover_image,
+            isbn: book.isbn,
+            original_price: book.original_price,
+          })),
+          total_price: group.totalPrice,
+          fiscal_code_or_vat: fiscalCodeOrVat,
+          billing_shipping_address:
+            group.activeRound.delivery_mode === "home"
+              ? billingShippingAddress
+              : null,
+          payment_method: paymentMethod,
+        }))
+      )
+      .select("id, convention_id, round_id");
+
+    if (insertError) {
+      if (insertError.code === "23505") {
+        const { data: concurrentRows, error: concurrentError } =
+          await serviceClient
+            .from("book_convention_adhesions")
+            .select("id, convention_id, round_id")
+            .eq("user_id", user.id)
+            .in("convention_id", conventionIds)
+            .in(
+              "round_id",
+              normalizedGroups.map((group) => group.roundId)
+            );
+
+        if (concurrentError) throw concurrentError;
+
+        const concurrentIdsByGroup = new Map(
+          (concurrentRows ?? []).map((row) => [
+            `${Number(row.convention_id)}:${String(row.round_id)}`,
+            String(row.id),
+          ])
+        );
+        const concurrentAdhesionIds = preparedGroups
+          .map((group) =>
+            concurrentIdsByGroup.get(`${group.conventionId}:${group.roundId}`)
+          )
+          .filter((id): id is string => Boolean(id));
+
+        if (concurrentAdhesionIds.length === preparedGroups.length) {
+          return privateJson({
+            ok: true,
+            hasAdhered: true,
+            adhesionIds: concurrentAdhesionIds,
+            message: "Le adesioni selezionate risultano già registrate.",
+          });
+        }
+
+        return privateJson(
+          {
+            error:
+              "Una delle adesioni è stata registrata nel frattempo. Aggiorna la pagina e riprova per le altre proposte.",
+          },
+          409
+        );
+      }
+      throw insertError;
+    }
+
+    insertedRows = (inserted ?? []).map((row) => ({
+      id: String(row.id),
+      convention_id: Number(row.convention_id),
+      round_id: String(row.round_id),
+    }));
+  }
+
+  const adhesionIds = [
+    ...preparedGroups
+      .map((group) => group.existingAdhesionId)
+      .filter((id): id is string => Boolean(id)),
+    ...insertedRows.map((row) => row.id),
+  ];
+
+  if (groupsToInsert.length === 0) {
+    return privateJson({
+      ok: true,
+      hasAdhered: true,
+      adhesionIds,
+      message: "Le adesioni selezionate risultano già registrate.",
+    });
+  }
+
+  let emailSent = false;
+
+  try {
+    const { data: profileData, error: profileError } = await serviceClient
+      .from("profiles")
+      .select("nome, cognome, email_istituzionale")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) throw profileError;
+
+    const profile = getUserProfileForReceipt(
+      user,
+      (profileData as BookProfileRow | null) ?? null
+    );
+    const insertedBooks = groupsToInsert.flatMap((group) => group.selectedBooks);
+    const insertedTotal = groupsToInsert.reduce(
+      (sum, group) => sum + priceToCents(group.totalPrice),
+      0
+    ) / 100;
+
+    emailSent = await sendBookConventionReceiptEmail({
+      to: profile.email,
+      profile,
+      fiscalCodeOrVat,
+      billingShippingAddress: requiresAddress ? billingShippingAddress : null,
+      paymentMethod,
+      selectedBooks: insertedBooks,
+      totalPrice: insertedTotal,
+      activeRounds: groupsToInsert.map((group) => group.activeRound),
+    });
+  } catch (mailError) {
+    logRouteError(
+      `Errore invio email ricevuta convenzioni libri (${insertedRows
+        .map((row) => row.id)
+        .join(",")})`,
+      mailError
+    );
+  }
+
+  return privateJson({
+    ok: true,
+    hasAdhered: true,
+    adhesionIds,
+    emailSent,
+    message: emailSent
+      ? "Adesione registrata correttamente. Ti abbiamo inviato una mail di conferma."
+      : "Adesione registrata correttamente. La mail di conferma non è al momento disponibile.",
+  });
+}
+
 // POST /api/book-convention
 // Crea una nuova adesione alla convenzione libri per l'utente loggato.
 export async function POST(req: NextRequest) {
@@ -917,6 +1399,7 @@ export async function POST(req: NextRequest) {
   }
 
   let body: {
+    submissions?: unknown;
     convention_id?: unknown;
     round_id?: unknown;
     selected_book_ids?: unknown;
@@ -951,16 +1434,8 @@ export async function POST(req: NextRequest) {
     .replace(/\s+/g, "");
   const billingShippingAddress = cleanRequiredString(body.billing_shipping_address);
 
-  if (!conventionId || !Number.isInteger(conventionId) || conventionId <= 0) {
-    return privateJson({ error: "Convenzione non valida." }, 400);
-  }
-
-  if (selectedBookIds.length === 0) {
-    return privateJson({ error: "Seleziona almeno un libro o un bundle." }, 400);
-  }
-
-  if (selectedBookIds.length > 50) {
-    return privateJson({ error: "Hai selezionato troppi elementi." }, 400);
+  if (billingShippingAddress.length > 1000) {
+    return privateJson({ error: "L’indirizzo inserito è troppo lungo." }, 400);
   }
 
   if (!/^[A-Z0-9]{11,20}$/.test(fiscalCodeOrVat)) {
@@ -969,6 +1444,45 @@ export async function POST(req: NextRequest) {
 
   if (!isPaymentMethod(paymentMethod)) {
     return privateJson({ error: "Metodo di pagamento non valido." }, 400);
+  }
+
+  if (body.submissions !== undefined) {
+    if (!Array.isArray(body.submissions)) {
+      return privateJson({ error: "Selezione delle raccolte non valida." }, 400);
+    }
+
+    try {
+      return await submitGroupedAdhesions({
+        serviceClient: getServiceClient(),
+        user,
+        submissions: body.submissions,
+        paymentMethod,
+        fiscalCodeOrVat,
+        billingShippingAddress,
+      });
+    } catch (error) {
+      logRouteError("Errore registrazione adesioni convenzioni libri", error);
+      return privateJson(
+        { error: "Non è stato possibile registrare le adesioni. Riprova tra poco." },
+        500
+      );
+    }
+  }
+
+  if (!conventionId || !Number.isInteger(conventionId) || conventionId <= 0) {
+    return privateJson({ error: "Convenzione non valida." }, 400);
+  }
+
+  if (!hasOnlyValidUniqueBookIds(body.selected_book_ids)) {
+    return privateJson({ error: "Selezione delle proposte non valida." }, 400);
+  }
+
+  if (selectedBookIds.length === 0) {
+    return privateJson({ error: "Seleziona almeno una proposta." }, 400);
+  }
+
+  if (selectedBookIds.length > 50) {
+    return privateJson({ error: "Hai selezionato troppi elementi." }, 400);
   }
 
   try {
@@ -1054,7 +1568,13 @@ export async function POST(req: NextRequest) {
 
     if (
       selectedBooks.length !== selectedBookIds.length ||
-      selectedBookIds.some((bookId) => !linkedBookIds.has(bookId))
+      selectedBookIds.some((bookId) => !linkedBookIds.has(bookId)) ||
+      selectedBooks.some(
+        (book) =>
+          !(BOOK_YEARS_BY_STUDY_AREA[book.study_area] as readonly BookYear[]).includes(
+            book.reference_year
+          )
+      )
     ) {
       return privateJson(
         { error: "Uno o più elementi selezionati non sono disponibili nella raccolta attiva." },
@@ -1172,7 +1692,7 @@ export async function POST(req: NextRequest) {
         paymentMethod,
         selectedBooks,
         totalPrice,
-        activeRound,
+        activeRounds: [activeRound],
       });
     } catch (mailError) {
       logRouteError(

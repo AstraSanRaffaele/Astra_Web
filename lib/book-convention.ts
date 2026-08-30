@@ -93,6 +93,28 @@ export const STUDY_AREA_LABELS: Record<StudyArea, string> = {
   professioni_sanitarie: "Professioni sanitarie",
 };
 
+export const BOOK_YEARS_BY_STUDY_AREA = {
+  medicina_chirurgia: BOOK_YEARS,
+  odontoiatria_igiene_dentale: [
+    "primo_anno",
+    "secondo_anno",
+    "terzo_anno",
+  ],
+  professioni_sanitarie: [
+    "primo_anno",
+    "secondo_anno",
+    "terzo_anno",
+  ],
+} as const satisfies Record<StudyArea, readonly BookYear[]>;
+
+export function isBookYearAllowedForStudyArea(
+  studyArea: StudyArea,
+  year: BookYear
+) {
+  const allowedYears = BOOK_YEARS_BY_STUDY_AREA[studyArea] as readonly BookYear[];
+  return allowedYears.includes(year);
+}
+
 export const DELIVERY_MODES = ["university", "home"] as const;
 
 export type DeliveryMode = (typeof DELIVERY_MODES)[number];
@@ -179,11 +201,14 @@ export type BookAvailabilityReason =
   | "round_inactive"
   | "not_in_round"
   | "price_unavailable"
+  | "already_adhered"
   | null;
 
 export type BookConventionCatalogBook = BookConventionBook & {
   is_available: boolean;
   availability_reason: BookAvailabilityReason;
+  active_round_id: string | null;
+  delivery_mode: DeliveryMode | null;
 };
 
 export type SelectedBookSnapshot = {
@@ -218,6 +243,7 @@ export type BookConventionApiResponse = {
   convention?: BookConventionSummary;
   conventions?: BookConventionSummary[];
   activeRound?: BookConventionRound | null;
+  activeRounds?: BookConventionRound[];
   rounds?: BookConventionRound[];
   canAdhere?: boolean;
   books?: BookConventionCatalogBook[];
@@ -231,6 +257,7 @@ export type BookConventionApiResponse = {
   hasAdhered?: boolean;
   adhesion?: BookConventionAdhesion | null;
   activeAdhesion?: BookConventionAdhesion | null;
+  activeAdhesions?: BookConventionAdhesion[];
   latestAdhesion?: BookConventionAdhesion | null;
   profile?: {
     firstName: string;
@@ -244,6 +271,7 @@ export type BookConventionSubmitResponse = {
   ok?: boolean;
   hasAdhered?: boolean;
   adhesionId?: string;
+  adhesionIds?: string[];
   emailSent?: boolean;
   message?: string;
   error?: string;

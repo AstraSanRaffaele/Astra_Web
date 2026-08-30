@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { ClipboardList, LayoutDashboard, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  BOOK_YEARS_BY_STUDY_AREA,
   BOOK_YEAR_LABELS,
-  BOOK_YEARS,
   DELIVERY_MODE_LABELS,
   STUDY_AREAS,
   STUDY_AREA_LABELS,
+  isBookYearAllowedForStudyArea,
   normalizeBookBundleItems,
   type BookBundleItem,
   type BookYear,
@@ -158,6 +159,20 @@ function createEmptyBook(sortOrder = 0): BookConventionBook {
   };
 }
 
+function getValidReferenceYear(
+  studyArea: StudyArea,
+  referenceYear: BookYear | null | undefined
+): BookYear {
+  if (
+    referenceYear &&
+    isBookYearAllowedForStudyArea(studyArea, referenceYear)
+  ) {
+    return referenceYear;
+  }
+
+  return BOOK_YEARS_BY_STUDY_AREA[studyArea][0];
+}
+
 function normalizeEditableBundleItems(value: unknown): BookBundleItem[] {
   if (!Array.isArray(value)) return [];
 
@@ -298,27 +313,34 @@ function ConvModal({
         is_book_convention: scope === "books",
         books:
           initialBooks.length > 0
-            ? initialBooks.map((book, index) => ({
-              id: book.id ?? null,
-              convention_id: book.convention_id ?? initial.id,
-              title: book.title ?? "",
-              price: typeof book.price === "number" && Number.isFinite(book.price) ? book.price : 0,
-              original_price:
-                typeof book.original_price === "number" &&
-                Number.isFinite(book.original_price)
-                  ? book.original_price
-                  : null,
-              isbn: book.isbn ?? null,
-              reference_year: book.reference_year ?? "primo_anno",
-              description: book.description ?? "",
-              sort_order: book.sort_order ?? index,
-              product_type: book.product_type ?? "book",
-              bundle_items: normalizeBookBundleItems(book.bundle_items),
-              study_area: book.study_area ?? "medicina_chirurgia",
-              is_active: book.is_active !== false,
-              round_ids: Array.isArray(book.round_ids) ? book.round_ids : [],
-              cover_image: book.cover_image ?? null,
-            }))
+            ? initialBooks.map((book, index) => {
+              const studyArea = book.study_area ?? "medicina_chirurgia";
+
+              return {
+                id: book.id ?? null,
+                convention_id: book.convention_id ?? initial.id,
+                title: book.title ?? "",
+                price: typeof book.price === "number" && Number.isFinite(book.price) ? book.price : 0,
+                original_price:
+                  typeof book.original_price === "number" &&
+                  Number.isFinite(book.original_price)
+                    ? book.original_price
+                    : null,
+                isbn: book.isbn ?? null,
+                reference_year: getValidReferenceYear(
+                  studyArea,
+                  book.reference_year
+                ),
+                description: book.description ?? "",
+                sort_order: book.sort_order ?? index,
+                product_type: book.product_type ?? "book",
+                bundle_items: normalizeBookBundleItems(book.bundle_items),
+                study_area: studyArea,
+                is_active: book.is_active !== false,
+                round_ids: Array.isArray(book.round_ids) ? book.round_ids : [],
+                cover_image: book.cover_image ?? null,
+              };
+            })
             : [],
       }
       : {
@@ -558,6 +580,18 @@ function ConvModal({
 
       if (invalidBook) {
         setErr("Inserisci il titolo di ogni libro incluso.");
+        return;
+      }
+
+      const invalidReferenceYear = form.books.find(
+        book =>
+          !isBookYearAllowedForStudyArea(
+            book.study_area,
+            book.reference_year
+          )
+      );
+      if (invalidReferenceYear) {
+        setErr("L’anno selezionato non è disponibile per l’area di studio indicata.");
         return;
       }
 
@@ -1112,7 +1146,7 @@ function ConvModal({
                               onChange={e => updateBook(index, { reference_year: e.target.value as BookYear })}
                               style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: "#102a56", borderRadius: "12px", padding: ".8rem 1rem", fontSize: ".95rem", outline: "none" }}
                             >
-                              {BOOK_YEARS.map(year => (
+                              {BOOK_YEARS_BY_STUDY_AREA[book.study_area].map(year => (
                                 <option key={year} value={year}>{BOOK_YEAR_LABELS[year]}</option>
                               ))}
                             </select>
@@ -1124,7 +1158,16 @@ function ConvModal({
                             <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Area di studio *</label>
                             <select
                               value={book.study_area}
-                              onChange={e => updateBook(index, { study_area: e.target.value as StudyArea })}
+                              onChange={e => {
+                                const studyArea = e.target.value as StudyArea;
+                                updateBook(index, {
+                                  study_area: studyArea,
+                                  reference_year: getValidReferenceYear(
+                                    studyArea,
+                                    book.reference_year
+                                  ),
+                                });
+                              }}
                               style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: "#102a56", borderRadius: "12px", padding: ".8rem 1rem", fontSize: ".9rem", outline: "none" }}
                             >
                               {STUDY_AREAS.map(area => (

@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   BOOK_YEARS,
+  BOOK_YEARS_BY_STUDY_AREA,
   BOOK_YEAR_LABELS,
   STUDY_AREAS,
   STUDY_AREA_LABELS,
@@ -25,6 +26,7 @@ import {
   type StudyArea,
 } from "@/lib/book-convention";
 import AdhesionDialog from "./adhesion-dialog";
+import ActiveAdhesionsPanel from "./active-adhesions-panel";
 import BookConventionStyles from "./book-convention-styles";
 import BookProductCard from "./book-product-card";
 import OrderSummary from "./order-summary";
@@ -89,11 +91,7 @@ function PageSkeleton() {
   );
 }
 
-export default function BookConventionClient({
-  initialConventionId,
-}: {
-  initialConventionId?: number;
-}) {
+export default function BookConventionClient() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState("");
   const [data, setData] = useState<BookConventionApiResponse | null>(null);
@@ -103,28 +101,21 @@ export default function BookConventionClient({
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [selectedConventionId, setSelectedConventionId] = useState<number | null>(
-    initialConventionId ?? null
-  );
   const loadRequestIdRef = useRef(0);
 
   const goToLogin = useCallback(() => {
-    const returnPath = `${window.location.pathname}${window.location.search}`;
-    window.location.replace(`/login?next=${encodeURIComponent(returnPath)}`);
+    window.location.replace(`/login?next=${encodeURIComponent("/convenzioni-libri")}`);
   }, []);
 
   const loadConvention = useCallback(
-    async (quiet = false, conventionId?: number) => {
+    async (quiet = false) => {
       const requestId = loadRequestIdRef.current + 1;
       loadRequestIdRef.current = requestId;
       if (!quiet) setLoadState("loading");
       setLoadError("");
 
       try {
-        const query = conventionId
-          ? `?${new URLSearchParams({ convention_id: String(conventionId) }).toString()}`
-          : "";
-        const response = await fetch(`/api/book-convention${query}`, {
+        const response = await fetch("/api/book-convention", {
           method: "GET",
           cache: "no-store",
         });
@@ -149,20 +140,16 @@ export default function BookConventionClient({
           catalog.some((product) => product.study_area === area)
         );
 
-        const loadedConventionId = payload.convention?.id;
-        if (loadedConventionId) {
-          setSelectedConventionId(loadedConventionId);
-
-          const currentUrl = new URL(window.location.href);
-          currentUrl.searchParams.set("convention_id", String(loadedConventionId));
+        setData(payload);
+        const currentUrl = new URL(window.location.href);
+        if (currentUrl.searchParams.has("convention_id")) {
+          currentUrl.searchParams.delete("convention_id");
           window.history.replaceState(
             window.history.state,
             "",
             `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
           );
         }
-
-        setData(payload);
         setSelectedIds((current) =>
           current.filter((productId) =>
             catalog.some((product) => product.id === productId && product.is_available)
@@ -188,8 +175,8 @@ export default function BookConventionClient({
   );
 
   useEffect(() => {
-    void loadConvention(false, initialConventionId);
-  }, [initialConventionId, loadConvention]);
+    void loadConvention();
+  }, [loadConvention]);
 
   const catalog = useMemo(() => data?.catalogBooks ?? [], [data]);
 
@@ -201,13 +188,14 @@ export default function BookConventionClient({
 
     if (productsInCurrentYear) return;
 
-    const firstYearWithProducts = BOOK_YEARS.find((year) =>
+    const allowedYears = BOOK_YEARS_BY_STUDY_AREA[activeArea];
+    const firstYearWithProducts = allowedYears.find((year) =>
       catalog.some(
         (product) => product.study_area === activeArea && product.reference_year === year
       )
     );
 
-    if (firstYearWithProducts) setActiveYear(firstYearWithProducts);
+    setActiveYear(firstYearWithProducts ?? allowedYears[0]);
   }, [activeArea, activeYear, catalog]);
 
   const normalizedSearch = useMemo(
@@ -258,10 +246,13 @@ export default function BookConventionClient({
     [selectedProducts]
   );
 
-  const canAdhere = Boolean(data?.canAdhere && !data.hasAdhered);
+  const canAdhere = Boolean(data?.canAdhere);
 
   function toggleProduct(productId: number) {
     if (!canAdhere) return;
+
+    const product = catalog.find((item) => item.id === productId);
+    if (!product?.is_available) return;
 
     setSelectedIds((current) =>
       current.includes(productId)
@@ -274,24 +265,12 @@ export default function BookConventionClient({
     setDialogOpen(false);
     setSelectedIds([]);
     setSuccessMessage(message);
-    void loadConvention(true, selectedConventionId ?? undefined);
-  }
-
-  function selectConvention(conventionId: number) {
-    if (!Number.isInteger(conventionId) || conventionId <= 0) return;
-    if (conventionId === selectedConventionId) return;
-
-    setSelectedConventionId(conventionId);
-    setSelectedIds([]);
-    setSearchTerm("");
-    setSuccessMessage("");
-    setDialogOpen(false);
-    void loadConvention(false, conventionId);
+    void loadConvention(true);
   }
 
   if (loadState === "loading") return <PageSkeleton />;
 
-  if (loadState === "error" || !data?.convention) {
+  if (loadState === "error" || !data?.conventions?.length) {
     return (
       <>
         <BookConventionStyles />
@@ -315,9 +294,7 @@ export default function BookConventionClient({
               </p>
               <Button
                 type="button"
-                onClick={() =>
-                  void loadConvention(false, selectedConventionId ?? undefined)
-                }
+                onClick={() => void loadConvention()}
                 className="mt-6 h-11 rounded-full bg-[#0E1F6B] px-5 text-white hover:bg-[#1A3399]"
               >
                 <RotateCcw size={14} />
@@ -330,11 +307,13 @@ export default function BookConventionClient({
     );
   }
 
-  const convention = data.convention;
-  const activeAdhesion = data.activeAdhesion ?? null;
+  const activeAdhesions = data.activeAdhesions ?? [];
+  const activeRounds = data.activeRounds ?? [];
   const availableProducts = catalog.filter((product) => product.is_available).length;
-  const bundleCount = catalog.filter((product) => product.product_type === "bundle").length;
-  const activeRoundHasProducts = Boolean(data.activeRound && availableProducts > 0);
+  const activeRoundHasProducts = activeRounds.length > 0 && availableProducts > 0;
+  const activeDeliveryModes = Array.from(
+    new Set(activeRounds.map((round) => round.delivery_mode))
+  );
 
   return (
     <>
@@ -356,50 +335,31 @@ export default function BookConventionClient({
                 <br />
                 <span>il tuo percorso.</span>
               </h1>
-              <p className="book-convention-name">{convention.titolo || "Convenzioni Libri"}</p>
               <p className="conv-hero-sub book-hero-description">
-                {convention.descrizione ||
-                  "Scegli libri singoli e bundle per il tuo corso di studi e invia la richiesta di adesione."}
+                Seleziona il corso e l’anno: troverai insieme tutte le proposte
+                attualmente disponibili per il tuo percorso di studi.
               </p>
             </header>
 
             <aside className="book-hero-meta" aria-label="Stato della convenzione libri">
-              <span className="book-meta-label">Convenzione selezionata</span>
-              {(data.conventions?.length ?? 0) > 1 ? (
-                <>
-                  <select
-                    value={selectedConventionId ?? convention.id}
-                    onChange={(event) => selectConvention(Number(event.target.value))}
-                    className="book-select"
-                    aria-label="Seleziona la convenzione libri"
-                  >
-                    {data.conventions?.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.titolo || `Convenzione libri ${item.id}`}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="book-switch-note">
-                    Cambiando convenzione, la selezione corrente verrà svuotata.
-                  </p>
-                </>
-              ) : (
-                <p className="text-[.82rem] leading-snug font-bold text-[#08102A]">
-                  {convention.titolo || "Convenzioni Libri"}
-                </p>
-              )}
+              <span className="book-meta-label">Disponibilità catalogo</span>
 
-              {data.activeRound ? (
+              {activeRounds.length > 0 ? (
                 <div className="book-round-status">
                   <CalendarDays size={17} className="mt-0.5 shrink-0 text-[#2E4080]" />
                   <p>
-                    <strong className="block text-[#08102A]">Raccolta ordini aperta</strong>
-                    Dal {formatRoundDate(data.activeRound.starts_at)}
-                    {hasDisplayableEndDate(data.activeRound.ends_at)
-                      ? ` al ${formatRoundDate(data.activeRound.ends_at)}`
-                      : ""}
+                    <strong className="block text-[#08102A]">Ordini aperti</strong>
+                    {activeRounds.length === 1
+                      ? `Dal ${formatRoundDate(activeRounds[0].starts_at)}${
+                          hasDisplayableEndDate(activeRounds[0].ends_at)
+                            ? ` al ${formatRoundDate(activeRounds[0].ends_at)}`
+                            : ""
+                        }`
+                      : `${activeRounds.length} raccolte disponibili in questo momento`}
                     <span className="mt-1 block text-[.7rem] font-semibold text-[#596174]">
-                      {DELIVERY_MODE_LABELS[data.activeRound.delivery_mode]}
+                      {activeDeliveryModes.length === 1
+                        ? DELIVERY_MODE_LABELS[activeDeliveryModes[0]]
+                        : "Modalità di consegna indicate al riepilogo"}
                     </span>
                   </p>
                 </div>
@@ -419,8 +379,8 @@ export default function BookConventionClient({
                   <span className="text-[.66rem] font-semibold text-[#596174]">Proposte</span>
                 </div>
                 <div>
-                  <strong className="block text-xl text-[#08102A]">{bundleCount}</strong>
-                  <span className="text-[.66rem] font-semibold text-[#596174]">Bundle</span>
+                  <strong className="block text-xl text-[#08102A]">{availableProducts}</strong>
+                  <span className="text-[.66rem] font-semibold text-[#596174]">Disponibili ora</span>
                 </div>
               </div>
             </aside>
@@ -438,28 +398,33 @@ export default function BookConventionClient({
             </Alert>
           ) : null}
 
-          {activeAdhesion && !successMessage ? (
+          {activeAdhesions.length > 0 && !successMessage ? (
             <Alert className="rounded-2xl border-[#CFE6D6] bg-[#F2FAF4] p-4 text-[#145C31]">
               <CheckCircle2 size={18} />
-              <AlertTitle>Adesione già registrata</AlertTitle>
+              <AlertTitle>
+                {activeAdhesions.length === 1
+                  ? "Adesione già registrata"
+                  : "Adesioni già registrate"}
+              </AlertTitle>
               <AlertDescription className="text-[#477257]">
-                La richiesta per questa raccolta è già stata inviata. Nel riepilogo trovi i dati dell’ordine registrato.
+                Le proposte già ordinate nella raccolta corrente non sono più selezionabili;
+                puoi comunque aderire alle altre proposte disponibili.
               </AlertDescription>
             </Alert>
           ) : null}
 
-          {!data.canAdhere && !activeAdhesion ? (
+          {!data.canAdhere && activeAdhesions.length === 0 ? (
             <Alert className="rounded-2xl border-[#E7D7B5] bg-[#FFF9ED] p-4 text-[#73551A]">
               <CircleAlert size={18} />
               <AlertTitle>
-                {!data.activeRound
+                {activeRounds.length === 0
                   ? "Raccolta ordini non aperta"
                   : !activeRoundHasProducts
                     ? "Catalogo in aggiornamento"
                     : "Adesioni temporaneamente non disponibili"}
               </AlertTitle>
               <AlertDescription className="text-[#73551A]">
-                {!data.activeRound
+                {activeRounds.length === 0
                   ? "Puoi consultare prezzi e proposte, ma la selezione sarà disponibile alla prossima apertura."
                   : !activeRoundHasProducts
                     ? "La raccolta è aperta, ma al momento non contiene prodotti selezionabili."
@@ -469,29 +434,24 @@ export default function BookConventionClient({
           ) : null}
         </div>
 
+        <ActiveAdhesionsPanel
+          activeAdhesions={activeAdhesions}
+          latestAdhesion={data.latestAdhesion}
+          rounds={data.rounds ?? []}
+          conventions={data.conventions ?? []}
+        />
+
         {catalog.length === 0 ? (
           <section className="book-shell book-shop">
-            <div className={activeAdhesion ? "book-shop-layout" : undefined}>
+            <div>
               <div className="book-empty-catalog">
                 <p className="text-[.95rem] font-bold text-[#344363]">
                   Nessun libro disponibile
                 </p>
                 <p className="mx-auto mt-2 max-w-lg text-[.8rem] leading-relaxed text-[#596174]">
-                  Il catalogo della convenzione non contiene ancora libri o bundle attivi.
+                  Il catalogo non contiene ancora proposte attive.
                 </p>
               </div>
-
-              {activeAdhesion ? (
-                <OrderSummary
-                  products={[]}
-                  total={0}
-                  canAdhere={false}
-                  activeAdhesion={activeAdhesion}
-                  deliveryMode={data.activeRound?.delivery_mode ?? null}
-                  onRemove={toggleProduct}
-                  onProceed={() => undefined}
-                />
-              ) : null}
             </div>
           </section>
         ) : (
@@ -506,7 +466,7 @@ export default function BookConventionClient({
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
                       className="conv-search"
-                      placeholder="Cerca titolo, ISBN o contenuto del bundle…"
+                      placeholder="Cerca titolo, ISBN o contenuto della proposta…"
                       aria-label="Cerca nel catalogo libri"
                     />
                     {searchTerm ? (
@@ -550,7 +510,7 @@ export default function BookConventionClient({
                   <div className="book-filter-group">
                     <span className="book-filter-label">Anno di corso</span>
                     <div className="book-filter-scroll" role="group" aria-label="Filtra per anno di corso">
-                      {BOOK_YEARS.map((year) => {
+                      {BOOK_YEARS_BY_STUDY_AREA[activeArea].map((year) => {
                         const count = catalog.filter(
                           (product) =>
                             product.study_area === activeArea &&
@@ -629,8 +589,6 @@ export default function BookConventionClient({
                 products={selectedProducts}
                 total={total}
                 canAdhere={canAdhere}
-                activeAdhesion={activeAdhesion}
-                deliveryMode={data.activeRound?.delivery_mode ?? null}
                 onRemove={toggleProduct}
                 onProceed={() => setDialogOpen(true)}
               />
@@ -638,22 +596,17 @@ export default function BookConventionClient({
           </section>
         )}
 
-        {data.activeRound ? (
-          <AdhesionDialog
-            open={dialogOpen}
-            conventionId={convention.id}
-            roundId={data.activeRound.id}
-            products={selectedProducts}
-            total={total}
-            profile={data.profile}
-            initialFiscalCodeOrVat={data.latestAdhesion?.fiscal_code_or_vat}
-            initialAddress={data.latestAdhesion?.billing_shipping_address}
-            deliveryMode={data.activeRound.delivery_mode}
-            onClose={() => setDialogOpen(false)}
-            onCompleted={handleCompleted}
-            onUnauthorized={goToLogin}
-          />
-        ) : null}
+        <AdhesionDialog
+          open={dialogOpen}
+          products={selectedProducts}
+          total={total}
+          profile={data.profile}
+          initialFiscalCodeOrVat={data.latestAdhesion?.fiscal_code_or_vat}
+          initialAddress={data.latestAdhesion?.billing_shipping_address}
+          onClose={() => setDialogOpen(false)}
+          onCompleted={handleCompleted}
+          onUnauthorized={goToLogin}
+        />
       </main>
     </>
   );

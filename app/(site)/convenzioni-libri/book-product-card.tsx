@@ -14,6 +14,7 @@ const AVAILABILITY_LABELS: Record<Exclude<BookAvailabilityReason, null>, string>
   round_inactive: "Raccolta non aperta",
   not_in_round: "Non disponibile in questa raccolta",
   price_unavailable: "Prezzo non disponibile",
+  already_adhered: "Già ordinato in questa raccolta",
 };
 
 function formatPrice(value: number | null) {
