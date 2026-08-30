@@ -1,4 +1,5 @@
 import type {
+  BookBundleItem,
   BookYear,
   DeliveryMode,
   PaymentMethod,
@@ -44,7 +45,7 @@ export type AdminBookConventionProduct = {
   description: string | null;
   sort_order: number | null;
   product_type: ProductType;
-  bundle_items: string[];
+  bundle_items: BookBundleItem[];
   study_area: StudyArea;
   is_active: boolean;
   cover_image: string | null;
@@ -60,7 +61,7 @@ export type SelectedProductSnapshot = {
   reference_year?: BookYear;
   description?: string | null;
   product_type?: ProductType;
-  bundle_items?: string[];
+  bundle_items?: Array<BookBundleItem | string>;
   study_area?: StudyArea;
   cover_image?: string | null;
 };
@@ -70,6 +71,7 @@ export type LegacyBookItem = {
   price?: number | string | null;
   original_price?: number | string | null;
   isbn?: string | null;
+  bundle_items?: Array<BookBundleItem | string>;
 };
 
 export type AdminBookAdhesion = {
@@ -100,7 +102,7 @@ export type DisplaySelectedProduct = {
   reference_year?: BookYear;
   description?: string | null;
   product_type: ProductType;
-  bundle_items: string[];
+  bundle_items: BookBundleItem[];
   study_area?: StudyArea;
   cover_image: string | null;
 };

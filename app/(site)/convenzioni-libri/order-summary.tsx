@@ -20,6 +20,7 @@ import {
 import type {
   BookConventionAdhesion,
   BookConventionCatalogBook,
+  BookBundleItem,
 } from "@/lib/book-convention";
 
 function formatPrice(value: number | null | undefined) {
@@ -95,6 +96,25 @@ function SummaryCover({ product }: { product: BookConventionCatalogBook }) {
         <BookOpen size={15} aria-hidden="true" />
       )}
     </span>
+  );
+}
+
+function BundleItemsSummary({ items }: { items: BookBundleItem[] | undefined }) {
+  if (!items?.length) return null;
+
+  return (
+    <ul className="mt-1.5 space-y-1 text-[.62rem] leading-snug text-[#6B7280]">
+      {items.map((item, index) => (
+        <li key={`${index}-${item.title}-${item.isbn ?? ""}`}>
+          <span>{item.title}</span>
+          {item.isbn ? (
+            <span className="ml-1 font-semibold text-[#64709A]">
+              · ISBN {item.isbn}
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -226,8 +246,14 @@ export default function OrderSummary({
                           </p>
                           {product.isbn ? (
                             <p className="mt-1 text-[.62rem] text-[#7B8290]">
-                              ISBN {product.isbn}
+                              {product.product_type === "bundle"
+                                ? "ISBN generale bundle"
+                                : "ISBN"}{" "}
+                              {product.isbn}
                             </p>
+                          ) : null}
+                          {product.product_type === "bundle" ? (
+                            <BundleItemsSummary items={product.bundle_items} />
                           ) : null}
                         </div>
                         <span className="shrink-0 text-right">
@@ -338,6 +364,9 @@ export default function OrderSummary({
                             {formatPrice(product.price)}
                           </span>
                         </div>
+                        {isBundle ? (
+                          <BundleItemsSummary items={product.bundle_items} />
+                        ) : null}
                       </div>
 
                       <button

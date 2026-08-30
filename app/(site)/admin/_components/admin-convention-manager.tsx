@@ -11,6 +11,8 @@ import {
   DELIVERY_MODE_LABELS,
   STUDY_AREAS,
   STUDY_AREA_LABELS,
+  normalizeBookBundleItems,
+  type BookBundleItem,
   type BookYear,
   type DeliveryMode,
   type ProductType,
@@ -49,7 +51,7 @@ type BookConventionBook = {
   description: string | null;
   sort_order: number;
   product_type: ProductType;
-  bundle_items: string[];
+  bundle_items: BookBundleItem[];
   study_area: StudyArea;
   is_active: boolean;
   round_ids: string[];
@@ -156,17 +158,38 @@ function createEmptyBook(sortOrder = 0): BookConventionBook {
   };
 }
 
-function getIncludedBookTitles(book: BookConventionBook) {
-  if (book.product_type === "bundle" || book.bundle_items.length > 0) {
-    return [...book.bundle_items];
-  }
+function normalizeEditableBundleItems(value: unknown): BookBundleItem[] {
+  if (!Array.isArray(value)) return [];
 
-  return [book.title];
+  return value.flatMap(item => {
+    if (typeof item === "string") {
+      return [{ title: item, isbn: null }];
+    }
+
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+
+    const row = item as Record<string, unknown>;
+    return [{
+      title: typeof row.title === "string" ? row.title : "",
+      isbn: typeof row.isbn === "string" ? row.isbn : null,
+    }];
+  });
 }
 
-function buildAutomaticProductTitle(includedBooks: string[]) {
+function getIncludedBooks(book: BookConventionBook): BookBundleItem[] {
+  if (book.product_type === "bundle" || book.bundle_items.length > 0) {
+    return normalizeEditableBundleItems(book.bundle_items);
+  }
+
+  return [{
+    title: book.title,
+    isbn: normalizeIsbn(book.isbn) || null,
+  }];
+}
+
+function buildAutomaticProductTitle(includedBooks: BookBundleItem[]) {
   const titles = Array.from(
-    new Set(includedBooks.map(title => title.trim()).filter(Boolean))
+    new Set(includedBooks.map(item => item.title.trim()).filter(Boolean))
   );
 
   if (includedBooks.length <= 1) return titles[0] ?? "";
@@ -179,7 +202,7 @@ function buildAutomaticProductTitle(includedBooks: string[]) {
 }
 
 function normalizeIsbn(value: string | null | undefined) {
-  return value?.trim().toUpperCase().replace(/[^0-9X]/g, "") ?? "";
+  return value?.trim().toUpperCase().replace(/[\s-]/g, "") ?? "";
 }
 
 function isValidIsbn(value: string) {
@@ -188,7 +211,7 @@ function isValidIsbn(value: string) {
 
 function getAutomaticBookConventionTitle(form: ConvForm) {
   if (form.books.length === 1) {
-    return buildAutomaticProductTitle(getIncludedBookTitles(form.books[0]));
+    return buildAutomaticProductTitle(getIncludedBooks(form.books[0]));
   }
 
   return form.titolo.trim() || BOOK_CONVENTION_INTERNAL_TITLE;
@@ -290,7 +313,7 @@ function ConvModal({
               description: book.description ?? "",
               sort_order: book.sort_order ?? index,
               product_type: book.product_type ?? "book",
-              bundle_items: Array.isArray(book.bundle_items) ? book.bundle_items : [],
+              bundle_items: normalizeBookBundleItems(book.bundle_items),
               study_area: book.study_area ?? "medicina_chirurgia",
               is_active: book.is_active !== false,
               round_ids: Array.isArray(book.round_ids) ? book.round_ids : [],
@@ -342,10 +365,16 @@ function ConvModal({
       books: current.books.map((book, bookIndex) => {
         if (bookIndex !== index) return book;
 
-        const includedBooks = [...getIncludedBookTitles(book), ""];
+        const wasBundle = book.product_type === "bundle" || book.bundle_items.length > 0;
+        const includedBooks = [
+          ...getIncludedBooks(book),
+          { title: "", isbn: null },
+        ];
+
         return {
           ...book,
           title: buildAutomaticProductTitle(includedBooks),
+          isbn: wasBundle ? book.isbn : null,
           product_type: "bundle",
           bundle_items: includedBooks,
         };
@@ -353,21 +382,27 @@ function ConvModal({
     }));
   };
 
-  const updateIncludedBook = (bookIndex: number, includedBookIndex: number, title: string) => {
+  const updateIncludedBook = (
+    bookIndex: number,
+    includedBookIndex: number,
+    patch: Partial<BookBundleItem>
+  ) => {
     setForm(current => ({
       ...current,
       books: current.books.map((book, index) => {
         if (index !== bookIndex) return book;
 
-        const includedBooks = getIncludedBookTitles(book).map((item, itemIndex) =>
-          itemIndex === includedBookIndex ? title : item
+        const includedBooks = getIncludedBooks(book).map((item, itemIndex) =>
+          itemIndex === includedBookIndex ? { ...item, ...patch } : item
         );
+        const isBundle = includedBooks.length >= 2;
 
         return {
           ...book,
           title: buildAutomaticProductTitle(includedBooks),
-          product_type: includedBooks.length >= 2 ? "bundle" : "book",
-          bundle_items: includedBooks.length >= 2 ? includedBooks : [],
+          isbn: isBundle ? book.isbn : includedBooks[0]?.isbn ?? null,
+          product_type: isBundle ? "bundle" : "book",
+          bundle_items: isBundle ? includedBooks : [],
         };
       }),
     }));
@@ -379,16 +414,18 @@ function ConvModal({
       books: current.books.map((book, index) => {
         if (index !== bookIndex) return book;
 
-        const includedBooks = getIncludedBookTitles(book).filter(
+        const includedBooks = getIncludedBooks(book).filter(
           (_, itemIndex) => itemIndex !== includedBookIndex
         );
         const nextTitle = buildAutomaticProductTitle(includedBooks);
+        const isBundle = includedBooks.length >= 2;
 
         return {
           ...book,
           title: nextTitle,
-          product_type: includedBooks.length >= 2 ? "bundle" : "book",
-          bundle_items: includedBooks.length >= 2 ? includedBooks : [],
+          isbn: isBundle ? book.isbn : includedBooks[0]?.isbn ?? null,
+          product_type: isBundle ? "bundle" : "book",
+          bundle_items: isBundle ? includedBooks : [],
         };
       }),
     }));
@@ -516,7 +553,7 @@ function ConvModal({
       }
 
       const invalidBook = form.books.find(book =>
-        getIncludedBookTitles(book).some(title => !title.trim())
+        getIncludedBooks(book).some(item => !item.title.trim())
       );
 
       if (invalidBook) {
@@ -550,9 +587,32 @@ function ConvModal({
         return;
       }
 
+      const invalidBundleItemIsbn = form.books.find(book =>
+        getIncludedBooks(book).some(item => {
+          const isbn = normalizeIsbn(item.isbn);
+          return Boolean(isbn) && !isValidIsbn(isbn);
+        })
+      );
+      if (invalidBundleItemIsbn) {
+        setErr("Ogni ISBN dei libri inclusi deve contenere 10 o 13 caratteri validi.");
+        return;
+      }
+
+      const bundleWithDuplicateIsbns = form.books.find(book => {
+        const isbns = getIncludedBooks(book)
+          .map(item => normalizeIsbn(item.isbn))
+          .filter(Boolean);
+
+        return isbns.length !== new Set(isbns).size;
+      });
+      if (bundleWithDuplicateIsbns) {
+        setErr("Ogni libro del bundle deve avere un ISBN diverso: rimuovi gli ISBN duplicati.");
+        return;
+      }
+
       const invalidBundle = form.books.find(book => {
-        const includedBooks = getIncludedBookTitles(book)
-          .map(title => title.trim())
+        const includedBooks = getIncludedBooks(book)
+          .map(item => item.title.trim())
           .filter(Boolean);
 
         return book.product_type === "bundle" && includedBooks.length < 2;
@@ -582,7 +642,7 @@ function ConvModal({
   const creatingAutomaticBundle =
     mode === "create" &&
     form.books.length === 1 &&
-    getIncludedBookTitles(form.books[0]).length >= 2;
+    getIncludedBooks(form.books[0]).length >= 2;
 
   return (
     <div
@@ -873,7 +933,7 @@ function ConvModal({
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: ".85rem" }}>
                     {form.books.map((book, index) => {
-                      const includedBooks = getIncludedBookTitles(book);
+                      const includedBooks = getIncludedBooks(book);
                       const isBundle = includedBooks.length >= 2 || book.product_type === "bundle";
                       const automaticTitle = isBundle
                         ? buildAutomaticProductTitle(includedBooks)
@@ -960,7 +1020,7 @@ function ConvModal({
                               </p>
                               <p style={{ margin: ".18rem 0 0", color: "#6b7280", fontSize: ".68rem", lineHeight: 1.4 }}>
                                 {isBundle
-                                  ? "Il titolo pubblico viene generato automaticamente dai libri inseriti."
+                                  ? "Il titolo pubblico viene generato automaticamente; puoi indicare un ISBN diverso per ogni libro."
                                   : "Aggiungendo un secondo libro la proposta diventerà automaticamente un bundle."}
                               </p>
                             </div>
@@ -976,12 +1036,22 @@ function ConvModal({
                           {isBundle ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: ".55rem" }}>
                               {includedBooks.map((includedBook, includedBookIndex) => (
-                                <div key={`${book.id ?? `new-${index}`}-included-${includedBookIndex}`} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: ".5rem", alignItems: "end" }}>
+                                <div
+                                  key={`${book.id ?? `new-${index}`}-included-${includedBookIndex}`}
+                                  className="book-admin-bundle-row"
+                                  style={{ display: "grid", gridTemplateColumns: "minmax(0,1.35fr) minmax(180px,.8fr) auto", gap: ".5rem", alignItems: "end" }}
+                                >
                                   <MField
-                                    label={`Libro ${includedBookIndex + 1} *`}
-                                    value={includedBook}
-                                    onChange={value => updateIncludedBook(index, includedBookIndex, value)}
+                                    label={`Titolo libro ${includedBookIndex + 1} *`}
+                                    value={includedBook.title}
+                                    onChange={value => updateIncludedBook(index, includedBookIndex, { title: value })}
                                     placeholder="Titolo del libro"
+                                  />
+                                  <MField
+                                    label={`ISBN libro ${includedBookIndex + 1} (facoltativo)`}
+                                    value={includedBook.isbn ?? ""}
+                                    onChange={value => updateIncludedBook(index, includedBookIndex, { isbn: value || null })}
+                                    placeholder="9781234567890"
                                   />
                                   <button
                                     type="button"
@@ -1009,10 +1079,10 @@ function ConvModal({
                             <MField label="Titolo libro *" value={book.title} onChange={v => updateBook(index, { title: v })} placeholder="es. Anatomia Gray" />
                           )}
                           <MField
-                            label="ISBN"
+                            label={isBundle ? "ISBN generale bundle (facoltativo)" : "ISBN libro (facoltativo)"}
                             value={book.isbn ?? ""}
                             onChange={value => updateBook(index, { isbn: value || null })}
-                            placeholder={isBundle ? "Facoltativo per il bundle" : "9781234567890"}
+                            placeholder={isBundle ? "Solo se il bundle ha un proprio ISBN" : "9781234567890"}
                           />
                         </div>
 
@@ -1399,9 +1469,12 @@ export default function AdminConventionManager({
             ordine: Number(ordineValue || "0"),
             attiva: form.attiva,
             books: form.books.map((book, index) => {
-              const includedBooks = getIncludedBookTitles(book)
-                .map(title => title.trim())
-                .filter(Boolean);
+              const includedBooks = getIncludedBooks(book)
+                .map(item => ({
+                  title: item.title.trim(),
+                  isbn: normalizeIsbn(item.isbn) || null,
+                }))
+                .filter(item => Boolean(item.title));
 
               return {
                 id: book.id ?? null,
@@ -2870,10 +2943,15 @@ export default function AdminConventionManager({
           .book-admin-grid-title,
           .book-admin-grid-2,
           .book-admin-grid-description,
+          .book-admin-bundle-row,
           .book-admin-cover,
           form div[style*="grid-template-columns: 1.4fr .8fr .9fr"],
           form div[style*="grid-template-columns: 1fr 120px"] {
             grid-template-columns: 1fr !important;
+          }
+
+          .book-admin-bundle-row button {
+            width: 100%;
           }
 
           .book-collection-actions,

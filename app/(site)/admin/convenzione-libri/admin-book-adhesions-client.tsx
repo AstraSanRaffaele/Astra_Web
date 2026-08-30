@@ -355,7 +355,7 @@ export default function AdminBookAdhesionsClient({
         "Modalità consegna",
         "Metodo pagamento",
         "Prodotti",
-        "ISBN",
+        "ISBN prodotto e libri bundle",
         "Tipi prodotto",
         "Contenuto bundle",
         "Aree di studio",
@@ -387,12 +387,27 @@ export default function AdminBookAdhesionsClient({
           formatPaymentMethod(adhesion.payment_method),
           products.map((product) => `${product.title} (${formatPrice(product.price)})`).join(" | "),
           products
-            .map((product) => `${product.title}: ${product.isbn || "—"}`)
+            .map((product) => {
+              const bundleIsbns = product.bundle_items
+                .filter((item) => item.isbn)
+                .map((item) => `${item.title}: ${item.isbn}`);
+              const productIsbn = product.isbn
+                ? [`${product.title}: ${product.isbn}`]
+                : [];
+              const values = [...productIsbn, ...bundleIsbns];
+              return values.length > 0 ? values.join(", ") : `${product.title}: —`;
+            })
             .join(" | "),
           products.map((product) => PRODUCT_TYPE_LABELS[product.product_type]).join(" | "),
           products
             .filter((product) => product.bundle_items.length > 0)
-            .map((product) => `${product.title}: ${product.bundle_items.join(", ")}`)
+            .map((product) =>
+              `${product.title}: ${product.bundle_items
+                .map((item) =>
+                  item.isbn ? `${item.title} (ISBN ${item.isbn})` : item.title
+                )
+                .join(", ")}`
+            )
             .join(" | "),
           products
             .map((product) =>

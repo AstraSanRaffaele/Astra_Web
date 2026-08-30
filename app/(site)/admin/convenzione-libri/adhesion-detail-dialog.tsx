@@ -226,7 +226,10 @@ export default function AdhesionDetailDialog({
                             <div className="mt-1.5 flex flex-wrap items-center gap-2">
                               {product.isbn && (
                                 <span className="font-mono text-[11px] font-semibold text-[#64748b]">
-                                  ISBN {product.isbn}
+                                  {product.product_type === "bundle"
+                                    ? "ISBN generale bundle"
+                                    : "ISBN"}{" "}
+                                  {product.isbn}
                                 </span>
                               )}
                               {getProductSavings(product) > 0 && (
@@ -245,7 +248,17 @@ export default function AdhesionDetailDialog({
                             </p>
                             <ul className="space-y-1 pl-4 text-xs leading-5 text-[#475569]">
                               {product.bundle_items.map((item, itemIndex) => (
-                                <li className="list-disc" key={`${item}-${itemIndex}`}>{item}</li>
+                                <li
+                                  className="list-disc"
+                                  key={`${item.title}-${item.isbn ?? "no-isbn"}-${itemIndex}`}
+                                >
+                                  <span>{item.title}</span>
+                                  {item.isbn ? (
+                                    <span className="ml-1.5 font-mono text-[10px] font-semibold text-[#64748b]">
+                                      ISBN {item.isbn}
+                                    </span>
+                                  ) : null}
+                                </li>
                               ))}
                             </ul>
                           </div>

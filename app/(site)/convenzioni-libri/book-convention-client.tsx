@@ -232,7 +232,9 @@ export default function BookConventionClient({
             product.title,
             product.isbn ?? "",
             product.description ?? "",
-            product.bundle_items.join(" "),
+            product.bundle_items
+              .flatMap((item) => [item.title, item.isbn ?? ""])
+              .join(" "),
           ].join(" ")
         ).includes(normalizedSearch);
       }),

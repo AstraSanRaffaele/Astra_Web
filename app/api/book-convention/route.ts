@@ -19,7 +19,9 @@ import {
   PRODUCT_TYPE_LABELS,
   PRODUCT_TYPES,
   STUDY_AREAS,
+  normalizeBookBundleItems,
   normalizeBookConventionCoverUrl,
+  type BookConventionAdhesion,
   type BookConventionBook,
   type BookConventionCatalogBook,
   type BookConventionRound,
@@ -28,6 +30,7 @@ import {
   type DeliveryMode,
   type PaymentMethod,
   type ProductType,
+  type SelectedBookSnapshot,
   type StudyArea,
 } from "@/lib/book-convention";
 
@@ -79,14 +82,6 @@ function isDeliveryMode(value: unknown): value is DeliveryMode {
   return (
     typeof value === "string" && DELIVERY_MODES.includes(value as DeliveryMode)
   );
-}
-
-function normalizeBundleItems(value: unknown) {
-  if (!Array.isArray(value)) return [];
-
-  return value
-    .map((item) => cleanRequiredString(item))
-    .filter(Boolean);
 }
 
 function parseDatabasePrice(value: unknown) {
@@ -192,7 +187,7 @@ function normalizeBookRow(value: unknown): BookConventionBook | null {
     description: cleanRequiredString(row.description) || null,
     sort_order: Number.isInteger(sortOrder) ? sortOrder : null,
     product_type: row.product_type,
-    bundle_items: normalizeBundleItems(row.bundle_items),
+    bundle_items: normalizeBookBundleItems(row.bundle_items),
     study_area: row.study_area,
     is_active: row.is_active === true,
     cover_image: normalizeBookConventionCoverUrl(row.cover_image),
@@ -201,6 +196,80 @@ function normalizeBookRow(value: unknown): BookConventionBook | null {
       originalPrice !== null && (price === null || originalPrice >= price)
         ? originalPrice
         : null,
+  };
+}
+
+function normalizeSelectedBookSnapshot(
+  value: unknown
+): SelectedBookSnapshot | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const row = value as Record<string, unknown>;
+  const id = Number(row.id);
+  const title = cleanRequiredString(row.title);
+  const price = parseDatabasePrice(row.price);
+  const originalPrice = parseDatabasePrice(row.original_price);
+
+  return {
+    id: Number.isInteger(id) && id > 0 ? id : undefined,
+    title: title || undefined,
+    price,
+    reference_year: isBookYear(row.reference_year)
+      ? row.reference_year
+      : undefined,
+    description: cleanRequiredString(row.description) || null,
+    product_type: isProductType(row.product_type)
+      ? row.product_type
+      : undefined,
+    bundle_items: normalizeBookBundleItems(row.bundle_items),
+    study_area: isStudyArea(row.study_area) ? row.study_area : undefined,
+    cover_image: normalizeBookConventionCoverUrl(row.cover_image),
+    isbn: normalizeIsbn(row.isbn),
+    original_price:
+      originalPrice !== null && (price === null || originalPrice >= price)
+        ? originalPrice
+        : null,
+  };
+}
+
+function normalizeAdhesionRow(value: unknown): BookConventionAdhesion | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const row = value as Record<string, unknown>;
+  const id = cleanRequiredString(row.id);
+  const conventionId = Number(row.convention_id);
+  const createdAt = cleanRequiredString(row.created_at);
+
+  if (
+    !id ||
+    !Number.isInteger(conventionId) ||
+    conventionId <= 0 ||
+    !createdAt
+  ) {
+    return null;
+  }
+
+  const selectedBookIds = Array.isArray(row.selected_book_ids)
+    ? cleanBookIds(row.selected_book_ids)
+    : null;
+  const selectedBooks = Array.isArray(row.selected_books)
+    ? row.selected_books
+        .map((book) => normalizeSelectedBookSnapshot(book))
+        .filter((book): book is SelectedBookSnapshot => book !== null)
+    : null;
+
+  return {
+    id,
+    convention_id: conventionId,
+    round_id: cleanRequiredString(row.round_id) || null,
+    selected_book_ids: selectedBookIds,
+    selected_books: selectedBooks,
+    total_price: parseDatabasePrice(row.total_price),
+    fiscal_code_or_vat: cleanRequiredString(row.fiscal_code_or_vat) || null,
+    billing_shipping_address:
+      cleanRequiredString(row.billing_shipping_address) || null,
+    payment_method: cleanRequiredString(row.payment_method) || null,
+    created_at: createdAt,
   };
 }
 
@@ -370,10 +439,26 @@ function buildBookConventionReceiptHtml(params: {
           : 0;
       const bundleContents =
         book.product_type === "bundle" && book.bundle_items.length > 0
-          ? `<div style="margin-top: 4px; color: #6b7280; font-size: 12px;">Include: ${escapeHtml(book.bundle_items.join(", "))}</div>`
+          ? `<div style="margin-top: 6px; color: #6b7280; font-size: 12px;">
+              <strong>Include:</strong>
+              <ul style="margin: 4px 0 0; padding-left: 18px;">
+                ${book.bundle_items
+                  .map(
+                    (item) =>
+                      `<li>${escapeHtml(item.title)}${
+                        item.isbn
+                          ? ` <span style="color: #8a909d;">(ISBN ${escapeHtml(item.isbn)})</span>`
+                          : ""
+                      }</li>`
+                  )
+                  .join("")}
+              </ul>
+            </div>`
           : "";
       const isbn = book.isbn
-        ? `<div style="margin-top: 4px; color: #6b7280; font-size: 12px;">ISBN ${escapeHtml(book.isbn)}</div>`
+        ? `<div style="margin-top: 4px; color: #6b7280; font-size: 12px;">${
+            book.product_type === "bundle" ? "ISBN generale bundle" : "ISBN"
+          } ${escapeHtml(book.isbn)}</div>`
         : "";
       const savingLabel =
         saving > 0
@@ -772,7 +857,11 @@ export async function GET(req: NextRequest) {
 
     // Compatibilità con la modale esistente: `books` contiene solo elementi selezionabili.
     const selectableBooks = catalogBooks.filter((book) => book.is_available);
-    const adhesions = adhesionsResult.data ?? [];
+    const adhesions = (adhesionsResult.data ?? [])
+      .map((adhesion) => normalizeAdhesionRow(adhesion))
+      .filter(
+        (adhesion): adhesion is BookConventionAdhesion => adhesion !== null
+      );
     const activeAdhesion = activeRound
       ? adhesions.find((adhesion) => adhesion.round_id === activeRound.id) ?? null
       : null;

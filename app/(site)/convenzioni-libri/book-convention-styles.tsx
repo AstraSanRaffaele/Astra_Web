@@ -629,6 +629,20 @@ export default function BookConventionStyles() {
         line-height: 1.4;
       }
 
+      .book-bundle-item-copy {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: .08rem;
+      }
+
+      .book-bundle-item-isbn {
+        color: #68718A;
+        font-size: .61rem;
+        font-weight: 700;
+        letter-spacing: .035em;
+      }
+
       .book-bundle-dot {
         width: 4px;
         height: 4px;

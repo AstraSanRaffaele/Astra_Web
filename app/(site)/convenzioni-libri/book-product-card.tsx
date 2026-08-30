@@ -115,7 +115,9 @@ export default function BookProductCard({
         </h3>
 
         {product.isbn ? (
-          <p className="book-product-isbn">ISBN {product.isbn}</p>
+          <p className="book-product-isbn">
+            {isBundle ? "ISBN generale bundle" : "ISBN"} {product.isbn}
+          </p>
         ) : null}
 
         {product.description ? (
@@ -127,9 +129,16 @@ export default function BookProductCard({
             <p className="book-bundle-items-label">Inclusi nel bundle</p>
             <ul>
               {visibleBundleItems.map((item, index) => (
-                <li key={`${product.id}-${index}-${item}`}>
+                <li key={`${product.id}-${index}-${item.title}-${item.isbn ?? ""}`}>
                   <span className="book-bundle-dot" aria-hidden="true" />
-                  <span>{item}</span>
+                  <span className="book-bundle-item-copy">
+                    <span>{item.title}</span>
+                    {item.isbn ? (
+                      <span className="book-bundle-item-isbn">
+                        ISBN {item.isbn}
+                      </span>
+                    ) : null}
+                  </span>
                 </li>
               ))}
               {remainingBundleItems > 0 ? (

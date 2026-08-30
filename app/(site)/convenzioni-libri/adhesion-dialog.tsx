@@ -22,6 +22,7 @@ import {
   DELIVERY_MODE_LABELS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHODS,
+  type BookBundleItem,
   type BookConventionCatalogBook,
   type BookConventionSubmitResponse,
   type DeliveryMode,
@@ -47,6 +48,25 @@ function getOriginalPrice(product: BookConventionCatalogBook) {
   }
 
   return product.original_price;
+}
+
+function BundleItemsSummary({ items }: { items: BookBundleItem[] }) {
+  if (items.length === 0) return null;
+
+  return (
+    <ul className="mt-1.5 space-y-1 text-[.61rem] leading-snug text-[#6B7280]">
+      {items.map((item, index) => (
+        <li key={`${index}-${item.title}-${item.isbn ?? ""}`}>
+          <span>{item.title}</span>
+          {item.isbn ? (
+            <span className="ml-1 font-semibold text-[#64709A]">
+              · ISBN {item.isbn}
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 const FOCUSABLE_SELECTOR = [
@@ -650,6 +670,14 @@ export default function AdhesionDialog({
                             <p className="mt-1 text-[.6rem] font-bold uppercase tracking-[.1em] text-[#7B8290]">
                               {isBundle ? "Bundle" : "Libro"}
                             </p>
+                            {product.isbn ? (
+                              <p className="mt-1 text-[.61rem] text-[#6B7280]">
+                                {isBundle ? "ISBN generale bundle" : "ISBN"} {product.isbn}
+                              </p>
+                            ) : null}
+                            {isBundle ? (
+                              <BundleItemsSummary items={product.bundle_items} />
+                            ) : null}
                           </div>
                           <span className="shrink-0 text-right">
                             {originalPrice ? (

@@ -2,6 +2,7 @@ import {
   DELIVERY_MODE_LABELS,
   PAYMENT_METHOD_LABELS,
   PRODUCT_TYPES,
+  normalizeBookBundleItems,
   normalizeBookConventionCoverUrl,
   type DeliveryMode,
   type PaymentMethod,
@@ -134,9 +135,9 @@ function normalizeSnapshot(
   const title = String(snapshot.title ?? catalogProduct?.title ?? "").trim();
   if (!title) return null;
 
-  const bundleItems = Array.isArray(snapshot.bundle_items)
-    ? snapshot.bundle_items.map((item) => String(item).trim()).filter(Boolean)
-    : catalogProduct?.bundle_items ?? [];
+  const bundleItems = Object.prototype.hasOwnProperty.call(snapshot, "bundle_items")
+    ? normalizeBookBundleItems(snapshot.bundle_items)
+    : normalizeBookBundleItems(catalogProduct?.bundle_items);
   const productType = isProductType(snapshot.product_type)
     ? snapshot.product_type
     : catalogProduct?.product_type ?? (bundleItems.length > 0 ? "bundle" : "book");
@@ -285,7 +286,7 @@ export function matchesAdhesionSearch(
       .flatMap((product) => [
         product.title,
         product.isbn ?? "",
-        ...product.bundle_items,
+        ...product.bundle_items.flatMap((item) => [item.title, item.isbn ?? ""]),
       ])
       .join(" "),
   ];

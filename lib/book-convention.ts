@@ -42,6 +42,38 @@ export const PRODUCT_TYPES = ["book", "bundle"] as const;
 
 export type ProductType = (typeof PRODUCT_TYPES)[number];
 
+export type BookBundleItem = {
+  title: string;
+  isbn: string | null;
+};
+
+export function normalizeBookBundleItems(value: unknown): BookBundleItem[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item) => {
+    if (typeof item === "string") {
+      const title = item.trim();
+      return title ? [{ title, isbn: null }] : [];
+    }
+
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+
+    const row = item as Record<string, unknown>;
+    const title = typeof row.title === "string" ? row.title.trim() : "";
+    if (!title) return [];
+
+    const normalizedIsbn =
+      typeof row.isbn === "string"
+        ? row.isbn.trim().toUpperCase().replace(/[\s-]/g, "")
+        : "";
+    const isbn = /^(?:[0-9]{13}|[0-9]{9}[0-9X])$/.test(normalizedIsbn)
+      ? normalizedIsbn
+      : null;
+
+    return [{ title, isbn }];
+  });
+}
+
 export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
   book: "Libro",
   bundle: "Bundle",
@@ -134,7 +166,7 @@ export type BookConventionBook = {
   description: string | null;
   sort_order: number | null;
   product_type: ProductType;
-  bundle_items: string[];
+  bundle_items: BookBundleItem[];
   study_area: StudyArea;
   is_active: boolean;
   cover_image: string | null;
@@ -161,7 +193,7 @@ export type SelectedBookSnapshot = {
   reference_year?: BookYear;
   description?: string | null;
   product_type?: ProductType;
-  bundle_items?: string[];
+  bundle_items?: BookBundleItem[];
   study_area?: StudyArea;
   cover_image?: string | null;
   isbn?: string | null;

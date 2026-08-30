@@ -13,6 +13,7 @@ import {
   STUDY_AREAS,
   normalizeBookConventionCoverUrl,
   type BookYear,
+  type BookBundleItem,
   type PaymentMethod,
   type ProductType,
   type StudyArea,
@@ -42,8 +43,8 @@ type NormalizedBookInput = {
   reference_year: BookYear;
   description: string | null;
   sort_order: number;
-  bundle_items: string[] | undefined;
-  included_books: string[] | undefined;
+  bundle_items: BookBundleItem[] | undefined;
+  included_books: BookBundleItem[] | undefined;
   study_area: StudyArea | undefined;
   is_active: boolean | undefined;
 };
@@ -222,58 +223,75 @@ function normalizeIsbn(value: unknown) {
   return isbn;
 }
 
-function normalizeStringArray(
-  value: unknown,
-  fieldLabel: string,
-  maxItems: number,
-  maxItemLength: number
-) {
-  if (value === undefined) return undefined;
-  if (!Array.isArray(value)) {
-    throw new Error(`${fieldLabel} non valido.`);
-  }
+function buildAutomaticProductTitle(includedBooks: BookBundleItem[]) {
+  const includedTitles = includedBooks.map((item) => item.title);
+  if (includedTitles.length === 1) return includedTitles[0];
 
-  const normalized = Array.from(
-    new Set(value.map((item) => cleanString(item)).filter(Boolean))
-  );
-
-  if (normalized.length > maxItems) {
-    throw new Error(`${fieldLabel}: sono consentiti al massimo ${maxItems} elementi.`);
-  }
-
-  if (normalized.some((item) => item.length > maxItemLength)) {
-    throw new Error(`${fieldLabel}: uno degli elementi è troppo lungo.`);
-  }
-
-  return normalized;
-}
-
-function buildAutomaticProductTitle(includedBooks: string[]) {
-  if (includedBooks.length === 1) return includedBooks[0];
-
-  const fullTitle = `Bundle – ${includedBooks.join(" + ")}`;
+  const fullTitle = `Bundle – ${includedTitles.join(" + ")}`;
   return fullTitle.length <= 240
     ? fullTitle
     : `${fullTitle.slice(0, 239).trimEnd()}…`;
 }
 
-function normalizeIncludedBooks(value: unknown, proposalIndex: number) {
+function normalizeProductItems(
+  value: unknown,
+  proposalIndex: number,
+  fieldLabel: "included_books" | "bundle_items"
+): BookBundleItem[] | undefined {
   if (value === undefined) return undefined;
-  if (!Array.isArray(value) || value.length === 0 || value.length > 50) {
+  const requiresAtLeastOneItem = fieldLabel === "included_books";
+
+  if (
+    !Array.isArray(value) ||
+    (requiresAtLeastOneItem && value.length === 0) ||
+    value.length > 50
+  ) {
     throw new Error(
-      `La proposta ${proposalIndex + 1} deve contenere da uno a 50 libri.`
+      requiresAtLeastOneItem
+        ? `La proposta ${proposalIndex + 1} deve contenere da uno a 50 libri.`
+        : `Il contenuto della proposta ${proposalIndex + 1} può comprendere al massimo 50 libri.`
     );
   }
 
-  const normalized = value.map(item => cleanString(item));
+  const normalized = value.map((rawItem, itemIndex): BookBundleItem => {
+    const isLegacyTitle = typeof rawItem === "string";
+    const item =
+      !isLegacyTitle && rawItem && typeof rawItem === "object" && !Array.isArray(rawItem)
+        ? (rawItem as { title?: unknown; isbn?: unknown })
+        : null;
+    const title = cleanString(isLegacyTitle ? rawItem : item?.title);
 
-  if (normalized.some(title => !title || title.length > 240)) {
-    throw new Error(`Inserisci un titolo valido per ogni libro della proposta ${proposalIndex + 1}.`);
-  }
+    if (!title || title.length > 240) {
+      throw new Error(
+        `Inserisci un titolo valido per il libro ${itemIndex + 1} della proposta ${proposalIndex + 1}.`
+      );
+    }
 
-  const uniqueTitles = new Set(normalized.map(title => title.toLocaleLowerCase("it-IT")));
+    let isbn: string | null;
+    try {
+      isbn = normalizeIsbn(isLegacyTitle ? null : item?.isbn) ?? null;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "ISBN non valido.";
+      throw new Error(`ISBN non valido per “${title}”: ${reason}`);
+    }
+
+    return { title, isbn };
+  });
+
+  const uniqueTitles = new Set(
+    normalized.map((item) => item.title.toLocaleLowerCase("it-IT"))
+  );
   if (uniqueTitles.size !== normalized.length) {
     throw new Error(`La proposta ${proposalIndex + 1} contiene lo stesso libro più di una volta.`);
+  }
+
+  const assignedIsbns = normalized
+    .map((item) => item.isbn)
+    .filter((isbn): isbn is string => Boolean(isbn));
+  if (new Set(assignedIsbns).size !== assignedIsbns.length) {
+    throw new Error(
+      `La proposta ${proposalIndex + 1} assegna lo stesso ISBN a più libri.`
+    );
   }
 
   return normalized;
@@ -299,7 +317,7 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
       book.original_price === undefined
         ? undefined
         : parseNullableNumber(book.original_price);
-    const isbn = normalizeIsbn(book.isbn);
+    const requestedIsbn = normalizeIsbn(book.isbn);
     const description = cleanString(book.description);
     const sortOrder = parseInteger(book.sort_order) ?? index;
     const studyArea =
@@ -308,12 +326,15 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
         : isStudyArea(book.study_area)
           ? book.study_area
           : null;
-    const includedBooks = normalizeIncludedBooks(book.included_books, index);
-    const requestedBundleItems = normalizeStringArray(
+    const includedBooks = normalizeProductItems(
+      book.included_books,
+      index,
+      "included_books"
+    );
+    const requestedBundleItems = normalizeProductItems(
       book.bundle_items,
-      `Contenuto bundle “${requestedTitle || `proposta ${index + 1}`}”`,
-      50,
-      240
+      index,
+      "bundle_items"
     );
     const resolvedProductType = includedBooks
       ? includedBooks.length >= 2 ? "bundle" : "book"
@@ -323,6 +344,10 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
     const resolvedBundleItems = includedBooks
       ? includedBooks.length >= 2 ? includedBooks : []
       : requestedBundleItems;
+    const isbn =
+      includedBooks?.length === 1
+        ? requestedIsbn ?? includedBooks[0].isbn
+        : requestedIsbn;
     const title = includedBooks
       ? buildAutomaticProductTitle(includedBooks)
       : requestedTitle;
@@ -413,15 +438,44 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
   return books;
 }
 
-function normalizeBundleItems(value: unknown) {
+function normalizeBundleItems(value: unknown): BookBundleItem[] {
   if (!Array.isArray(value)) return [];
-  return value.map((item) => cleanString(item)).filter(Boolean);
+
+  const seenTitles = new Set<string>();
+
+  return value.flatMap((rawItem): BookBundleItem[] => {
+    let normalized: BookBundleItem | null = null;
+
+    if (typeof rawItem === "string") {
+      const title = cleanString(rawItem);
+      if (title) normalized = { title, isbn: null };
+    } else if (rawItem && typeof rawItem === "object" && !Array.isArray(rawItem)) {
+      const item = rawItem as { title?: unknown; isbn?: unknown };
+      const title = cleanString(item.title);
+
+      if (title) {
+        try {
+          normalized = { title, isbn: normalizeIsbn(item.isbn) ?? null };
+        } catch {
+          normalized = { title, isbn: null };
+        }
+      }
+    }
+
+    if (!normalized) return [];
+
+    const titleKey = normalized.title.toLocaleLowerCase("it-IT");
+    if (seenTitles.has(titleKey)) return [];
+    seenTitles.add(titleKey);
+
+    return [normalized];
+  });
 }
 
 function validateResolvedProduct(product: {
   title: string;
   product_type: ProductType;
-  bundle_items: string[];
+  bundle_items: BookBundleItem[];
 }) {
   if (product.product_type === "bundle" && product.bundle_items.length < 2) {
     throw new Error(`Il bundle “${product.title}” deve contenere almeno due libri.`);
@@ -429,6 +483,13 @@ function validateResolvedProduct(product: {
 
   if (product.product_type === "book" && product.bundle_items.length > 0) {
     throw new Error(`Un libro singolo non può avere prodotti inclusi: ${product.title}`);
+  }
+
+  const assignedIsbns = product.bundle_items
+    .map((item) => item.isbn)
+    .filter((isbn): isbn is string => Boolean(isbn));
+  if (new Set(assignedIsbns).size !== assignedIsbns.length) {
+    throw new Error(`Il bundle “${product.title}” assegna lo stesso ISBN a più libri.`);
   }
 }
 async function getConventionOrNull(supabase: SupabaseClient, conventionId: number) {
@@ -883,6 +944,7 @@ async function getBooksWithRoundIds(
   return {
     books: (booksResult.data ?? []).map((book) => ({
       ...book,
+      bundle_items: normalizeBundleItems(book.bundle_items),
       cover_image: normalizeBookConventionCoverUrl(book.cover_image),
       round_ids: roundIdsByBook.get(Number(book.id)) ?? [],
     })),
