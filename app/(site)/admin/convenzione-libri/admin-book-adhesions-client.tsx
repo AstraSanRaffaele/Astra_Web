@@ -60,6 +60,7 @@ import type {
   AdminBookConventionProduct,
   AdminBookConventionRound,
 } from "./types";
+import styles from "./admin-book-adhesions-client.module.css";
 
 const API_PAGE_SIZE = 500;
 const UI_PAGE_SIZE = 25;
@@ -510,75 +511,64 @@ export default function AdminBookAdhesionsClient({
   ]);
 
   return (
-    <main className="min-h-screen bg-[#f4f6fa] px-4 pb-16 pt-28 text-[#172554] sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1440px] space-y-5">
-        <header className="flex flex-col gap-4 rounded-xl border border-[#dce3ee] bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.13em] text-[#64748b]">
-              Admin · Convenzioni Libri
-            </p>
-            <h1 className="text-2xl font-extrabold tracking-tight text-[#102d63] sm:text-3xl">
-              Adesioni
-            </h1>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#64748b]">
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <header className={styles.pageHeader}>
+          <div className={styles.headerCopy}>
+            <p className={styles.eyebrow}>Admin · Convenzioni Libri</p>
+            <h1 className={styles.pageTitle}>Adesioni</h1>
+            <p className={styles.pageLead}>
               Consulta lo storico, filtra le richieste ed esporta i dati operativi. Le adesioni registrate non vengono cancellate.
             </p>
           </div>
-          <nav className="flex flex-wrap gap-2" aria-label="Navigazione Convenzioni Libri admin">
-            <Link
-              href="/admin/convenzione-libri"
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#1847a3] px-4 text-sm font-bold text-white transition hover:bg-[#123b8c]"
-            >
-              <BookOpen className="size-4" /> Catalogo e raccolte
+          <nav className={styles.adminNav} aria-label="Navigazione Convenzioni Libri admin">
+            <Link href="/admin/convenzione-libri" className={styles.primaryNavLink}>
+              <BookOpen className={styles.smallIcon} aria-hidden="true" />
+              Catalogo e raccolte
             </Link>
-            <Link
-              href="/admin"
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#cbd5e1] bg-white px-4 text-sm font-bold text-[#334155] transition hover:bg-[#f8fafc]"
-            >
-              Pannello admin <ExternalLink className="size-4" />
+            <Link href="/admin" className={styles.secondaryNavLink}>
+              Pannello admin
+              <ExternalLink className={styles.smallIcon} aria-hidden="true" />
             </Link>
           </nav>
         </header>
 
         {error && (
-          <div className="flex flex-col gap-3 rounded-xl border border-[#fecaca] bg-[#fff7f7] p-4 text-sm text-[#991b1b] sm:flex-row sm:items-center sm:justify-between" role="alert">
+          <div className={styles.errorBanner} role="alert">
             <span>{error}</span>
-            <button
-              type="button"
-              onClick={() => void loadData()}
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#fecaca] bg-white px-3 font-bold"
-            >
-              <RefreshCw className="size-4" /> Riprova
+            <button type="button" onClick={() => void loadData()} className={styles.retryButton}>
+              <RefreshCw className={styles.smallIcon} aria-hidden="true" />
+              Riprova
             </button>
           </div>
         )}
 
-        <section className="rounded-xl border border-[#dce3ee] bg-white p-4 shadow-sm sm:p-5" aria-label="Filtri adesioni">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 text-sm font-extrabold text-[#102d63]">
-              <SlidersHorizontal className="size-4" /> Ricerca e filtri
+        <section className={styles.filterPanel} aria-label="Filtri adesioni">
+          <div className={styles.filterHeader}>
+            <h2 className={styles.sectionTitle}>
+              <SlidersHorizontal className={styles.smallIcon} aria-hidden="true" />
+              Ricerca e filtri
             </h2>
             {hasFilters && (
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-[#1847a3] hover:bg-[#edf3ff]"
-              >
-                <FilterX className="size-4" /> Azzera
+              <button type="button" onClick={resetFilters} className={styles.resetButton}>
+                <FilterX className={styles.smallIcon} aria-hidden="true" />
+                Azzera
               </button>
             )}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-            <label className="relative sm:col-span-2 lg:col-span-2 xl:col-span-2">
-              <span className="mb-1.5 block text-xs font-bold text-[#475569]">Ricerca</span>
-              <Search className="pointer-events-none absolute bottom-2.5 left-3 size-4 text-[#94a3b8]" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Nome, email, prodotto, CF, ID..."
-                className="h-10 w-full rounded-lg border border-[#cbd5e1] bg-white pl-9 pr-3 text-sm text-[#1e293b] outline-none transition placeholder:text-[#94a3b8] focus:border-[#1847a3] focus:ring-2 focus:ring-[#1847a3]/15"
-              />
+          <div className={styles.filterGrid}>
+            <label className={`${styles.filterControl} ${styles.searchControl}`}>
+              <span className={styles.formLabel}>Ricerca</span>
+              <span className={styles.searchField}>
+                <Search className={styles.searchIcon} aria-hidden="true" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Nome, email, prodotto, CF, ID..."
+                  className={`${styles.field} ${styles.searchInput}`}
+                />
+              </span>
             </label>
 
             <FilterSelect
@@ -686,25 +676,25 @@ export default function AdminBookAdhesionsClient({
               ))}
             </FilterSelect>
 
-            <label>
-              <span className="mb-1.5 block text-xs font-bold text-[#475569]">Dal</span>
+            <label className={styles.filterControl}>
+              <span className={styles.formLabel}>Dal</span>
               <input
                 type="date"
                 value={filters.dateFrom}
                 max={filters.dateTo || undefined}
                 onChange={(event) => updateFilter("dateFrom", event.target.value)}
-                className="h-10 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm text-[#1e293b] outline-none focus:border-[#1847a3] focus:ring-2 focus:ring-[#1847a3]/15"
+                className={styles.field}
               />
             </label>
 
-            <label>
-              <span className="mb-1.5 block text-xs font-bold text-[#475569]">Al</span>
+            <label className={styles.filterControl}>
+              <span className={styles.formLabel}>Al</span>
               <input
                 type="date"
                 value={filters.dateTo}
                 min={filters.dateFrom || undefined}
                 onChange={(event) => updateFilter("dateTo", event.target.value)}
-                className="h-10 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm text-[#1e293b] outline-none focus:border-[#1847a3] focus:ring-2 focus:ring-[#1847a3]/15"
+                className={styles.field}
               />
             </label>
 
@@ -717,7 +707,7 @@ export default function AdminBookAdhesionsClient({
           </div>
         </section>
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Riepilogo adesioni filtrate">
+        <section className={styles.metricsGrid} aria-label="Riepilogo adesioni filtrate">
           <MetricCard icon={<UsersRound />} label="Adesioni" value={String(filteredAdhesions.length)} />
           <MetricCard icon={<Package />} label="Proposte selezionate" value={String(metrics.productCount)} />
           <MetricCard icon={<WalletCards />} label="Valore adesioni" value={formatPrice(metrics.totalValue)} />
@@ -725,11 +715,11 @@ export default function AdminBookAdhesionsClient({
           <MetricCard icon={<ArrowDownUp />} label="Media per adesione" value={formatPrice(metrics.average)} />
         </section>
 
-        <section className="overflow-hidden rounded-xl border border-[#dce3ee] bg-white shadow-sm" aria-busy={loading}>
-          <header className="flex flex-col gap-3 border-b border-[#dce3ee] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <section className={styles.resultsPanel} aria-busy={loading}>
+          <header className={styles.resultsHeader}>
             <div>
-              <h2 className="font-extrabold text-[#102d63]">Elenco adesioni</h2>
-              <p className="mt-0.5 text-xs text-[#64748b]">
+              <h2 className={styles.resultsTitle}>Elenco adesioni</h2>
+              <p className={styles.resultsMeta}>
                 {loading
                   ? "Caricamento in corso…"
                   : `${filteredAdhesions.length} risultati su ${data.adhesions.length} adesioni registrate`}
@@ -739,32 +729,33 @@ export default function AdminBookAdhesionsClient({
               type="button"
               onClick={exportCsv}
               disabled={loading || filteredAdhesions.length === 0}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#cbd5e1] bg-white px-4 text-sm font-bold text-[#334155] transition hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-45"
+              className={styles.exportButton}
             >
-              <Download className="size-4" /> Esporta risultati CSV
+              <Download className={styles.smallIcon} aria-hidden="true" />
+              Esporta risultati CSV
             </button>
           </header>
 
           {loading ? (
             <LoadingRows />
           ) : filteredAdhesions.length === 0 ? (
-            <div className="px-5 py-14 text-center">
-              <BookOpen className="mx-auto mb-3 size-8 text-[#94a3b8]" />
-              <h3 className="font-extrabold text-[#102d63]">Nessuna adesione trovata</h3>
-              <p className="mt-1 text-sm text-[#64748b]">
+            <div className={styles.emptyState}>
+              <BookOpen className={styles.emptyIcon} aria-hidden="true" />
+              <h3 className={styles.emptyTitle}>Nessuna adesione trovata</h3>
+              <p className={styles.emptyCopy}>
                 {hasFilters ? "Modifica o azzera i filtri per ampliare i risultati." : "Non risultano ancora adesioni registrate."}
               </p>
               {hasFilters && (
-                <button type="button" onClick={resetFilters} className="mt-4 text-sm font-bold text-[#1847a3] hover:underline">
+                <button type="button" onClick={resetFilters} className={styles.emptyAction}>
                   Azzera tutti i filtri
                 </button>
               )}
             </div>
           ) : (
             <>
-              <div className="hidden overflow-x-auto lg:block">
-                <table className="w-full min-w-[980px] border-collapse">
-                  <thead className="bg-[#f8fafc]">
+              <div className={styles.tableViewport}>
+                <table className={styles.table}>
+                  <thead className={styles.tableHead}>
                     <tr>
                       {[
                         "Data",
@@ -777,14 +768,14 @@ export default function AdminBookAdhesionsClient({
                       ].map((heading, index) => (
                         <th
                           key={`${heading}-${index}`}
-                          className="border-b border-[#dce3ee] px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#64748b]"
+                          className={styles.tableHeading}
                         >
                           {heading}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#e8edf4]">
+                  <tbody className={styles.tableBody}>
                     {visibleAdhesions.map((adhesion) => (
                       <AdhesionTableRow
                         key={adhesion.id}
@@ -797,7 +788,7 @@ export default function AdminBookAdhesionsClient({
                 </table>
               </div>
 
-              <div className="divide-y divide-[#e8edf4] lg:hidden">
+              <div className={styles.mobileList}>
                 {visibleAdhesions.map((adhesion) => (
                   <AdhesionMobileCard
                     key={adhesion.id}
@@ -842,12 +833,12 @@ function FilterSelect({
   children: React.ReactNode;
 }) {
   return (
-    <label>
-      <span className="mb-1.5 block text-xs font-bold text-[#475569]">{label}</span>
+    <label className={styles.filterControl}>
+      <span className={styles.formLabel}>{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm text-[#1e293b] outline-none focus:border-[#1847a3] focus:ring-2 focus:ring-[#1847a3]/15"
+        className={styles.field}
       >
         {children}
       </select>
@@ -857,12 +848,12 @@ function FilterSelect({
 
 function MetricCard({ icon, label, value }: { icon: React.ReactElement; label: string; value: string }) {
   return (
-    <article className="min-w-0 rounded-xl border border-[#dce3ee] bg-white p-4 shadow-sm">
-      <div className="mb-2 flex items-center gap-2 text-[#64748b] [&_svg]:size-4">
+    <article className={styles.metricCard}>
+      <div className={styles.metricLabel}>
         {icon}
-        <span className="truncate text-[11px] font-extrabold uppercase tracking-[0.07em]">{label}</span>
+        <span>{label}</span>
       </div>
-      <strong className="block truncate text-xl font-extrabold text-[#102d63]" title={value}>{value}</strong>
+      <strong className={styles.metricValue} title={value}>{value}</strong>
     </article>
   );
 }
@@ -880,45 +871,45 @@ function AdhesionTableRow({
   const savings = getAdhesionSavings(adhesion, catalog);
 
   return (
-    <tr className="bg-white transition hover:bg-[#f8fafc]">
-      <td className="whitespace-nowrap px-4 py-3 text-xs text-[#475569]">
-        <strong className="block text-sm text-[#1e293b]">{formatDateOnly(adhesion.created_at)}</strong>
+    <tr className={styles.tableRow}>
+      <td className={`${styles.tableCell} ${styles.dateCell}`}>
+        <strong className={styles.datePrimary}>{formatDateOnly(adhesion.created_at)}</strong>
         {new Date(adhesion.created_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
       </td>
-      <td className="max-w-[220px] px-4 py-3">
-        <strong className="block truncate text-sm text-[#102d63]">{getFullName(adhesion.profiles)}</strong>
-        <span className="block truncate text-xs text-[#64748b]">{getProfileEmail(adhesion.profiles)}</span>
+      <td className={`${styles.tableCell} ${styles.userCell}`}>
+        <strong className={styles.userName}>{getFullName(adhesion.profiles)}</strong>
+        <span className={styles.userEmail}>{getProfileEmail(adhesion.profiles)}</span>
       </td>
-      <td className="max-w-[310px] px-4 py-3">
+      <td className={`${styles.tableCell} ${styles.productsCell}`}>
         <ProductSummary products={products} />
       </td>
-      <td className="max-w-[260px] px-4 py-3 text-xs text-[#475569]">
-        <strong className="block truncate text-[#334155]">
+      <td className={`${styles.tableCell} ${styles.collectionCell}`}>
+        <strong className={styles.collectionTitle}>
           {getAdhesionConventionTitle(adhesion)}
         </strong>
-        <span className="block truncate">
+        <span className={styles.collectionLine}>
           {formatRoundLabel(adhesion.book_convention_rounds)}
         </span>
-        <span className="block truncate font-semibold text-[#1847a3]">
+        <span className={styles.deliveryLine}>
           {formatDeliveryMode(adhesion.book_convention_rounds?.delivery_mode)}
         </span>
       </td>
-      <td className="whitespace-nowrap px-4 py-3 text-xs font-bold text-[#475569]">
+      <td className={`${styles.tableCell} ${styles.paymentCell}`}>
         {formatPaymentMethod(adhesion.payment_method)}
       </td>
-      <td className="whitespace-nowrap px-4 py-3 text-sm font-extrabold text-[#0f766e]">
+      <td className={`${styles.tableCell} ${styles.totalCell}`}>
         {formatPrice(getAdhesionTotal(adhesion, catalog))}
         {savings > 0 && (
-          <span className="block text-[10px] font-bold text-[#047857]">
+          <span className={styles.savingsText}>
             risparmio {formatPrice(savings)}
           </span>
         )}
       </td>
-      <td className="px-4 py-3 text-right">
+      <td className={`${styles.tableCell} ${styles.actionCell}`}>
         <button
           type="button"
           onClick={onOpen}
-          className="h-9 rounded-lg border border-[#cbd5e1] px-3 text-xs font-extrabold text-[#1847a3] transition hover:bg-[#edf3ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1847a3]"
+          className={styles.detailButton}
           aria-label={`Apri il dettaglio dell'adesione di ${getFullName(adhesion.profiles)}`}
         >
           Dettagli
@@ -941,42 +932,42 @@ function AdhesionMobileCard({
   const savings = getAdhesionSavings(adhesion, catalog);
 
   return (
-    <article className="p-4 sm:p-5">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate font-extrabold text-[#102d63]">{getFullName(adhesion.profiles)}</h3>
-          <p className="truncate text-xs text-[#64748b]">{getProfileEmail(adhesion.profiles)}</p>
+    <article className={styles.mobileCard}>
+      <div className={styles.mobileCardHeader}>
+        <div className={styles.mobileUser}>
+          <h3 className={styles.mobileUserName}>{getFullName(adhesion.profiles)}</h3>
+          <p className={styles.mobileUserEmail}>{getProfileEmail(adhesion.profiles)}</p>
         </div>
-        <div className="shrink-0 text-right">
-          <strong className="block text-sm text-[#0f766e]">
+        <div className={styles.mobileTotal}>
+          <strong>
             {formatPrice(getAdhesionTotal(adhesion, catalog))}
           </strong>
           {savings > 0 && (
-            <span className="block text-[10px] font-bold text-[#047857]">
+            <span className={styles.savingsText}>
               risparmio {formatPrice(savings)}
             </span>
           )}
         </div>
       </div>
       <ProductSummary products={products} />
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-[#e8edf4] pt-3 text-xs">
+      <dl className={styles.mobileDetails}>
         <div>
-          <dt className="font-semibold text-[#94a3b8]">Data</dt>
-          <dd className="mt-0.5 font-bold text-[#475569]">{formatDate(adhesion.created_at)}</dd>
+          <dt>Data</dt>
+          <dd>{formatDate(adhesion.created_at)}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-[#94a3b8]">Pagamento</dt>
-          <dd className="mt-0.5 font-bold text-[#475569]">{formatPaymentMethod(adhesion.payment_method)}</dd>
+          <dt>Pagamento</dt>
+          <dd>{formatPaymentMethod(adhesion.payment_method)}</dd>
         </div>
-        <div className="col-span-2">
-          <dt className="font-semibold text-[#94a3b8]">Raccolta</dt>
-          <dd className="mt-0.5 font-bold text-[#475569]">
+        <div className={styles.mobileDetailWide}>
+          <dt>Raccolta</dt>
+          <dd>
             {formatRoundLabel(adhesion.book_convention_rounds)}
           </dd>
         </div>
-        <div className="col-span-2">
-          <dt className="font-semibold text-[#94a3b8]">Consegna</dt>
-          <dd className="mt-0.5 font-bold text-[#1847a3]">
+        <div className={styles.mobileDetailWide}>
+          <dt>Consegna</dt>
+          <dd className={styles.mobileDelivery}>
             {formatDeliveryMode(adhesion.book_convention_rounds?.delivery_mode)}
           </dd>
         </div>
@@ -984,7 +975,7 @@ function AdhesionMobileCard({
       <button
         type="button"
         onClick={onOpen}
-        className="mt-4 h-10 w-full rounded-lg border border-[#cbd5e1] text-sm font-extrabold text-[#1847a3] transition hover:bg-[#edf3ff]"
+        className={styles.mobileDetailButton}
       >
         Apri dettaglio
       </button>
@@ -997,20 +988,22 @@ function ProductSummary({
 }: {
   products: ReturnType<typeof getSelectedProducts>;
 }) {
-  if (products.length === 0) return <span className="text-xs text-[#94a3b8]">Snapshot non disponibile</span>;
+  if (products.length === 0) {
+    return <span className={styles.noSnapshot}>Snapshot non disponibile</span>;
+  }
 
   return (
-    <div className="space-y-1.5">
+    <div className={styles.productSummary}>
       {products.slice(0, 2).map((product, index) => (
-        <div className="flex min-w-0 items-center gap-2" key={`${product.id ?? product.title}-${index}`}>
-          <span className="shrink-0 rounded bg-[#edf3ff] px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.06em] text-[#1847a3]">
+        <div className={styles.productLine} key={`${product.id ?? product.title}-${index}`}>
+          <span className={styles.productType}>
             {product.product_type === "bundle" ? "Bundle" : "Libro"}
           </span>
-          <span className="truncate text-xs font-bold text-[#334155]">{product.title}</span>
+          <span className={styles.productTitle}>{product.title}</span>
         </div>
       ))}
       {products.length > 2 && (
-        <p className="text-[11px] font-semibold text-[#64748b]">+ {products.length - 2} altre proposte</p>
+        <p className={styles.moreProducts}>+ {products.length - 2} altre proposte</p>
       )}
     </div>
   );
@@ -1031,27 +1024,27 @@ function Pagination({
   const end = Math.min(page * UI_PAGE_SIZE, resultCount);
 
   return (
-    <footer className="flex flex-col gap-3 border-t border-[#dce3ee] px-4 py-3 text-xs text-[#64748b] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <footer className={styles.pagination}>
       <span>Risultati {start}–{end} di {resultCount}</span>
-      <div className="flex items-center gap-2">
+      <div className={styles.paginationControls}>
         <button
           type="button"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="grid size-9 place-items-center rounded-lg border border-[#cbd5e1] bg-white disabled:cursor-not-allowed disabled:opacity-40"
+          className={styles.paginationButton}
           aria-label="Pagina precedente"
         >
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className={styles.smallIcon} aria-hidden="true" />
         </button>
-        <span className="min-w-24 text-center font-bold text-[#334155]">Pagina {page} di {pageCount}</span>
+        <span className={styles.pageIndicator}>Pagina {page} di {pageCount}</span>
         <button
           type="button"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= pageCount}
-          className="grid size-9 place-items-center rounded-lg border border-[#cbd5e1] bg-white disabled:cursor-not-allowed disabled:opacity-40"
+          className={styles.paginationButton}
           aria-label="Pagina successiva"
         >
-          <ChevronRight className="size-4" />
+          <ChevronRight className={styles.smallIcon} aria-hidden="true" />
         </button>
       </div>
     </footer>
@@ -1060,9 +1053,9 @@ function Pagination({
 
 function LoadingRows() {
   return (
-    <div className="space-y-3 p-5" aria-label="Caricamento adesioni">
+    <div className={styles.loadingRows} aria-label="Caricamento adesioni">
       {Array.from({ length: 7 }).map((_, index) => (
-        <div className="h-14 animate-pulse rounded-lg bg-[#edf1f6]" key={index} />
+        <div className={styles.loadingRow} key={index} />
       ))}
     </div>
   );

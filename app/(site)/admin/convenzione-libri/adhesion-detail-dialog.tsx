@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactElement, type ReactNode } from "react";
 import {
   BookOpen,
   CalendarDays,
@@ -36,6 +36,7 @@ import {
   getSelectedProducts,
   shortenId,
 } from "./adhesion-utils";
+import styles from "./adhesion-detail-dialog.module.css";
 import type {
   AdminBookAdhesion,
   AdminBookConventionProduct,
@@ -76,7 +77,7 @@ export default function AdhesionDetailDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-end justify-center bg-[#071633]/55 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
+      className={styles.overlay}
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
@@ -85,60 +86,83 @@ export default function AdhesionDetailDialog({
       <section
         aria-labelledby="adhesion-detail-title"
         aria-modal="true"
-        className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[88vh] sm:rounded-2xl"
+        className={styles.dialog}
         role="dialog"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-[#dfe5ef] px-5 py-4 sm:px-6">
-          <div className="min-w-0">
-            <p className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-[#64748b]">
-              Dettaglio adesione
-            </p>
-            <h2 id="adhesion-detail-title" className="text-xl font-extrabold text-[#102d63]">
+        <span className={styles.mobileHandle} aria-hidden="true" />
+
+        <header className={styles.header}>
+          <div className={styles.headerCopy}>
+            <p className={styles.eyebrow}>Dettaglio adesione</p>
+            <h2 id="adhesion-detail-title" className={styles.title}>
               {getFullName(adhesion.profiles)}
             </h2>
-            <p className="mt-1 font-mono text-xs text-[#64748b]" title={adhesion.id}>
+            <p className={styles.idLine} title={adhesion.id}>
               ID {shortenId(adhesion.id)}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="grid size-10 shrink-0 place-items-center rounded-lg border border-[#dfe5ef] text-[#334155] transition hover:bg-[#f1f5f9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1847a3]"
+            className={styles.closeButton}
             aria-label="Chiudi dettaglio"
           >
-            <X className="size-5" />
+            <X size={19} aria-hidden="true" />
           </button>
         </header>
 
-        <div className="overflow-y-auto px-5 py-5 sm:px-6">
-          <div className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
-            <div className="space-y-5">
+        <div className={styles.scrollRegion}>
+          <div className={styles.columns}>
+            <div className={styles.detailsColumn}>
               <DetailSection icon={<UserRound />} title="Utente">
-                <DetailRow label="Nome e cognome" value={getFullName(adhesion.profiles)} />
+                <DetailRow
+                  label="Nome e cognome"
+                  value={getFullName(adhesion.profiles)}
+                />
                 <DetailRow
                   label="Email"
                   value={
                     email === "—" ? (
                       "—"
                     ) : (
-                      <a className="break-all font-semibold text-[#1847a3] hover:underline" href={`mailto:${email}`}>
+                      <a className={styles.inlineLink} href={`mailto:${email}`}>
                         {email}
                       </a>
                     )
                   }
                 />
-                <DetailRow label="Corso" value={getProfileCourse(adhesion.profiles)} />
-                <DetailRow label="Anno" value={String(getProfileYear(adhesion.profiles))} />
-                <DetailRow label="ID utente" value={<span className="break-all font-mono text-xs">{adhesion.user_id}</span>} />
+                <DetailRow
+                  label="Corso"
+                  value={getProfileCourse(adhesion.profiles)}
+                />
+                <DetailRow
+                  label="Anno"
+                  value={String(getProfileYear(adhesion.profiles))}
+                />
+                <DetailRow
+                  label="ID utente"
+                  value={<span className={styles.monospace}>{adhesion.user_id}</span>}
+                />
               </DetailSection>
 
-              <DetailSection icon={<ReceiptText />} title="Fatturazione e spedizione">
-                <DetailRow label="CF / Partita IVA" value={adhesion.fiscal_code_or_vat || "—"} />
-                <DetailRow label="Consegna" value={formatDeliveryMode(deliveryMode)} />
+              <DetailSection
+                icon={<ReceiptText />}
+                title="Fatturazione e spedizione"
+              >
                 <DetailRow
-                  label={deliveryMode === "home" ? "Indirizzo domicilio" : "Indirizzo"}
+                  label="CF / Partita IVA"
+                  value={adhesion.fiscal_code_or_vat || "—"}
+                />
+                <DetailRow
+                  label="Consegna"
+                  value={formatDeliveryMode(deliveryMode)}
+                />
+                <DetailRow
+                  label={
+                    deliveryMode === "home" ? "Indirizzo domicilio" : "Indirizzo"
+                  }
                   value={
-                    <span className="whitespace-pre-line">
+                    <span className={styles.multiline}>
                       {adhesion.billing_shipping_address ||
                         (deliveryMode === "university" ? "Non richiesto" : "—")}
                     </span>
@@ -147,8 +171,14 @@ export default function AdhesionDetailDialog({
               </DetailSection>
 
               <DetailSection icon={<CalendarDays />} title="Registrazione">
-                <DetailRow label="Data adesione" value={formatDate(adhesion.created_at)} />
-                <DetailRow label="Convenzione" value={getAdhesionConventionTitle(adhesion)} />
+                <DetailRow
+                  label="Data adesione"
+                  value={formatDate(adhesion.created_at)}
+                />
+                <DetailRow
+                  label="Convenzione"
+                  value={getAdhesionConventionTitle(adhesion)}
+                />
                 <DetailRow
                   label="Raccolta"
                   value={formatRoundLabel(adhesion.book_convention_rounds)}
@@ -156,105 +186,133 @@ export default function AdhesionDetailDialog({
               </DetailSection>
             </div>
 
-            <div className="space-y-5">
-              <section className="overflow-hidden rounded-xl border border-[#dfe5ef]">
-                <div className="flex items-center justify-between gap-3 border-b border-[#dfe5ef] bg-[#f8fafc] px-4 py-3">
-                  <div className="flex items-center gap-2 font-extrabold text-[#102d63]">
-                    <BookOpen className="size-4" />
-                    Prodotti selezionati
+            <div className={styles.orderColumn}>
+              <section className={styles.productsPanel}>
+                <div className={styles.productsHeader}>
+                  <div>
+                    <BookOpen size={17} aria-hidden="true" />
+                    <strong>Prodotti selezionati</strong>
                   </div>
-                  <span className="text-xs font-bold text-[#64748b]">
-                    {products.length} {products.length === 1 ? "proposta" : "proposte"}
+                  <span>
+                    {products.length}{" "}
+                    {products.length === 1 ? "proposta" : "proposte"}
                   </span>
                 </div>
 
                 {products.length === 0 ? (
-                  <p className="px-4 py-6 text-sm text-[#64748b]">Nessun prodotto salvato nello snapshot.</p>
+                  <p className={styles.emptyProducts}>
+                    Nessun prodotto salvato nello snapshot.
+                  </p>
                 ) : (
-                  <div className="divide-y divide-[#e8edf4]">
+                  <div className={styles.productList}>
                     {products.map((product, index) => (
-                      <article key={`${product.id ?? product.title}-${index}`} className="p-4">
-                        <div className="flex items-start gap-3">
+                      <article
+                        key={`${product.id ?? product.title}-${index}`}
+                        className={styles.product}
+                      >
+                        <div className={styles.productMain}>
                           <span
-                            className="flex h-[76px] w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#dfe5ef] bg-[#f8fafc] bg-contain bg-center bg-no-repeat text-[#64748b] shadow-sm"
+                            className={styles.cover}
                             style={
                               product.cover_image
-                                ? { backgroundImage: `url(${JSON.stringify(product.cover_image)})` }
+                                ? {
+                                    backgroundImage: `url(${JSON.stringify(
+                                      product.cover_image
+                                    )})`,
+                                  }
                                 : undefined
                             }
                             role={product.cover_image ? "img" : undefined}
-                            aria-label={product.cover_image ? `Copertina di ${product.title}` : undefined}
+                            aria-label={
+                              product.cover_image
+                                ? `Copertina di ${product.title}`
+                                : undefined
+                            }
                           >
                             {!product.cover_image ? (
                               product.product_type === "bundle" ? (
-                                <Package className="size-5" strokeWidth={1.7} aria-hidden="true" />
+                                <Package
+                                  size={20}
+                                  strokeWidth={1.7}
+                                  aria-hidden="true"
+                                />
                               ) : (
-                                <BookOpen className="size-5" strokeWidth={1.7} aria-hidden="true" />
+                                <BookOpen
+                                  size={20}
+                                  strokeWidth={1.7}
+                                  aria-hidden="true"
+                                />
                               )
                             ) : null}
                           </span>
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="mb-1 flex flex-wrap items-center gap-2">
-                                  <span className="rounded-md bg-[#e9effc] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#1847a3]">
+                          <div className={styles.productInfo}>
+                            <div className={styles.productTopline}>
+                              <div className={styles.productCopy}>
+                                <div className={styles.productMeta}>
+                                  <span className={styles.typeBadge}>
                                     {PRODUCT_TYPE_LABELS[product.product_type]}
                                   </span>
-                                  {product.reference_year && (
-                                    <span className="text-xs font-semibold text-[#64748b]">
+                                  {product.reference_year ? (
+                                    <span>
                                       {BOOK_YEAR_LABELS[product.reference_year]}
                                     </span>
-                                  )}
+                                  ) : null}
                                 </div>
-                                <h3 className="text-sm font-extrabold leading-5 text-[#172554]">{product.title}</h3>
-                                {product.study_area && (
-                                  <p className="mt-1 text-xs text-[#64748b]">{STUDY_AREA_LABELS[product.study_area]}</p>
-                                )}
+                                <h3>{product.title}</h3>
+                                {product.study_area ? (
+                                  <p>
+                                    {STUDY_AREA_LABELS[product.study_area]}
+                                  </p>
+                                ) : null}
                               </div>
-                              <div className="shrink-0 text-right">
-                                {product.original_price !== null && (
-                                  <span className="block text-xs font-semibold text-[#94a3b8] line-through">
+
+                              <div className={styles.productPrice}>
+                                {product.original_price !== null ? (
+                                  <span>
                                     {formatPrice(product.original_price)}
                                   </span>
-                                )}
-                                <strong className="block text-sm text-[#0f766e]">
-                                  {formatPrice(product.price)}
-                                </strong>
+                                ) : null}
+                                <strong>{formatPrice(product.price)}</strong>
                               </div>
                             </div>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                              {product.isbn && (
-                                <span className="font-mono text-[11px] font-semibold text-[#64748b]">
+
+                            <div className={styles.productDetails}>
+                              {product.isbn ? (
+                                <span className={styles.isbn}>
                                   {product.product_type === "bundle"
                                     ? "ISBN generale bundle"
                                     : "ISBN"}{" "}
                                   {product.isbn}
                                 </span>
-                              )}
-                              {getProductSavings(product) > 0 && (
-                                <span className="rounded-md bg-[#ecfdf5] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#047857]">
-                                  Risparmio {formatPrice(getProductSavings(product))}
+                              ) : null}
+                              {getProductSavings(product) > 0 ? (
+                                <span className={styles.savingBadge}>
+                                  Risparmio{" "}
+                                  {formatPrice(getProductSavings(product))}
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                           </div>
                         </div>
 
-                        {product.product_type === "bundle" && product.bundle_items.length > 0 && (
-                          <div className="mt-3 rounded-lg bg-[#f8fafc] px-3 py-2">
-                            <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#475569]">
-                              <Package className="size-3.5" /> Elementi inclusi
+                        {product.product_type === "bundle" &&
+                        product.bundle_items.length > 0 ? (
+                          <div className={styles.bundleBox}>
+                            <p>
+                              <Package size={14} aria-hidden="true" /> Elementi
+                              inclusi
                             </p>
-                            <ul className="space-y-1 pl-4 text-xs leading-5 text-[#475569]">
+                            <ul>
                               {product.bundle_items.map((item, itemIndex) => (
                                 <li
-                                  className="list-disc"
-                                  key={`${item.title}-${item.isbn ?? "no-isbn"}-${itemIndex}`}
+                                  key={`${item.title}-${
+                                    item.isbn ?? "no-isbn"
+                                  }-${itemIndex}`}
                                 >
                                   <span>{item.title}</span>
                                   {item.isbn ? (
-                                    <span className="ml-1.5 font-mono text-[10px] font-semibold text-[#64748b]">
+                                    <span className={styles.bundleIsbn}>
                                       ISBN {item.isbn}
                                     </span>
                                   ) : null}
@@ -262,71 +320,77 @@ export default function AdhesionDetailDialog({
                               ))}
                             </ul>
                           </div>
-                        )}
+                        ) : null}
                       </article>
                     ))}
                   </div>
                 )}
 
-                <div className="space-y-2 border-t border-[#dfe5ef] bg-[#f8fafc] px-4 py-4">
-                  {originalTotal !== null && (
-                    <div className="flex items-center justify-between gap-4 text-sm text-[#64748b]">
+                <div className={styles.totals}>
+                  {originalTotal !== null ? (
+                    <div className={styles.originalTotal}>
                       <span>Totale originale</span>
-                      <span className="font-semibold line-through">{formatPrice(originalTotal)}</span>
+                      <span>{formatPrice(originalTotal)}</span>
                     </div>
-                  )}
-                  {savings > 0 && (
-                    <div className="flex items-center justify-between gap-4 text-sm font-bold text-[#047857]">
+                  ) : null}
+                  {savings > 0 ? (
+                    <div className={styles.savingsTotal}>
                       <span>Risparmio convenzione</span>
                       <span>− {formatPrice(savings)}</span>
                     </div>
-                  )}
-                  <div className="flex items-center justify-between gap-4 border-t border-[#dfe5ef] pt-3">
-                    <span className="font-bold text-[#334155]">Totale convenzionato</span>
-                    <strong className="text-lg text-[#102d63]">{formatPrice(total)}</strong>
+                  ) : null}
+                  <div className={styles.finalTotal}>
+                    <span>Totale convenzionato</span>
+                    <strong>{formatPrice(total)}</strong>
                   </div>
                 </div>
               </section>
 
-              <DetailSection icon={<Truck />} title="Consegna">
-                <DetailRow label="Modalità" value={formatDeliveryMode(deliveryMode)} />
-                <p className="mt-3 rounded-lg bg-[#edf3ff] px-3 py-2 text-xs leading-5 text-[#27446f]">
-                  {deliveryMode === "home"
-                    ? "L’ordine deve essere spedito all’indirizzo indicato dall’utente."
-                    : deliveryMode === "university"
-                      ? "L’ordine sarà consegnato presso l’università: l’indirizzo di domicilio non è richiesto."
-                      : "La modalità di consegna non è presente nello snapshot della raccolta."}
-                </p>
-              </DetailSection>
+              <div className={styles.secondaryPanels}>
+                <DetailSection icon={<Truck />} title="Consegna">
+                  <DetailRow
+                    label="Modalità"
+                    value={formatDeliveryMode(deliveryMode)}
+                  />
+                  <p className={styles.deliveryInfo}>
+                    {deliveryMode === "home"
+                      ? "L’ordine deve essere spedito all’indirizzo indicato dall’utente."
+                      : deliveryMode === "university"
+                        ? "L’ordine sarà consegnato presso l’università: l’indirizzo di domicilio non è richiesto."
+                        : "La modalità di consegna non è presente nello snapshot della raccolta."}
+                  </p>
+                </DetailSection>
 
-              <DetailSection icon={<CreditCard />} title="Pagamento">
-                <DetailRow label="Metodo" value={formatPaymentMethod(adhesion.payment_method)} />
-                <p className="mt-3 rounded-lg bg-[#fff8e7] px-3 py-2 text-xs leading-5 text-[#7c5b14]">
-                  Il metodo indica la scelta effettuata dall’utente. Il database non contiene uno stato di incasso.
-                </p>
-              </DetailSection>
+                <DetailSection icon={<CreditCard />} title="Pagamento">
+                  <DetailRow
+                    label="Metodo"
+                    value={formatPaymentMethod(adhesion.payment_method)}
+                  />
+                  <p className={styles.paymentInfo}>
+                    Il metodo indica la scelta effettuata dall’utente. Il
+                    database non contiene uno stato di incasso.
+                  </p>
+                </DetailSection>
+              </div>
 
-              <div className="flex flex-wrap gap-2">
-                {email !== "—" && (
-                  <a
-                    href={`mailto:${email}`}
-                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#1847a3] px-4 text-sm font-bold text-white transition hover:bg-[#123b8c]"
-                  >
-                    <Mail className="size-4" /> Scrivi all’utente
+              <div className={styles.actions}>
+                {email !== "—" ? (
+                  <a href={`mailto:${email}`} className={styles.primaryAction}>
+                    <Mail size={17} aria-hidden="true" /> Scrivi all’utente
                   </a>
-                )}
-                {adhesion.billing_shipping_address && (
+                ) : null}
+                {adhesion.billing_shipping_address ? (
                   <a
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
                       adhesion.billing_shipping_address
                     )}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#cbd5e1] px-4 text-sm font-bold text-[#334155] transition hover:bg-[#f8fafc]"
+                    className={styles.secondaryAction}
                   >
-                    <MapPin className="size-4" /> Apri indirizzo
+                    <MapPin size={17} aria-hidden="true" /> Apri indirizzo
                   </a>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -341,26 +405,26 @@ function DetailSection({
   title,
   children,
 }: {
-  icon: React.ReactElement;
+  icon: ReactElement;
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-[#dfe5ef] p-4">
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-extrabold text-[#102d63] [&_svg]:size-4">
+    <section className={styles.detailSection}>
+      <h3>
         {icon}
         {title}
       </h3>
-      <dl className="space-y-2.5">{children}</dl>
+      <dl>{children}</dl>
     </section>
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="grid gap-0.5 sm:grid-cols-[125px_1fr] sm:gap-3">
-      <dt className="text-xs font-semibold text-[#64748b]">{label}</dt>
-      <dd className="min-w-0 text-sm font-medium leading-5 text-[#334155]">{value}</dd>
+    <div className={styles.detailRow}>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   );
 }
