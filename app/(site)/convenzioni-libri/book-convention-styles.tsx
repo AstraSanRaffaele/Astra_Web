@@ -194,6 +194,7 @@ export default function BookConventionStyles() {
       }
 
       .book-back-link:focus-visible,
+      .book-retry-button:focus-visible,
       .book-inline-button:focus-visible,
       .book-clear-search:focus-visible,
       .cat-pill:focus-visible {
@@ -202,11 +203,17 @@ export default function BookConventionStyles() {
       }
 
       .book-hero-grid {
-        display: grid;
-        grid-template-columns: minmax(0,1fr) minmax(18rem,22rem);
-        align-items: end;
-        gap: clamp(2rem,5vw,4.5rem);
+        display: block;
+        max-width: 46rem;
         margin-top: 1.1rem;
+      }
+
+      .book-hero-eyebrow {
+        color: #2E4080;
+        font-size: .68rem;
+        font-weight: 700;
+        letter-spacing: .22em;
+        text-transform: uppercase;
       }
 
       .book-hero-title {
@@ -232,15 +239,6 @@ export default function BookConventionStyles() {
         white-space: pre-line;
       }
 
-      .book-hero-meta {
-        border: 1px solid rgba(8,16,42,.08);
-        border-radius: 1.5rem;
-        background: rgba(255,255,255,.88);
-        padding: 1.15rem;
-        box-shadow: 0 10px 32px rgba(8,16,42,.06);
-      }
-
-      .book-meta-label,
       .book-filter-label {
         display: block;
         margin-bottom: .5rem;
@@ -251,25 +249,98 @@ export default function BookConventionStyles() {
         text-transform: uppercase;
       }
 
-      .book-round-status {
-        display: flex;
-        align-items: flex-start;
-        gap: .65rem;
-        margin-top: .2rem;
-        color: #344363;
-        font-size: .75rem;
-        font-weight: 650;
-        line-height: 1.5;
-      }
-
-      .book-round-status.closed {
-        color: #73551A;
-      }
-
       .book-notices {
         display: grid;
         gap: .75rem;
         padding: 0 3rem;
+      }
+
+      .book-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: .75rem;
+        border: 1px solid;
+        border-radius: 1rem;
+        padding: .9rem 1rem;
+        font-size: .76rem;
+        line-height: 1.55;
+      }
+
+      .book-notice > svg {
+        flex: none;
+        margin-top: .08rem;
+      }
+
+      .book-notice strong {
+        display: block;
+        margin-bottom: .14rem;
+        font-size: .78rem;
+      }
+
+      .book-notice.success {
+        border-color: #CFE6D6;
+        background: #F2FAF4;
+        color: #145C31;
+      }
+
+      .book-notice.success p {
+        color: #477257;
+      }
+
+      .book-notice.warning {
+        border-color: #E7D7B5;
+        background: #FFF9ED;
+        color: #73551A;
+      }
+
+      .book-error-state {
+        max-width: 36rem;
+        margin: 2.5rem auto 0;
+        border: 1px solid rgba(14,31,107,.1);
+        border-radius: 1.75rem;
+        background: #fff;
+        padding: 2.25rem;
+        color: #9A3B3B;
+        text-align: center;
+        box-shadow: 0 12px 36px rgba(14,31,107,.06);
+      }
+
+      .book-error-state h1 {
+        margin-top: 1rem;
+        color: #08102A;
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2.35rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .book-error-state p {
+        margin-top: .75rem;
+        color: #596174;
+        font-size: .86rem;
+        line-height: 1.65;
+      }
+
+      .book-retry-button {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: .45rem;
+        margin-top: 1.5rem;
+        border: 0;
+        border-radius: 999px;
+        background: #0E1F6B;
+        padding: .7rem 1.25rem;
+        color: #fff;
+        font: inherit;
+        font-size: .76rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .book-retry-button:hover {
+        background: #1A3399;
       }
 
       .book-shop {
@@ -725,6 +796,25 @@ export default function BookConventionStyles() {
         text-align: center;
       }
 
+      .book-empty-title {
+        color: #344363;
+        font-size: .92rem;
+        font-weight: 700;
+      }
+
+      .book-empty-copy {
+        max-width: 32rem;
+        margin: .5rem auto 0;
+        color: #596174;
+        font-size: .8rem;
+        line-height: 1.65;
+      }
+
+      .book-empty-copy.compact {
+        max-width: 28rem;
+        font-size: .76rem;
+      }
+
       .book-inline-button {
         display: inline-flex;
         min-height: 42px;
@@ -749,6 +839,65 @@ export default function BookConventionStyles() {
         margin-top: 2rem;
       }
 
+      .book-skeleton-back,
+      .book-skeleton-eyebrow,
+      .book-skeleton-title,
+      .book-skeleton-line,
+      .book-skeleton-toolbar,
+      .book-skeleton-cart {
+        background: #E2E5EC;
+        animation: sk 1.4s ease infinite;
+      }
+
+      .book-skeleton-back {
+        width: 10rem;
+        height: 44px;
+        border-radius: 999px;
+      }
+
+      .book-skeleton-eyebrow {
+        width: 9rem;
+        height: .75rem;
+        border-radius: 999px;
+      }
+
+      .book-skeleton-title {
+        width: min(100%,36rem);
+        height: 6rem;
+        margin-top: 1.25rem;
+        border-radius: 1.5rem;
+      }
+
+      .book-skeleton-line {
+        width: min(100%,42rem);
+        height: 1rem;
+        margin-top: 1.25rem;
+        border-radius: 999px;
+        background: #E7E9EE;
+      }
+
+      .book-skeleton-line.short {
+        width: min(80%,36rem);
+        margin-top: .5rem;
+      }
+
+      .book-skeleton-toolbar {
+        height: 12rem;
+        border-radius: 1.75rem;
+      }
+
+      .book-skeleton-list {
+        display: grid;
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      .book-skeleton-cart {
+        height: 20rem;
+        border-radius: 1.5rem;
+      }
+
       .book-skeleton-card {
         min-height: 390px;
         border-radius: 1.75rem;
@@ -757,14 +906,9 @@ export default function BookConventionStyles() {
       }
 
       @media (max-width: 1023px) {
-        .book-hero-grid,
         .book-shop-layout,
         .book-loading-grid {
           grid-template-columns: 1fr;
-        }
-
-        .book-hero-meta {
-          max-width: 34rem;
         }
 
         .book-product-grid {
@@ -775,10 +919,6 @@ export default function BookConventionStyles() {
       @media (max-width: 700px) {
         .book-hero {
           padding: 7.5rem 1.25rem 2.2rem;
-        }
-
-        .book-hero-grid {
-          gap: 1.5rem;
         }
 
         .book-hero-title {
@@ -801,6 +941,10 @@ export default function BookConventionStyles() {
         }
 
         .book-product-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .book-skeleton-list {
           grid-template-columns: 1fr;
         }
 
@@ -830,7 +974,13 @@ export default function BookConventionStyles() {
         .conv-hero-h1,
         .conv-hero-sub,
         .conv-search-wrap,
-        .book-skeleton-card {
+        .book-skeleton-card,
+        .book-skeleton-back,
+        .book-skeleton-eyebrow,
+        .book-skeleton-title,
+        .book-skeleton-line,
+        .book-skeleton-toolbar,
+        .book-skeleton-cart {
           animation: none;
         }
 

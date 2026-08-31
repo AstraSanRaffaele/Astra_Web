@@ -16,8 +16,6 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import {
   BOOK_CONVENTION_BANK_DETAILS,
   DELIVERY_MODE_LABELS,
@@ -29,6 +27,11 @@ import {
   type DeliveryMode,
   type PaymentMethod,
 } from "@/lib/book-convention";
+import styles from "./adhesion-dialog.module.css";
+
+function cx(...values: Array<string | false | null | undefined>) {
+  return values.filter(Boolean).join(" ");
+}
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat("it-IT", {
@@ -55,14 +58,12 @@ function BundleItemsSummary({ items }: { items: BookBundleItem[] }) {
   if (items.length === 0) return null;
 
   return (
-    <ul className="mt-1.5 space-y-1 text-[.61rem] leading-snug text-[#6B7280]">
+    <ul className={styles.bundleItems}>
       {items.map((item, index) => (
         <li key={`${index}-${item.title}-${item.isbn ?? ""}`}>
           <span>{item.title}</span>
           {item.isbn ? (
-            <span className="ml-1 font-semibold text-[#64709A]">
-              · ISBN {item.isbn}
-            </span>
+            <span className={styles.bundleIsbn}> · ISBN {item.isbn}</span>
           ) : null}
         </li>
       ))}
@@ -80,8 +81,12 @@ const FOCUSABLE_SELECTOR = [
 ].join(",");
 
 function getFocusableElements(container: HTMLElement) {
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (element) => element.getClientRects().length > 0 && element.getAttribute("aria-hidden") !== "true"
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+  ).filter(
+    (element) =>
+      element.getClientRects().length > 0 &&
+      element.getAttribute("aria-hidden") !== "true"
   );
 }
 
@@ -108,7 +113,8 @@ export default function AdhesionDialog({
 }) {
   const [fiscalCodeOrVat, setFiscalCodeOrVat] = useState("");
   const [address, setAddress] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("contanti");
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>("contanti");
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -150,7 +156,10 @@ export default function AdhesionDialog({
     return Array.from(groups.values());
   }, [products]);
   const deliveryModes = useMemo(
-    () => Array.from(new Set(submissionGroups.map((group) => group.deliveryMode))),
+    () =>
+      Array.from(
+        new Set(submissionGroups.map((group) => group.deliveryMode))
+      ),
     [submissionGroups]
   );
   const requiresAddress = deliveryModes.includes("home");
@@ -182,7 +191,9 @@ export default function AdhesionDialog({
     const inertedElements: Array<{ element: HTMLElement; inert: boolean }> = [];
 
     previousActiveElementRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
 
@@ -193,7 +204,12 @@ export default function AdhesionDialog({
         const parent = currentElement.parentElement;
 
         Array.from(parent.children).forEach((sibling) => {
-          if (sibling === currentElement || !(sibling instanceof HTMLElement)) return;
+          if (
+            sibling === currentElement ||
+            !(sibling instanceof HTMLElement)
+          ) {
+            return;
+          }
 
           inertedElements.push({ element: sibling, inert: sibling.inert });
           sibling.inert = true;
@@ -275,7 +291,9 @@ export default function AdhesionDialog({
 
   if (!open) return null;
 
-  const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ");
+  const fullName = [profile?.firstName, profile?.lastName]
+    .filter(Boolean)
+    .join(" ");
   const originalTotal = products.reduce((sum, product) => {
     return sum + (getOriginalPrice(product) ?? product.price ?? 0);
   }, 0);
@@ -304,15 +322,21 @@ export default function AdhesionDialog({
 
     if (
       submissionGroups.length === 0 ||
-      submissionGroups.reduce((count, group) => count + group.products.length, 0) !==
-        products.length
+      submissionGroups.reduce(
+        (count, group) => count + group.products.length,
+        0
+      ) !== products.length
     ) {
-      setError("Una o più proposte non sono più collegate a una raccolta attiva. Aggiorna la pagina e riprova.");
+      setError(
+        "Una o più proposte non sono più collegate a una raccolta attiva. Aggiorna la pagina e riprova."
+      );
       return;
     }
 
     if (!confirmed) {
-      setError("Conferma i dati e la volontà di aderire prima di continuare.");
+      setError(
+        "Conferma i dati e la volontà di aderire prima di continuare."
+      );
       return;
     }
 
@@ -352,12 +376,15 @@ export default function AdhesionDialog({
         );
       }
 
-      const completedGroups = payload.adhesionIds?.length ?? submissionGroups.length;
+      const completedGroups =
+        payload.adhesionIds?.length ?? submissionGroups.length;
       const confirmationEmailSent = payload.emailSent === true;
       const message =
         submissionGroups.length > 1
           ? `${completedGroups} adesioni registrate correttamente.${
-              confirmationEmailSent ? " Controlla la mail per i riepiloghi." : ""
+              confirmationEmailSent
+                ? " Controlla la mail per i riepiloghi."
+                : ""
             }`
           : confirmationEmailSent
             ? "Adesione registrata correttamente. Ti abbiamo inviato una mail di conferma."
@@ -381,7 +408,7 @@ export default function AdhesionDialog({
   return createPortal(
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[200] flex items-end justify-center bg-[rgba(8,16,42,.55)] p-0 backdrop-blur-[6px] sm:items-center sm:p-5"
+      className={styles.overlay}
       onPointerDown={(event) => {
         if (event.target === event.currentTarget && !submitting) onClose();
       }}
@@ -394,150 +421,109 @@ export default function AdhesionDialog({
         aria-describedby="adhesion-dialog-description"
         aria-busy={submitting}
         tabIndex={-1}
-        className="flex max-h-[calc(100dvh-.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-t-[1.75rem] bg-[#F8F7F3] shadow-[0_28px_90px_rgba(8,16,42,.32)] outline-none sm:max-h-[calc(100dvh-2.5rem)] sm:rounded-[1.75rem]"
+        className={styles.dialog}
       >
-        <header className="relative flex shrink-0 items-start justify-between gap-4 border-b border-[rgba(14,31,107,.09)] bg-white px-5 pt-7 pb-4 sm:px-7 sm:py-5 lg:px-8">
-          <span
-            aria-hidden="true"
-            className="absolute top-2 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-[#D8DCE5] sm:hidden"
-          />
+        <span className={styles.mobileHandle} aria-hidden="true" />
 
-          <div className="min-w-0">
-            <p className="text-[.64rem] font-bold uppercase tracking-[.2em] text-[#2E4080]">
-              Checkout · Convenzioni Libri
-            </p>
-            <h2
-              id="adhesion-dialog-title"
-              className="mt-1 text-[1.7rem] leading-[1.05] font-bold tracking-[-.02em] text-[#08102A] sm:text-[2rem]"
-              style={{ fontFamily: "'Cormorant Garamond', serif" }}
-            >
+        <header className={styles.header}>
+          <div className={styles.headerCopy}>
+            <p className={styles.eyebrow}>Checkout · Convenzioni Libri</p>
+            <h2 id="adhesion-dialog-title" className={styles.title}>
               Completa la tua adesione
             </h2>
-            <p
-              id="adhesion-dialog-description"
-              className="mt-1.5 max-w-2xl text-[.74rem] leading-relaxed text-[#6B7280] sm:text-[.78rem]"
-            >
-              Controlla i dati, scegli il metodo di pagamento e conferma l’ordine.
+            <p id="adhesion-dialog-description" className={styles.subtitle}>
+              Verifica i dati, scegli il pagamento e conferma la selezione.
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
-            <div className="hidden text-right md:block">
-              <p className="text-[.62rem] font-bold uppercase tracking-[.12em] text-[#8A909D]">
-                Totale
-              </p>
-              <p className="mt-0.5 text-[1.05rem] font-extrabold tracking-[-.02em] text-[#08102A]">
-                {formatPrice(total)}
-              </p>
+          <div className={styles.headerActions}>
+            <div className={styles.headerTotal}>
+              <span>Totale</span>
+              <strong>{formatPrice(total)}</strong>
             </div>
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[rgba(14,31,107,.12)] bg-white text-[#596174] transition hover:border-[rgba(14,31,107,.2)] hover:bg-[#EEF1F8] hover:text-[#0E1F6B] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#1A3399]/20 disabled:cursor-not-allowed disabled:opacity-50"
+              className={styles.closeButton}
               aria-label="Chiudi il modulo di adesione"
             >
-              <X size={17} />
+              <X size={18} aria-hidden="true" />
             </button>
           </div>
         </header>
 
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <div className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:p-7">
-              <div className="min-w-0 space-y-5">
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.scrollRegion}>
+            <div className={styles.contentGrid}>
+              <div className={styles.mainColumn}>
                 <section
+                  className={cx(styles.panel, styles.profilePanel)}
                   aria-labelledby="checkout-profile-title"
-                  className="rounded-[1.35rem] border border-[rgba(14,31,107,.09)] bg-white p-4 shadow-[0_2px_12px_rgba(8,16,42,.035)] sm:p-5"
                 >
-                  <div className="flex items-start gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#E8EDFB] text-[#0E1F6B]">
+                  <div className={styles.sectionHeading}>
+                    <span className={styles.sectionIcon}>
                       <UserRound size={18} aria-hidden="true" />
                     </span>
                     <div>
-                      <p className="text-[.62rem] font-bold uppercase tracking-[.16em] text-[#2E4080]">
-                        Passaggio 1
-                      </p>
-                      <h3
-                        id="checkout-profile-title"
-                        className="mt-0.5 text-[1rem] font-bold text-[#08102A]"
-                      >
-                        Il tuo profilo
-                      </h3>
-                      <p className="mt-0.5 text-[.72rem] leading-relaxed text-[#7B8290]">
-                        Questi dati provengono dal tuo account ASTRA.
-                      </p>
+                      <h3 id="checkout-profile-title">Il tuo profilo</h3>
+                      <p>Dati recuperati dal tuo account ASTRA.</p>
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-                    <div className="flex min-w-0 items-center gap-3 rounded-xl bg-[#F7F8FB] px-3.5 py-3">
-                      <UserRound className="shrink-0 text-[#2E4080]" size={16} aria-hidden="true" />
-                      <div className="min-w-0">
-                        <p className="text-[.6rem] font-bold uppercase tracking-[.11em] text-[#8A909D]">
-                          Nome e cognome
-                        </p>
-                        <p className="mt-0.5 truncate text-[.8rem] font-semibold text-[#08102A]">
-                          {fullName || "Utente ASTRA"}
-                        </p>
+                  <div className={styles.profileGrid}>
+                    <div className={styles.profileDatum}>
+                      <UserRound size={16} aria-hidden="true" />
+                      <div>
+                        <span>Nome e cognome</span>
+                        <strong>{fullName || "Utente ASTRA"}</strong>
                       </div>
                     </div>
-                    <div className="flex min-w-0 items-center gap-3 rounded-xl bg-[#F7F8FB] px-3.5 py-3">
-                      <ReceiptText className="shrink-0 text-[#2E4080]" size={16} aria-hidden="true" />
-                      <div className="min-w-0">
-                        <p className="text-[.6rem] font-bold uppercase tracking-[.11em] text-[#8A909D]">
-                          Email
-                        </p>
-                        <p className="mt-0.5 truncate text-[.8rem] font-semibold text-[#08102A]">
-                          {profile?.email || "Email del profilo"}
-                        </p>
+                    <div className={styles.profileDatum}>
+                      <ReceiptText size={16} aria-hidden="true" />
+                      <div>
+                        <span>Email</span>
+                        <strong>{profile?.email || "Email del profilo"}</strong>
                       </div>
                     </div>
                   </div>
                 </section>
 
                 <section
+                  className={styles.panel}
                   aria-labelledby="checkout-billing-title"
-                  className="rounded-[1.35rem] border border-[rgba(14,31,107,.09)] bg-white p-4 shadow-[0_2px_12px_rgba(8,16,42,.035)] sm:p-5"
                 >
-                  <div className="flex items-start gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#E8EDFB] text-[#0E1F6B]">
+                  <div className={styles.sectionHeading}>
+                    <span className={styles.sectionIcon}>
                       <MapPin size={18} aria-hidden="true" />
                     </span>
                     <div>
-                      <p className="text-[.62rem] font-bold uppercase tracking-[.16em] text-[#2E4080]">
-                        Passaggio 2
-                      </p>
-                      <h3
-                        id="checkout-billing-title"
-                        className="mt-0.5 text-[1rem] font-bold text-[#08102A]"
-                      >
+                      <h3 id="checkout-billing-title">
                         Fatturazione e consegna
                       </h3>
-                      <p className="mt-0.5 text-[.72rem] leading-relaxed text-[#7B8290]">
+                      <p>
                         {requiresAddress
-                          ? "Inserisci i dati completi per le proposte con consegna a domicilio."
-                          : "Le proposte selezionate prevedono la consegna in università."}
+                          ? "Completa i dati richiesti per la consegna a domicilio."
+                          : "Il ritiro è previsto direttamente in università."}
                       </p>
                     </div>
                   </div>
 
                   <div
-                    className={`mt-4 grid gap-4 ${
-                      requiresAddress
-                        ? "sm:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]"
-                        : "sm:grid-cols-2"
-                    }`}
+                    className={cx(
+                      styles.fieldGrid,
+                      requiresAddress && styles.fieldGridWithAddress
+                    )}
                   >
-                    <label className="block">
-                      <span className="mb-1.5 block text-[.73rem] font-bold text-[#24304B]">
-                        Codice fiscale o Partita IVA
-                      </span>
+                    <label className={styles.field}>
+                      <span>Codice fiscale o Partita IVA</span>
                       <input
                         type="text"
                         name="tax-id"
                         value={fiscalCodeOrVat}
-                        onChange={(event) => setFiscalCodeOrVat(event.target.value.toUpperCase())}
+                        onChange={(event) =>
+                          setFiscalCodeOrVat(event.target.value.toUpperCase())
+                        }
                         placeholder="RSSMRA00A00F205X"
                         autoComplete="off"
                         autoCapitalize="characters"
@@ -546,41 +532,32 @@ export default function AdhesionDialog({
                         maxLength={24}
                         required
                         disabled={submitting}
-                        className="h-12 w-full rounded-xl border border-[rgba(14,31,107,.14)] bg-white px-3.5 text-[.84rem] text-[#08102A] outline-none transition placeholder:text-[#A5AAB5] focus:border-[#1A3399] focus:ring-3 focus:ring-[#1A3399]/10 disabled:cursor-not-allowed disabled:bg-[#F3F4F7] disabled:opacity-70"
                       />
                     </label>
 
                     {requiresAddress ? (
-                      <label className="block">
-                        <span className="mb-1.5 block text-[.73rem] font-bold text-[#24304B]">
-                          Indirizzo di spedizione/fatturazione
-                        </span>
+                      <label className={styles.field}>
+                        <span>Indirizzo di spedizione/fatturazione</span>
                         <textarea
                           name="street-address"
                           value={address}
                           onChange={(event) => setAddress(event.target.value)}
                           placeholder="Via, numero civico, CAP, città e provincia"
                           autoComplete="street-address"
-                          rows={4}
+                          rows={3}
                           maxLength={1000}
                           required
                           disabled={submitting}
-                          className="min-h-28 w-full resize-y rounded-xl border border-[rgba(14,31,107,.14)] bg-white px-3.5 py-3 text-[.84rem] text-[#08102A] outline-none transition placeholder:text-[#A5AAB5] focus:border-[#1A3399] focus:ring-3 focus:ring-[#1A3399]/10 disabled:cursor-not-allowed disabled:bg-[#F3F4F7] disabled:opacity-70"
                         />
                       </label>
                     ) : (
-                      <div className="flex min-h-28 items-start gap-3 rounded-xl border border-[#CCD7F1] bg-[#EEF3FF] p-4">
-                        <MapPin
-                          className="mt-0.5 shrink-0 text-[#0E1F6B]"
-                          size={18}
-                          aria-hidden="true"
-                        />
+                      <div className={styles.deliveryNotice}>
+                        <MapPin size={18} aria-hidden="true" />
                         <div>
-                          <p className="text-[.76rem] font-bold text-[#0E1F6B]">
-                            {deliverySummary}
-                          </p>
-                          <p className="mt-1 text-[.72rem] leading-relaxed text-[#44506D]">
-                            Non è necessario inserire un indirizzo. Riceverai le indicazioni per il ritiro tramite i canali ASTRA.
+                          <strong>{deliverySummary}</strong>
+                          <p>
+                            Non serve un indirizzo. Riceverai le indicazioni per
+                            il ritiro tramite i canali ASTRA.
                           </p>
                         </div>
                       </div>
@@ -589,43 +566,36 @@ export default function AdhesionDialog({
                 </section>
 
                 <section
+                  className={styles.panel}
                   aria-labelledby="checkout-payment-title"
-                  className="rounded-[1.35rem] border border-[rgba(14,31,107,.09)] bg-white p-4 shadow-[0_2px_12px_rgba(8,16,42,.035)] sm:p-5"
                 >
-                  <div className="flex items-start gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#E8EDFB] text-[#0E1F6B]">
+                  <div className={styles.sectionHeading}>
+                    <span className={styles.sectionIcon}>
                       <CreditCard size={18} aria-hidden="true" />
                     </span>
                     <div>
-                      <p className="text-[.62rem] font-bold uppercase tracking-[.16em] text-[#2E4080]">
-                        Passaggio 3
-                      </p>
-                      <h3
-                        id="checkout-payment-title"
-                        className="mt-0.5 text-[1rem] font-bold text-[#08102A]"
-                      >
-                        Metodo di pagamento
-                      </h3>
-                      <p className="mt-0.5 text-[.72rem] leading-relaxed text-[#7B8290]">
-                        Seleziona una delle modalità previste dalla convenzione.
-                      </p>
+                      <h3 id="checkout-payment-title">Metodo di pagamento</h3>
+                      <p>Scegli una delle modalità disponibili.</p>
                     </div>
                   </div>
 
-                  <fieldset disabled={submitting} className="mt-4">
-                    <legend className="sr-only">Metodo di pagamento</legend>
-                    <div className="grid gap-2 sm:grid-cols-2">
+                  <fieldset
+                    disabled={submitting}
+                    className={styles.paymentFieldset}
+                  >
+                    <legend>Metodo di pagamento</legend>
+                    <div className={styles.paymentGrid}>
                       {PAYMENT_METHODS.map((method) => {
                         const checked = paymentMethod === method;
 
                         return (
                           <label
                             key={method}
-                            className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 text-[.78rem] font-semibold transition focus-within:ring-3 focus-within:ring-[#1A3399]/12 ${
-                              checked
-                                ? "border-[#1A3399] bg-[#EEF1FF] text-[#0E1F6B] shadow-[inset_0_0_0_1px_rgba(26,51,153,.08)]"
-                                : "border-[rgba(14,31,107,.1)] bg-white text-[#596174] hover:border-[rgba(14,31,107,.22)] hover:bg-[#FAFAFC]"
-                            } ${submitting ? "cursor-not-allowed opacity-70" : ""}`}
+                            className={cx(
+                              styles.paymentOption,
+                              checked && styles.paymentOptionSelected,
+                              submitting && styles.controlDisabled
+                            )}
                           >
                             <input
                               type="radio"
@@ -633,15 +603,10 @@ export default function AdhesionDialog({
                               value={method}
                               checked={checked}
                               onChange={() => setPaymentMethod(method)}
-                              className="size-[1.1rem] shrink-0 accent-[#0E1F6B]"
                             />
-                            <span className="min-w-0">{PAYMENT_METHOD_LABELS[method]}</span>
+                            <span>{PAYMENT_METHOD_LABELS[method]}</span>
                             {checked ? (
-                              <CheckCircle2
-                                size={16}
-                                className="ml-auto shrink-0 text-[#1A3399]"
-                                aria-hidden="true"
-                              />
+                              <CheckCircle2 size={17} aria-hidden="true" />
                             ) : null}
                           </label>
                         );
@@ -650,212 +615,180 @@ export default function AdhesionDialog({
                   </fieldset>
 
                   {paymentMethod === "bonifico" ? (
-                    <div className="mt-3 rounded-2xl border border-[#CCD7F1] bg-[#EEF3FF] p-4">
-                      <div className="flex gap-3">
-                        <Building2
-                          className="mt-0.5 shrink-0 text-[#0E1F6B]"
-                          size={18}
-                          aria-hidden="true"
-                        />
-                        <div className="min-w-0 text-[.76rem] leading-relaxed text-[#344363]">
-                          <p className="font-bold text-[#0E1F6B]">Coordinate per il bonifico</p>
-                          <p className="mt-1">
-                            {BOOK_CONVENTION_BANK_DETAILS.bank}
-                            <br />
-                            IBAN:{" "}
-                            <strong className="break-all">
-                              {BOOK_CONVENTION_BANK_DETAILS.iban}
-                            </strong>
-                            <br />
-                            Intestatario:{" "}
-                            <strong>{BOOK_CONVENTION_BANK_DETAILS.accountHolder}</strong>
-                          </p>
-                        </div>
+                    <div className={styles.bankDetails}>
+                      <Building2 size={19} aria-hidden="true" />
+                      <div>
+                        <strong>Coordinate per il bonifico</strong>
+                        <p>
+                          {BOOK_CONVENTION_BANK_DETAILS.bank}
+                          <br />
+                          IBAN: <b>{BOOK_CONVENTION_BANK_DETAILS.iban}</b>
+                          <br />
+                          Intestatario:{" "}
+                          <b>{BOOK_CONVENTION_BANK_DETAILS.accountHolder}</b>
+                        </p>
                       </div>
                     </div>
                   ) : null}
                 </section>
 
                 {error ? (
-                  <Alert
+                  <div
                     ref={errorRef}
                     tabIndex={-1}
-                    variant="destructive"
-                    className="rounded-xl border-[#F0C9C9] bg-[#FFF7F7] p-3.5 outline-none focus-visible:ring-3 focus-visible:ring-[#9A3B3B]/15"
+                    role="alert"
+                    aria-live="assertive"
+                    className={styles.errorAlert}
                   >
-                    <AlertTitle>Impossibile continuare</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
+                    <strong>Impossibile continuare</strong>
+                    <p>{error}</p>
+                  </div>
                 ) : null}
               </div>
 
-              <aside className="min-w-0 lg:sticky lg:top-0">
+              <aside className={styles.summaryColumn}>
                 <section
+                  className={styles.summaryCard}
                   aria-labelledby="checkout-order-title"
-                  className="overflow-hidden rounded-[1.35rem] border border-[rgba(14,31,107,.1)] bg-white shadow-[0_12px_34px_rgba(8,16,42,.07)]"
                 >
-                  <div className="flex items-center justify-between gap-3 bg-[#08102A] px-4 py-4 text-white">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10">
-                        <ShoppingBag size={17} aria-hidden="true" />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-[.61rem] font-bold uppercase tracking-[.14em] text-white/55">
-                          Riepilogo ordine
-                        </p>
-                        <h3 id="checkout-order-title" className="mt-0.5 text-[.9rem] font-bold">
-                          La tua selezione
-                        </h3>
-                      </div>
-                    </div>
-                    <span className="flex min-w-7 items-center justify-center rounded-full bg-white/12 px-2 py-1 text-[.68rem] font-bold text-white">
-                      {products.length}
+                  <div className={styles.summaryHeader}>
+                    <span className={styles.summaryHeaderIcon}>
+                      <ShoppingBag size={17} aria-hidden="true" />
                     </span>
+                    <div>
+                      <span>Riepilogo ordine</span>
+                      <h3 id="checkout-order-title">La tua selezione</h3>
+                    </div>
+                    <b>{products.length}</b>
                   </div>
 
-                  <div className="max-h-64 overflow-y-auto px-4">
+                  <div className={styles.productList}>
                     {products.map((product) => {
                       const isBundle = product.product_type === "bundle";
                       const originalPrice = getOriginalPrice(product);
 
                       return (
-                        <div
-                          key={product.id}
-                          className="flex items-start gap-3 border-b border-[rgba(14,31,107,.07)] py-3.5 last:border-0"
-                        >
-                          <span
-                            className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${
-                              isBundle
-                                ? "bg-[#0E1F6B] text-white"
-                                : "bg-[#E8EDFB] text-[#0E1F6B]"
-                            }`}
-                          >
-                            {isBundle ? (
-                              <Package size={15} aria-hidden="true" />
-                            ) : (
-                              <BookOpen size={15} aria-hidden="true" />
-                            )}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="line-clamp-2 text-[.76rem] leading-snug font-semibold text-[#08102A]">
-                              {product.title}
-                            </p>
-                            <p className="mt-1 text-[.6rem] font-bold uppercase tracking-[.1em] text-[#7B8290]">
-                              {isBundle ? "Bundle" : "Libro"}
-                            </p>
+                        <article key={product.id} className={styles.productRow}>
+                          <div className={styles.productCopy}>
+                            <div className={styles.productTitleRow}>
+                              <span
+                                className={cx(
+                                  styles.productType,
+                                  isBundle && styles.bundleType
+                                )}
+                              >
+                                {isBundle ? (
+                                  <Package size={12} aria-hidden="true" />
+                                ) : (
+                                  <BookOpen size={12} aria-hidden="true" />
+                                )}
+                                {isBundle ? "Bundle" : "Libro"}
+                              </span>
+                            </div>
+                            <h4>{product.title}</h4>
                             {product.isbn ? (
-                              <p className="mt-1 text-[.61rem] text-[#6B7280]">
-                                {isBundle ? "ISBN generale bundle" : "ISBN"} {product.isbn}
+                              <p className={styles.productIsbn}>
+                                {isBundle ? "ISBN generale" : "ISBN"}{" "}
+                                {product.isbn}
                               </p>
                             ) : null}
                             {isBundle ? (
                               <BundleItemsSummary items={product.bundle_items} />
                             ) : null}
                           </div>
-                          <span className="shrink-0 text-right">
+                          <div className={styles.productPrice}>
                             {originalPrice ? (
-                              <span className="block text-[.62rem] text-[#8A909D] line-through">
-                                {formatPrice(originalPrice)}
-                              </span>
+                              <span>{formatPrice(originalPrice)}</span>
                             ) : null}
-                            <span className="block text-[.74rem] font-bold text-[#24304B]">
-                              {formatPrice(product.price ?? 0)}
-                            </span>
-                          </span>
-                        </div>
+                            <strong>{formatPrice(product.price ?? 0)}</strong>
+                          </div>
+                        </article>
                       );
                     })}
                   </div>
 
-                  <div className="border-t border-[rgba(14,31,107,.08)] bg-[#FCFCFD] px-4 py-4">
-                    <div className="flex items-end justify-between gap-3">
+                  <div className={styles.totalBlock}>
+                    <div className={styles.totalRow}>
                       <div>
-                        <p className="text-[.68rem] font-semibold text-[#6B7280]">Totale ordine</p>
-                        <p className="mt-0.5 text-[.61rem] text-[#8A909D]">IVA inclusa, se prevista</p>
+                        <span>Totale ordine</span>
+                        <small>IVA inclusa, se prevista</small>
                       </div>
-                      <strong className="text-[1.3rem] tracking-[-.03em] text-[#08102A]">
-                        {formatPrice(total)}
-                      </strong>
+                      <strong>{formatPrice(total)}</strong>
                     </div>
                     {totalSaving > 0 ? (
-                      <div className="mt-2 flex items-center justify-between gap-3 border-t border-dashed border-[rgba(14,31,107,.1)] pt-2 text-[.68rem]">
-                        <span className="font-semibold text-[#596174]">
-                          Risparmio convenzione
-                        </span>
-                        <strong className="text-[#16713A]">
-                          {formatPrice(totalSaving)}
-                        </strong>
+                      <div className={styles.savingRow}>
+                        <span>Risparmio convenzione</span>
+                        <strong>{formatPrice(totalSaving)}</strong>
                       </div>
                     ) : null}
                   </div>
                 </section>
 
                 <label
-                  className={`mt-3 flex min-h-12 cursor-pointer items-start gap-3 rounded-2xl border bg-white p-4 transition focus-within:ring-3 focus-within:ring-[#1A3399]/12 ${
-                    confirmed
-                      ? "border-[#1A3399] shadow-[inset_0_0_0_1px_rgba(26,51,153,.06)]"
-                      : "border-[rgba(14,31,107,.1)] hover:border-[rgba(14,31,107,.2)]"
-                  } ${submitting ? "cursor-not-allowed opacity-70" : ""}`}
+                  className={cx(
+                    styles.confirmation,
+                    confirmed && styles.confirmationChecked,
+                    submitting && styles.controlDisabled
+                  )}
                 >
                   <input
                     type="checkbox"
                     checked={confirmed}
                     onChange={(event) => setConfirmed(event.target.checked)}
                     disabled={submitting}
-                    className="mt-0.5 size-[1.1rem] shrink-0 accent-[#0E1F6B]"
                   />
-                  <span className="text-[.74rem] leading-relaxed text-[#596174]">
-                    Confermo che i dati inseriti, gli elementi selezionati e la modalità di consegna “{deliverySummary}” sono corretti e desidero aderire alla convenzione libri.
+                  <span>
+                    Confermo che dati, prodotti e modalità “{deliverySummary}”
+                    sono corretti e desidero aderire.
                   </span>
                 </label>
 
-                <div className="mt-3 flex items-start gap-2 rounded-xl px-1 text-[.67rem] leading-relaxed text-[#7B8290]">
-                  <LockKeyhole className="mt-0.5 shrink-0 text-[#2E4080]" size={13} aria-hidden="true" />
-                  Il totale e la disponibilità saranno verificati nuovamente dal server prima del salvataggio.
+                <div className={styles.securityNote}>
+                  <LockKeyhole size={14} aria-hidden="true" />
+                  <span>
+                    Prezzi e disponibilità saranno verificati dal server prima
+                    del salvataggio.
+                  </span>
                 </div>
               </aside>
             </div>
           </div>
 
-          <footer className="shrink-0 border-t border-[rgba(14,31,107,.09)] bg-white px-4 py-3.5 sm:px-6 lg:px-7">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-baseline justify-between gap-4 sm:block">
-                <p className="text-[.64rem] font-bold uppercase tracking-[.12em] text-[#8A909D]">
-                  Totale da confermare
-                </p>
-                <p className="mt-0.5 text-[1.15rem] font-extrabold tracking-[-.025em] text-[#08102A]" aria-live="polite">
-                  {formatPrice(total)}
-                </p>
-              </div>
-
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onClose}
-                  disabled={submitting}
-                  className="h-12 rounded-full border-[rgba(14,31,107,.14)] bg-white px-6 text-[#24304B] hover:bg-[#F1F3F8] focus-visible:ring-[#1A3399]/20"
-                >
-                  Annulla
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="h-12 rounded-full bg-[#0E1F6B] px-7 font-bold text-white shadow-[0_8px_20px_rgba(14,31,107,.16)] hover:bg-[#1A3399] focus-visible:ring-[#1A3399]/25"
-                >
-                  {submitting ? (
-                    <>
-                      <LoaderCircle className="animate-spin" size={16} aria-hidden="true" />
-                      Invio in corso…
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={16} aria-hidden="true" />
-                      Conferma adesione
-                    </>
-                  )}
-                </Button>
-              </div>
+          <footer className={styles.footer}>
+            <div className={styles.footerTotal}>
+              <span>Totale da confermare</span>
+              <strong aria-live="polite">{formatPrice(total)}</strong>
+            </div>
+            <div className={styles.footerActions}>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={submitting}
+                className={styles.secondaryButton}
+              >
+                Annulla
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className={styles.primaryButton}
+              >
+                {submitting ? (
+                  <>
+                    <LoaderCircle
+                      className={styles.spinner}
+                      size={17}
+                      aria-hidden="true"
+                    />
+                    Invio in corso…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={17} aria-hidden="true" />
+                    Conferma adesione
+                  </>
+                )}
+              </button>
             </div>
           </footer>
         </form>

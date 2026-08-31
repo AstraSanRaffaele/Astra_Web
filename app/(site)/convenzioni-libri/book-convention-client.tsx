@@ -4,22 +4,18 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
-  CalendarDays,
   CheckCircle2,
   CircleAlert,
   RotateCcw,
   Search,
   X,
 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import {
   BOOK_YEARS,
   BOOK_YEARS_BY_STUDY_AREA,
   BOOK_YEAR_LABELS,
   STUDY_AREAS,
   STUDY_AREA_LABELS,
-  DELIVERY_MODE_LABELS,
   type BookConventionApiResponse,
   type BookConventionCatalogBook,
   type BookYear,
@@ -32,20 +28,6 @@ import BookProductCard from "./book-product-card";
 import OrderSummary from "./order-summary";
 
 type LoadState = "loading" | "ready" | "error";
-
-function formatRoundDate(value: string) {
-  return new Intl.DateTimeFormat("it-IT", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Europe/Rome",
-  }).format(new Date(value));
-}
-
-function hasDisplayableEndDate(value: string) {
-  const date = new Date(value);
-  return Number.isFinite(date.getTime()) && date.getUTCFullYear() < 9000;
-}
 
 function normalizeSearchValue(value: string) {
   return value
@@ -61,29 +43,28 @@ function PageSkeleton() {
       <BookConventionStyles />
       <main className="book-page" aria-busy="true" aria-label="Caricamento catalogo libri">
         <section className="conv-hero book-hero book-shell">
-          <div className="h-11 w-40 rounded-full bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
+          <div className="book-skeleton-back" />
           <div className="book-hero-grid">
             <div>
-              <div className="h-3 w-36 rounded-full bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
-              <div className="mt-5 h-24 w-full max-w-xl rounded-[1.5rem] bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
-              <div className="mt-5 h-4 w-full max-w-2xl rounded-full bg-[#E7E9EE]" style={{ animation: "sk 1.4s ease infinite" }} />
-              <div className="mt-2 h-4 w-4/5 max-w-xl rounded-full bg-[#E7E9EE]" style={{ animation: "sk 1.4s ease infinite" }} />
+              <div className="book-skeleton-eyebrow" />
+              <div className="book-skeleton-title" />
+              <div className="book-skeleton-line" />
+              <div className="book-skeleton-line short" />
             </div>
-            <div className="h-40 rounded-[1.5rem] bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
           </div>
         </section>
 
         <section className="book-shop book-shell">
           <div className="book-loading-grid">
             <div>
-              <div className="h-48 rounded-[1.75rem] bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="book-skeleton-toolbar" />
+              <div className="book-skeleton-list">
                 {[0, 1, 2, 3].map((item) => (
                   <div key={item} className="book-skeleton-card" />
                 ))}
               </div>
             </div>
-            <div className="h-80 rounded-[1.5rem] bg-[#E2E5EC]" style={{ animation: "sk 1.4s ease infinite" }} />
+            <div className="book-skeleton-cart" />
           </div>
         </section>
       </main>
@@ -281,25 +262,22 @@ export default function BookConventionClient() {
               Tutte le convenzioni
             </Link>
 
-            <div className="mx-auto mt-10 max-w-xl rounded-[1.75rem] border border-[rgba(14,31,107,.1)] bg-white p-7 text-center shadow-[0_12px_36px_rgba(14,31,107,.06)] sm:p-9">
-              <CircleAlert className="mx-auto text-[#9A3B3B]" size={30} />
-              <h1
-                className="mt-4 text-4xl leading-none font-bold text-[#08102A]"
-                style={{ fontFamily: "'Cormorant Garamond', serif" }}
-              >
+            <div className="book-error-state">
+              <CircleAlert size={30} aria-hidden="true" />
+              <h1>
                 Convenzione non disponibile
               </h1>
-              <p className="mt-3 text-[.86rem] leading-relaxed text-[#596174]">
+              <p>
                 {loadError || "La sezione non può essere caricata in questo momento."}
               </p>
-              <Button
+              <button
                 type="button"
                 onClick={() => void loadConvention()}
-                className="mt-6 h-11 rounded-full bg-[#0E1F6B] px-5 text-white hover:bg-[#1A3399]"
+                className="book-retry-button"
               >
                 <RotateCcw size={14} />
                 Riprova
-              </Button>
+              </button>
             </div>
           </section>
         </main>
@@ -309,11 +287,8 @@ export default function BookConventionClient() {
 
   const activeAdhesions = data.activeAdhesions ?? [];
   const activeRounds = data.activeRounds ?? [];
-  const availableProducts = catalog.filter((product) => product.is_available).length;
-  const activeRoundHasProducts = activeRounds.length > 0 && availableProducts > 0;
-  const activeDeliveryModes = Array.from(
-    new Set(activeRounds.map((round) => round.delivery_mode))
-  );
+  const activeRoundHasProducts =
+    activeRounds.length > 0 && catalog.some((product) => product.is_available);
 
   return (
     <>
@@ -327,7 +302,7 @@ export default function BookConventionClient() {
 
           <div className="book-hero-grid">
             <header>
-              <p className="conv-hero-eyebrow text-[.68rem] font-bold uppercase tracking-[.22em] text-[#2E4080]">
+              <p className="conv-hero-eyebrow book-hero-eyebrow">
                 Convenzioni Libri · Area riservata
               </p>
               <h1 className="conv-hero-h1 book-hero-title">
@@ -340,97 +315,57 @@ export default function BookConventionClient() {
                 attualmente disponibili per il tuo percorso di studi.
               </p>
             </header>
-
-            <aside className="book-hero-meta" aria-label="Stato della convenzione libri">
-              <span className="book-meta-label">Disponibilità catalogo</span>
-
-              {activeRounds.length > 0 ? (
-                <div className="book-round-status">
-                  <CalendarDays size={17} className="mt-0.5 shrink-0 text-[#2E4080]" />
-                  <p>
-                    <strong className="block text-[#08102A]">Ordini aperti</strong>
-                    {activeRounds.length === 1
-                      ? `Dal ${formatRoundDate(activeRounds[0].starts_at)}${
-                          hasDisplayableEndDate(activeRounds[0].ends_at)
-                            ? ` al ${formatRoundDate(activeRounds[0].ends_at)}`
-                            : ""
-                        }`
-                      : `${activeRounds.length} raccolte disponibili in questo momento`}
-                    <span className="mt-1 block text-[.7rem] font-semibold text-[#596174]">
-                      {activeDeliveryModes.length === 1
-                        ? DELIVERY_MODE_LABELS[activeDeliveryModes[0]]
-                        : "Modalità di consegna indicate al riepilogo"}
-                    </span>
-                  </p>
-                </div>
-              ) : (
-                <div className="book-round-status closed">
-                  <CalendarDays size={17} className="mt-0.5 shrink-0" />
-                  <p>
-                    <strong className="block">Raccolta ordini chiusa</strong>
-                    Il catalogo resta consultabile.
-                  </p>
-                </div>
-              )}
-
-              <div className="mt-4 flex gap-5 border-t border-[rgba(8,16,42,.07)] pt-4">
-                <div>
-                  <strong className="block text-xl text-[#08102A]">{catalog.length}</strong>
-                  <span className="text-[.66rem] font-semibold text-[#596174]">Proposte</span>
-                </div>
-                <div>
-                  <strong className="block text-xl text-[#08102A]">{availableProducts}</strong>
-                  <span className="text-[.66rem] font-semibold text-[#596174]">Disponibili ora</span>
-                </div>
-              </div>
-            </aside>
           </div>
         </section>
 
         <div className="book-shell book-notices" aria-live="polite">
           {successMessage ? (
-            <Alert className="rounded-2xl border-[#CFE6D6] bg-[#F2FAF4] p-4 text-[#145C31]">
-              <CheckCircle2 size={18} />
-              <AlertTitle>Adesione completata</AlertTitle>
-              <AlertDescription className="text-[#477257]">
-                {successMessage}
-              </AlertDescription>
-            </Alert>
+            <div className="book-notice success" role="status">
+              <CheckCircle2 size={18} aria-hidden="true" />
+              <div>
+                <strong>Adesione completata</strong>
+                <p>{successMessage}</p>
+              </div>
+            </div>
           ) : null}
 
           {activeAdhesions.length > 0 && !successMessage ? (
-            <Alert className="rounded-2xl border-[#CFE6D6] bg-[#F2FAF4] p-4 text-[#145C31]">
-              <CheckCircle2 size={18} />
-              <AlertTitle>
-                {activeAdhesions.length === 1
-                  ? "Adesione già registrata"
-                  : "Adesioni già registrate"}
-              </AlertTitle>
-              <AlertDescription className="text-[#477257]">
-                Le proposte già ordinate nella raccolta corrente non sono più selezionabili;
-                puoi comunque aderire alle altre proposte disponibili.
-              </AlertDescription>
-            </Alert>
+            <div className="book-notice success" role="status">
+              <CheckCircle2 size={18} aria-hidden="true" />
+              <div>
+                <strong>
+                  {activeAdhesions.length === 1
+                    ? "Adesione già registrata"
+                    : "Adesioni già registrate"}
+                </strong>
+                <p>
+                  Le proposte già ordinate nella raccolta corrente non sono più
+                  selezionabili; puoi comunque aderire alle altre proposte disponibili.
+                </p>
+              </div>
+            </div>
           ) : null}
 
           {!data.canAdhere && activeAdhesions.length === 0 ? (
-            <Alert className="rounded-2xl border-[#E7D7B5] bg-[#FFF9ED] p-4 text-[#73551A]">
-              <CircleAlert size={18} />
-              <AlertTitle>
-                {activeRounds.length === 0
-                  ? "Raccolta ordini non aperta"
-                  : !activeRoundHasProducts
-                    ? "Catalogo in aggiornamento"
-                    : "Adesioni temporaneamente non disponibili"}
-              </AlertTitle>
-              <AlertDescription className="text-[#73551A]">
-                {activeRounds.length === 0
-                  ? "Puoi consultare prezzi e proposte, ma la selezione sarà disponibile alla prossima apertura."
-                  : !activeRoundHasProducts
-                    ? "La raccolta è aperta, ma al momento non contiene prodotti selezionabili."
-                    : "Aggiorna la pagina tra poco oppure contatta ASTRA per maggiori informazioni."}
-              </AlertDescription>
-            </Alert>
+            <div className="book-notice warning" role="status">
+              <CircleAlert size={18} aria-hidden="true" />
+              <div>
+                <strong>
+                  {activeRounds.length === 0
+                    ? "Raccolta ordini non aperta"
+                    : !activeRoundHasProducts
+                      ? "Catalogo in aggiornamento"
+                      : "Adesioni temporaneamente non disponibili"}
+                </strong>
+                <p>
+                  {activeRounds.length === 0
+                    ? "Puoi consultare prezzi e proposte, ma la selezione sarà disponibile alla prossima apertura."
+                    : !activeRoundHasProducts
+                      ? "La raccolta è aperta, ma al momento non contiene prodotti selezionabili."
+                      : "Aggiorna la pagina tra poco oppure contatta ASTRA per maggiori informazioni."}
+                </p>
+              </div>
+            </div>
           ) : null}
         </div>
 
@@ -445,10 +380,10 @@ export default function BookConventionClient() {
           <section className="book-shell book-shop">
             <div>
               <div className="book-empty-catalog">
-                <p className="text-[.95rem] font-bold text-[#344363]">
+                <p className="book-empty-title">
                   Nessun libro disponibile
                 </p>
-                <p className="mx-auto mt-2 max-w-lg text-[.8rem] leading-relaxed text-[#596174]">
+                <p className="book-empty-copy">
                   Il catalogo non contiene ancora proposte attive.
                 </p>
               </div>
@@ -562,12 +497,12 @@ export default function BookConventionClient() {
                   </div>
                 ) : (
                   <div className="book-empty-catalog">
-                    <p className="text-[.88rem] font-bold text-[#344363]">
+                    <p className="book-empty-title">
                       {normalizedSearch
                         ? "Nessun prodotto corrisponde alla ricerca"
                         : "Nessuna proposta per questi filtri"}
                     </p>
-                    <p className="mx-auto mt-2 max-w-md text-[.76rem] leading-relaxed text-[#596174]">
+                    <p className="book-empty-copy compact">
                       {normalizedSearch
                         ? "Prova con un titolo, un autore o un ISBN differente."
                         : "Seleziona un’altra area di studio o un altro anno di corso."}

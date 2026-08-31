@@ -1,0 +1,424 @@
+.section {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0.75rem auto 0;
+  padding: 0 3rem;
+  color: #08102a;
+}
+
+.section *,
+.section *::before,
+.section *::after {
+  box-sizing: border-box;
+}
+
+.section :where(p, h2, h3, dl, dd) {
+  margin: 0;
+}
+
+.panel {
+  overflow: hidden;
+  border: 1px solid rgba(14, 31, 107, 0.1);
+  border-radius: 1.35rem;
+  background: #ffffff;
+  box-shadow: 0 5px 20px rgba(8, 16, 42, 0.045);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(14, 31, 107, 0.08);
+  background: #fbfcfe;
+  padding: 0.85rem 1.25rem;
+}
+
+.eyebrow {
+  color: #2e4080;
+  font-size: 0.61rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.title {
+  margin-top: 0.15rem;
+  color: #08102a;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.count {
+  flex: 0 0 auto;
+  color: #697083;
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.adhesionList {
+  background: #ffffff;
+}
+
+.adhesion + .adhesion {
+  border-top: 1px solid rgba(14, 31, 107, 0.08);
+}
+
+.summary {
+  display: grid;
+  min-height: 4rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  list-style: none;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary:hover {
+  background: #fafbfd;
+}
+
+.summary:focus-visible {
+  background: #f4f6fb;
+  box-shadow: inset 0 0 0 3px rgba(26, 51, 153, 0.15);
+}
+
+.summaryMain {
+  min-width: 0;
+}
+
+.summaryTitleRow {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.conventionTitle {
+  overflow: hidden;
+  color: #08102a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusBadge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 0.16rem 0.5rem;
+  font-size: 0.57rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.currentBadge {
+  background: #eaf7ee;
+  color: #166534;
+}
+
+.historicalBadge {
+  background: #eef1f8;
+  color: #596174;
+}
+
+.summaryMeta {
+  display: block;
+  margin-top: 0.25rem;
+  color: #697083;
+  font-size: 0.66rem;
+  line-height: 1.45;
+}
+
+.summaryPrice {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.summaryTotal {
+  display: block;
+  color: #1e347d;
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.detailsLabel {
+  display: block;
+  margin-top: 0.15rem;
+  color: #697083;
+  font-size: 0.61rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.chevron {
+  display: inline-block;
+  margin-left: 0.25rem;
+  transition: transform 160ms ease;
+}
+
+.adhesion[open] .chevron {
+  transform: rotate(180deg);
+}
+
+.detailsBody {
+  border-top: 1px solid rgba(14, 31, 107, 0.06);
+  background: #fcfcfd;
+  padding: 1rem 1.25rem;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(15rem, 0.8fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.productsColumn {
+  min-width: 0;
+}
+
+.sectionTitle {
+  color: #2e4080;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.productList {
+  margin: 0.5rem 0 0;
+  padding: 0 0.85rem;
+  overflow: hidden;
+  border: 1px solid rgba(14, 31, 107, 0.08);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  list-style: none;
+}
+
+.productItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+}
+
+.productItem + .productItem {
+  border-top: 1px solid rgba(14, 31, 107, 0.07);
+}
+
+.productInfo {
+  min-width: 0;
+}
+
+.productTitle {
+  color: #08102a;
+  font-size: 0.73rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.productYear {
+  margin-top: 0.1rem;
+  color: #697083;
+  font-size: 0.61rem;
+  line-height: 1.4;
+}
+
+.bundleContents {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.3rem;
+  color: #697083;
+  font-size: 0.63rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.bundleLabel {
+  color: #4e586f;
+  font-weight: 650;
+}
+
+.productPrice {
+  flex: 0 0 auto;
+  color: #24304b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.productsFallback {
+  margin-top: 0.5rem;
+  border: 1px dashed rgba(14, 31, 107, 0.13);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  padding: 0.85rem;
+  color: #697083;
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.dataList {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  margin: 0;
+  border: 1px solid rgba(14, 31, 107, 0.08);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  padding: 0.85rem;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.dataRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dataTerm,
+.totalTerm {
+  color: #697083;
+  font-weight: 650;
+}
+
+.dataValue {
+  color: #24304b;
+  font-weight: 650;
+  text-align: right;
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+.breakAll {
+  overflow-wrap: anywhere;
+}
+
+.addressRow {
+  border-top: 1px solid rgba(14, 31, 107, 0.07);
+  padding-top: 0.5rem;
+}
+
+.address {
+  margin-top: 0.2rem;
+  color: #24304b;
+  font-weight: 650;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.totalRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.15rem;
+  border-top: 1px solid rgba(14, 31, 107, 0.08);
+  padding-top: 0.65rem;
+}
+
+.totalTerm {
+  color: #596174;
+  font-weight: 700;
+}
+
+.totalValue {
+  color: #08102a;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+@media (max-width: 760px) {
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .section {
+    padding-right: 1.25rem;
+    padding-left: 1.25rem;
+  }
+}
+
+@media (max-width: 540px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.8rem 1rem;
+  }
+
+  .summary {
+    gap: 0.7rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .conventionTitle {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .summaryMeta {
+    font-size: 0.63rem;
+  }
+
+  .detailsBody {
+    padding: 0.85rem 1rem 1rem;
+  }
+
+  .productItem {
+    gap: 0.75rem;
+  }
+
+  .dataRow {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .summary {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryPrice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+  }
+
+  .detailsLabel {
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summary,
+  .chevron {
+    transition: none;
+  }
+}
