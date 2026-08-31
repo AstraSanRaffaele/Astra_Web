@@ -344,14 +344,15 @@ export default function BookConventionStyles() {
       }
 
       .book-shop {
+        max-width: 1440px;
         padding: 0 3rem 6rem;
       }
 
       .book-shop-layout {
         display: grid;
-        grid-template-columns: minmax(0,1fr) 21.5rem;
+        grid-template-columns: minmax(0,1fr) 18rem;
         align-items: start;
-        gap: 1.5rem;
+        gap: 1.25rem;
         margin-top: 1.25rem;
       }
 
@@ -481,7 +482,7 @@ export default function BookConventionStyles() {
 
       .book-product-grid {
         display: grid;
-        grid-template-columns: repeat(2,minmax(0,1fr));
+        grid-template-columns: repeat(3,minmax(0,1fr));
         gap: 1rem;
       }
 
@@ -888,8 +889,8 @@ export default function BookConventionStyles() {
 
       .book-loading-grid {
         display: grid;
-        grid-template-columns: minmax(0,1fr) 21.5rem;
-        gap: 1.5rem;
+        grid-template-columns: minmax(0,1fr) 18rem;
+        gap: 1.25rem;
         margin-top: 2rem;
       }
 
@@ -942,7 +943,7 @@ export default function BookConventionStyles() {
 
       .book-skeleton-list {
         display: grid;
-        grid-template-columns: repeat(2,minmax(0,1fr));
+        grid-template-columns: repeat(3,minmax(0,1fr));
         gap: 1rem;
         margin-top: 1rem;
       }
@@ -957,6 +958,13 @@ export default function BookConventionStyles() {
         border-radius: 1.75rem;
         background: #E7E9EE;
         animation: sk 1.4s ease infinite;
+      }
+
+      @media (max-width: 1199px) {
+        .book-product-grid,
+        .book-skeleton-list {
+          grid-template-columns: repeat(2,minmax(0,1fr));
+        }
       }
 
       @media (max-width: 1023px) {
