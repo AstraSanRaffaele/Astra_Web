@@ -506,6 +506,7 @@ export default function BookConventionStyles() {
 
       .book-product-media {
         position: relative;
+        isolation: isolate;
         display: flex;
         height: 198px;
         align-items: center;
@@ -518,18 +519,66 @@ export default function BookConventionStyles() {
         padding: .85rem;
       }
 
+      .book-product-cover-stage {
+        position: absolute;
+        z-index: 1;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .book-product-cover-stage::after {
+        position: absolute;
+        z-index: 1;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(243,245,250,.38) 0%,
+          rgba(243,245,250,.64) 100%
+        );
+        content: "";
+        pointer-events: none;
+      }
+
+      .book-product-cover-ambient {
+        position: absolute;
+        z-index: 0;
+        inset: -18%;
+        width: 136%;
+        height: 136%;
+        object-fit: cover;
+        opacity: .2;
+        filter: blur(25px) saturate(.82);
+        transform: scale(1.06);
+      }
+
       .book-product-cover {
         position: relative;
-        z-index: 1;
+        z-index: 2;
         display: block;
         width: auto;
-        max-width: 82%;
+        max-width: 78%;
         height: 170px;
+        border-radius: .55rem;
         object-fit: contain;
-        filter: drop-shadow(0 9px 13px rgba(8,16,42,.16));
+        box-shadow:
+          0 16px 30px rgba(8,16,42,.2),
+          0 0 0 1px rgba(255,255,255,.5);
+        transition: transform .28s cubic-bezier(.4,0,.2,1), box-shadow .28s ease;
+      }
+
+      .book-product-card:hover .book-product-cover {
+        transform: translateY(-3px) scale(1.015);
+        box-shadow:
+          0 20px 36px rgba(8,16,42,.24),
+          0 0 0 1px rgba(255,255,255,.62);
       }
 
       .book-cover-placeholder {
+        position: relative;
+        z-index: 1;
         display: flex;
         width: 108px;
         height: 152px;
@@ -553,7 +602,7 @@ export default function BookConventionStyles() {
 
       .book-product-type {
         position: absolute;
-        z-index: 2;
+        z-index: 3;
         top: .85rem;
         left: .85rem;
         display: inline-flex;
@@ -579,7 +628,7 @@ export default function BookConventionStyles() {
 
       .book-product-selected-mark {
         position: absolute;
-        z-index: 2;
+        z-index: 3;
         top: .85rem;
         right: .85rem;
         display: flex;
@@ -591,12 +640,17 @@ export default function BookConventionStyles() {
         border-radius: 50%;
         background: #fff;
         color: transparent;
+        opacity: 0;
+        transform: scale(.82);
+        transition: opacity .18s ease, transform .18s ease;
       }
 
       .book-product-card.selected .book-product-selected-mark {
         border-color: #0E1F6B;
         background: #0E1F6B;
         color: #fff;
+        opacity: 1;
+        transform: scale(1);
       }
 
       .book-product-body {
@@ -990,6 +1044,8 @@ export default function BookConventionStyles() {
 
         .conv-card,
         .book-card-arrow,
+        .book-product-cover,
+        .book-product-selected-mark,
         .book-product-action {
           transition: none;
         }

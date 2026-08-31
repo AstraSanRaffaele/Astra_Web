@@ -88,16 +88,27 @@ export default function BookProductCard({
         </span>
 
         {product.cover_image && failedCoverUrl !== product.cover_image ? (
-          // Le URL sono normalizzate server-side sul solo bucket Supabase dedicato.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.cover_image}
-            alt=""
-            className="book-product-cover"
-            loading="lazy"
-            decoding="async"
-            onError={() => setFailedCoverUrl(product.cover_image)}
-          />
+          <div className="book-product-cover-stage">
+            {/* Le URL sono normalizzate server-side sul solo bucket Supabase dedicato. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={product.cover_image}
+              alt=""
+              aria-hidden="true"
+              className="book-product-cover-ambient"
+              loading="lazy"
+              decoding="async"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={product.cover_image}
+              alt=""
+              className="book-product-cover"
+              loading="lazy"
+              decoding="async"
+              onError={() => setFailedCoverUrl(product.cover_image)}
+            />
+          </div>
         ) : (
           <div className="book-cover-placeholder" aria-hidden="true">
             {isBundle ? (
