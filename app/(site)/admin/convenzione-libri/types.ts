@@ -12,6 +12,7 @@ export type AdminProfile = {
   nome: string | null;
   cognome: string | null;
   email_istituzionale?: string | null;
+  numero_telefono?: string | null;
   corso_di_laurea?: string | null;
   anno_di_laurea?: string | number | null;
 };

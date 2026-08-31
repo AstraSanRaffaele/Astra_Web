@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import Navbar from "@/components/ui/navbar";
 
 type FreshersStatusResponse = {
@@ -410,12 +411,12 @@ export default function Home() {
               </div>
 
               <div className="freshers-home-banner-btns">
-                <a href="/matricole" className="freshers-home-banner-btn">
+                <Link href="/matricole" className="freshers-home-banner-btn">
                   Scopri di più
-                </a>
-                <a href="/matricole#guida" className="freshers-home-banner-btn freshers-home-banner-btn--ghost">
+                </Link>
+                <Link href="/matricole#guida" className="freshers-home-banner-btn freshers-home-banner-btn--ghost">
                   Guida rapida
-                </a>
+                </Link>
               </div>
             </div>
           </section>
@@ -499,7 +500,7 @@ export default function Home() {
             }} />
 
             <p className="hero-sub" style={{ fontSize: "1.1rem", lineHeight: 1.9, color: "var(--mist)", maxWidth: 480, fontWeight: 400, opacity: 0 }}>
-              Siamo un team di studenti dell'Università "Vita-Salute" San Raffaele. Rappresentiamo,
+              Siamo un team di studenti dell&apos;Università &quot;Vita-Salute&quot; San Raffaele. Rappresentiamo,
               connettiamo e ispiriamo chi studia Medicina, Psicologia e Filosofia
               a Milano.
             </p>

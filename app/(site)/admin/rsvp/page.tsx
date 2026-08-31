@@ -454,7 +454,7 @@ export default function AdminRsvpPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: ".35rem" }}>
                     <h3 style={{ margin: 0, fontSize: ".98rem", fontWeight: 800, color: "#0f2f6e" }}>Aggiungi utente manualmente</h3>
                     <p style={{ margin: 0, fontSize: ".84rem", color: "#6b7280" }}>
-                      Cerca per email, nome o cognome e aggiungi l'utente alla lista dei confermati.
+                      Cerca per email, nome o cognome e aggiungi l’utente alla lista dei confermati.
                     </p>
                   </div>
 

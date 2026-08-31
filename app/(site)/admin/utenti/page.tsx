@@ -23,6 +23,14 @@ type NewUser = {
   role: Role; ruolo_tessera: RuoloTessera;
 };
 
+type ProfileFilters = {
+  role: string;
+  ruolo_tessera: string;
+  facolta: string;
+  corso: string;
+  anno: string;
+};
+
 // ── Static data ───────────────────────────────────────────────────
 const FACULTY_OPTIONS = [
   { value: "", label: "Tutte le facoltà" },
@@ -79,6 +87,14 @@ const EMPTY_NEW_USER: NewUser = {
   role: "user", ruolo_tessera: "socio",
 };
 
+const EMPTY_PROFILE_FILTERS: ProfileFilters = {
+  role: "",
+  ruolo_tessera: "",
+  facolta: "",
+  corso: "",
+  anno: "",
+};
+
 // ── Helpers ───────────────────────────────────────────────────────
 const fmt = (v?: string | null) => v ? new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(v)) : "—";
 const norm = (v: unknown) => String(v ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -94,6 +110,28 @@ const getSortVal = (p: Profile, key: SortKey) => {
   if (key === "anno_di_laurea") return Number(v ?? 0);
   if (["created_at", "updated_at", "data_di_nascita"].includes(key)) return new Date(String(v ?? "")).getTime() || 0;
   return norm(v as string);
+};
+const matchesProfileFilters = (profile: Profile, search: string, filters: ProfileFilters) => {
+  const query = norm(search);
+  const matchesSearch = !query || [
+    profile.nome,
+    profile.cognome,
+    profile.email_istituzionale,
+    profile.numero_telefono,
+    profile.facolta,
+    profile.corso_di_laurea,
+    profile.role,
+    profile.ruolo_tessera,
+    profile.id,
+    profile.anno_di_laurea,
+  ].map(norm).some(value => value.includes(query));
+
+  return matchesSearch
+    && (!filters.role || profile.role === filters.role)
+    && (!filters.ruolo_tessera || profile.ruolo_tessera === filters.ruolo_tessera)
+    && (!filters.facolta || profile.facolta === filters.facolta)
+    && (!filters.corso || profile.corso_di_laurea === filters.corso)
+    && (!filters.anno || String(profile.anno_di_laurea) === filters.anno);
 };
 
 // ── Styles ────────────────────────────────────────────────────────
@@ -238,7 +276,7 @@ export default function AdminUtentiPage() {
   const [edited, setEdited] = useState<Record<string, Profile>>({});
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState({ role: "", ruolo_tessera: "", facolta: "", corso: "", anno: "" });
+  const [filters, setFilters] = useState<ProfileFilters>(EMPTY_PROFILE_FILTERS);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "created_at", dir: "desc" });
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
@@ -313,11 +351,7 @@ export default function AdminUtentiPage() {
   }, [profiles, filters.facolta]);
 
   const filtered = useMemo(() => {
-    const q = norm(search);
-    return [...profiles.filter(p => {
-      const ms = !q || [p.nome, p.cognome, p.email_istituzionale, p.numero_telefono, p.facolta, p.corso_di_laurea, p.role, p.ruolo_tessera, p.id, p.anno_di_laurea].map(norm).some(v => v.includes(q));
-      return ms && (!filters.role || p.role === filters.role) && (!filters.ruolo_tessera || p.ruolo_tessera === filters.ruolo_tessera) && (!filters.facolta || p.facolta === filters.facolta) && (!filters.corso || p.corso_di_laurea === filters.corso) && (!filters.anno || String(p.anno_di_laurea) === filters.anno);
-    })].sort((a, b) => {
+    return [...profiles.filter(profile => matchesProfileFilters(profile, search, filters))].sort((a, b) => {
       const av = getSortVal(a, sort.key), bv = getSortVal(b, sort.key);
       return av < bv ? (sort.dir === "asc" ? -1 : 1) : av > bv ? (sort.dir === "asc" ? 1 : -1) : 0;
     });
@@ -326,13 +360,13 @@ export default function AdminUtentiPage() {
   const dirtyIds = useMemo(() => profiles.filter(p => isDirty(p, edited[p.id])).map(p => p.id), [profiles, edited]);
   const totalAdmins = useMemo(() => profiles.filter(p => p.role === "admin").length, [profiles]);
   const totalPages = useMemo(() => Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)), [filtered.length]);
-  const paginated = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
+  const currentPage = Math.min(page, totalPages);
+  const paginated = useMemo(() => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE), [filtered, currentPage]);
   const pageIds = useMemo(() => paginated.map(p => p.id), [paginated]);
-  const allPageSel = pageIds.length > 0 && pageIds.every(id => selected.includes(id));
-  const somePageSel = pageIds.some(id => selected.includes(id));
-
-  useEffect(() => { setSelected(c => c.filter(id => filtered.some(p => p.id === id))); }, [filtered]);
-  useEffect(() => { setPage(c => Math.min(c, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))); }, [filtered.length]);
+  const filteredIds = useMemo(() => new Set(filtered.map(profile => profile.id)), [filtered]);
+  const selectedInResults = useMemo(() => selected.filter(id => filteredIds.has(id)), [selected, filteredIds]);
+  const allPageSel = pageIds.length > 0 && pageIds.every(id => selectedInResults.includes(id));
+  const somePageSel = pageIds.some(id => selectedInResults.includes(id));
 
   function updateEdited(id: string, field: keyof Profile, value: string) {
     setEdited(cur => {
@@ -350,8 +384,30 @@ export default function AdminUtentiPage() {
   }
 
   function toggleSort(key: SortKey) { setSort(c => c.key === key ? { key, dir: c.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }); setPage(1); }
-  function toggleSelect(id: string) { setSelected(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]); }
-  function toggleSelectPage() { setSelected(c => allPageSel ? c.filter(id => !pageIds.includes(id)) : [...new Set([...c, ...pageIds])]); }
+  function toggleSelect(id: string) {
+    setSelected(current => {
+      const selection = current.filter(selectedId => filteredIds.has(selectedId));
+      return selection.includes(id) ? selection.filter(selectedId => selectedId !== id) : [...selection, id];
+    });
+  }
+  function toggleSelectPage() {
+    setSelected(current => {
+      const selection = current.filter(id => filteredIds.has(id));
+      return allPageSel ? selection.filter(id => !pageIds.includes(id)) : [...new Set([...selection, ...pageIds])];
+    });
+  }
+
+  function applyFilters(nextSearch: string, nextFilters: ProfileFilters) {
+    const matchingIds = new Set(
+      profiles
+        .filter(profile => matchesProfileFilters(profile, nextSearch, nextFilters))
+        .map(profile => profile.id),
+    );
+    setSearch(nextSearch);
+    setFilters(nextFilters);
+    setSelected(current => current.filter(id => matchingIds.has(id)));
+    setPage(1);
+  }
 
   async function handleSave(id: string) {
     const p = edited[id]; if (!p) return;
@@ -364,8 +420,13 @@ export default function AdminUtentiPage() {
     }).eq("id", id).select("*").single();
     if (err || !data) { setError("Salvataggio non riuscito."); setSavingId(null); return; }
     const u = data as Profile;
-    setProfiles(c => c.map(x => x.id === id ? u : x));
+    const nextProfiles = profiles.map(profile => profile.id === id ? u : profile);
+    setProfiles(nextProfiles);
     setEdited(c => ({ ...c, [id]: u }));
+    if (!matchesProfileFilters(u, search, filters)) {
+      setSelected(current => current.filter(selectedId => selectedId !== id));
+    }
+    setPage(current => Math.min(current, Math.max(1, Math.ceil(nextProfiles.filter(profile => matchesProfileFilters(profile, search, filters)).length / PAGE_SIZE))));
     setSuccess(`${u.nome} ${u.cognome} aggiornato.`);
     setSavingId(null);
   }
@@ -396,7 +457,7 @@ export default function AdminUtentiPage() {
   }
 
   function handleExportCsv() {
-    const sel = filtered.filter(p => selected.includes(p.id));
+    const sel = filtered.filter(p => selectedInResults.includes(p.id));
     if (!sel.length) { setError("Seleziona almeno un utente."); return; }
     const cols: Array<{ key: keyof Profile; label: string }> = [
       { key: "id", label: "ID" }, { key: "nome", label: "Nome" }, { key: "cognome", label: "Cognome" },
@@ -415,7 +476,7 @@ export default function AdminUtentiPage() {
     setSuccess(`${sel.length} utenti esportati.`); setError("");
   }
 
-  function resetFilters() { setSearch(""); setFilters({ role: "", ruolo_tessera: "", facolta: "", corso: "", anno: "" }); setSort({ key: "created_at", dir: "desc" }); setPage(1); }
+  function resetFilters() { applyFilters("", EMPTY_PROFILE_FILTERS); setSort({ key: "created_at", dir: "desc" }); }
 
   return (
     <>
@@ -470,7 +531,7 @@ export default function AdminUtentiPage() {
                 <p style={{ margin: ".35rem 0 0", color: "#4a5a7a", lineHeight: 1.5 }}>Cerca per nome, cognome, email, telefono, corso, facoltà, ruolo o ID.</p>
               </div>
               <div style={{ display: "flex", gap: ".8rem", flexWrap: "wrap", alignItems: "center" }}>
-                <span style={{ whiteSpace: "nowrap", fontSize: ".86rem", fontWeight: 700, color: "#1847a3", background: "rgba(24,71,163,.08)", border: "1px solid rgba(24,71,163,.12)", borderRadius: 999, padding: ".5rem .8rem" }}>{selected.length} selezionati</span>
+                <span style={{ whiteSpace: "nowrap", fontSize: ".86rem", fontWeight: 700, color: "#1847a3", background: "rgba(24,71,163,.08)", border: "1px solid rgba(24,71,163,.12)", borderRadius: 999, padding: ".5rem .8rem" }}>{selectedInResults.length} selezionati</span>
                 <button onClick={handleExportCsv} type="button" style={s.btnSecondary}>Esporta CSV</button>
                 <button onClick={resetFilters} type="button" style={s.btnSecondary}>Azzera filtri</button>
               </div>
@@ -481,13 +542,13 @@ export default function AdminUtentiPage() {
                 <label style={{ fontWeight: 700, color: "#17315f" }}>Ricerca generale</label>
                 <div style={{ display: "flex", alignItems: "center", gap: ".8rem", background: "white", border: "1px solid rgba(15,47,110,.10)", borderRadius: "1.2rem", padding: ".95rem 1rem" }}>
                   <span>🔎</span>
-                  <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Cerca utenti..." style={{ width: "100%", border: "none", outline: "none", background: "transparent", fontSize: "1rem", color: "#102a56" }} />
+                  <input value={search} onChange={e => applyFilters(e.target.value, filters)} placeholder="Cerca utenti..." style={{ width: "100%", border: "none", outline: "none", background: "transparent", fontSize: "1rem", color: "#102a56" }} />
                   {search && <span style={{ whiteSpace: "nowrap", fontSize: ".86rem", fontWeight: 700, color: "#1847a3", background: "rgba(24,71,163,.08)", border: "1px solid rgba(24,71,163,.12)", borderRadius: 999, padding: ".38rem .7rem" }}>{filtered.length} risultati</span>}
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
                 <label style={{ fontWeight: 700, color: "#17315f" }}>Ruolo</label>
-                <select value={filters.role} onChange={e => { setFilters(f => ({ ...f, role: e.target.value })); setPage(1); }} style={s.filterInput}>
+                <select value={filters.role} onChange={e => applyFilters(search, { ...filters, role: e.target.value })} style={s.filterInput}>
                   {[{ value: "", label: "Tutti i ruoli" }, { value: "user", label: "User" }, { value: "admin", label: "Admin" }].map(o => <option key={o.value || "r"} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
@@ -495,22 +556,22 @@ export default function AdminUtentiPage() {
                 <label style={{ fontWeight: 700, color: "#17315f" }}>Facoltà</label>
                 <select value={filters.facolta} onChange={e => {
                   const fac = e.target.value;
-                  setFilters(f => { const valid = fac ? profiles.filter(p => p.facolta === fac).map(p => p.corso_di_laurea) : profiles.map(p => p.corso_di_laurea); return { ...f, facolta: fac, corso: f.corso && !valid.includes(f.corso) ? "" : f.corso }; });
-                  setPage(1);
+                  const valid = fac ? profiles.filter(p => p.facolta === fac).map(p => p.corso_di_laurea) : profiles.map(p => p.corso_di_laurea);
+                  applyFilters(search, { ...filters, facolta: fac, corso: filters.corso && !valid.includes(filters.corso) ? "" : filters.corso });
                 }} style={s.filterInput}>
                   {FACULTY_OPTIONS.map(o => <option key={o.value || "f"} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
                 <label style={{ fontWeight: 700, color: "#17315f" }}>Corso di laurea</label>
-                <select value={filters.corso} onChange={e => { setFilters(f => ({ ...f, corso: e.target.value })); setPage(1); }} style={s.filterInput}>
+                <select value={filters.corso} onChange={e => applyFilters(search, { ...filters, corso: e.target.value })} style={s.filterInput}>
                   <option value="">Tutti i corsi</option>
                   {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
                 <label style={{ fontWeight: 700, color: "#17315f" }}>Anno di laurea</label>
-                <select value={filters.anno} onChange={e => { setFilters(f => ({ ...f, anno: e.target.value })); setPage(1); }} style={s.filterInput}>
+                <select value={filters.anno} onChange={e => applyFilters(search, { ...filters, anno: e.target.value })} style={s.filterInput}>
                   <option value="">Tutti gli anni</option>
                   {availableYears.map(y => <option key={y} value={String(y)}>{y}</option>)}
                 </select>
@@ -563,7 +624,7 @@ export default function AdminUtentiPage() {
                     return (
                       <tr key={p.id} style={{ background: bg }}>
                         <td style={{ ...s.td, ...s.stickySelC, background: bg, textAlign: "center" }}>
-                          <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggleSelect(p.id)} style={{ width: 18, height: 18, cursor: "pointer" }} />
+                          <input type="checkbox" checked={selectedInResults.includes(p.id)} onChange={() => toggleSelect(p.id)} style={{ width: 18, height: 18, cursor: "pointer" }} />
                         </td>
                         <td style={{ ...s.td, ...s.stickyFColC, background: bg }}><input value={cur.nome ?? ""} onChange={e => updateEdited(p.id, "nome", e.target.value)} style={s.field} /></td>
                         <td style={s.td}><input value={cur.cognome ?? ""} onChange={e => updateEdited(p.id, "cognome", e.target.value)} style={s.field} /></td>
@@ -617,9 +678,9 @@ export default function AdminUtentiPage() {
             </div>
 
             <div style={{ borderTop: "1px solid rgba(15,47,110,.08)", padding: "1rem 1.2rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap", background: "rgba(255,255,255,.72)" }}>
-              <div style={{ color: "#4f6282", fontWeight: 600 }}>Pagina {page} di {totalPages} • {filtered.length} utenti trovati</div>
+              <div style={{ color: "#4f6282", fontWeight: 600 }}>Pagina {currentPage} di {totalPages} • {filtered.length} utenti trovati</div>
               <div style={{ display: "flex", gap: ".7rem" }}>
-                {[["Precedente", page === 1, () => setPage(c => Math.max(1, c - 1))], ["Successiva", page === totalPages, () => setPage(c => Math.min(totalPages, c + 1))]].map(([label, dis, fn]) => (
+                {[["Precedente", currentPage === 1, () => setPage(Math.max(1, currentPage - 1))], ["Successiva", currentPage === totalPages, () => setPage(Math.min(totalPages, currentPage + 1))]].map(([label, dis, fn]) => (
                   <button key={String(label)} type="button" disabled={dis as boolean} onClick={fn as () => void} style={{ ...s.btnSecondary, background: dis ? "#f3f6fb" : "white", color: dis ? "#9aa7bd" : "#0f2f6e", cursor: dis ? "not-allowed" : "pointer" }}>
                     {label as string}
                   </button>

@@ -100,6 +100,10 @@ export function getProfileEmail(profile: AdminProfile | null | undefined) {
   return profile?.email_istituzionale?.trim() || "—";
 }
 
+export function getProfilePhone(profile: AdminProfile | null | undefined) {
+  return profile?.numero_telefono?.trim() || "—";
+}
+
 export function getProfileCourse(profile: AdminProfile | null | undefined) {
   return profile?.corso_di_laurea?.trim() || "—";
 }

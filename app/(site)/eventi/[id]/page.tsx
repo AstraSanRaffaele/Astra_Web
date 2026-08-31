@@ -7,8 +7,25 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import RsvpButton from "@/components/ui/rsvp-button";
 
+type EventRecord = {
+  id: string;
+  title: string;
+  description: string | null;
+  cover_image: string | null;
+  locandina: string | null;
+  location: string | null;
+  event_date: string;
+  data: string | null;
+  ora: string | null;
+  partnership: string | null;
+  max_posti: number | null;
+  iscrizioni_aperte: boolean | null;
+  iscrizioni_esterne: boolean | null;
+  link_iscrizioni_esterne: string | null;
+};
+
 // ── Helpers ───────────────────────────────────────────────────────
-function getEventDate(e: any): Date {
+function getEventDate(e: EventRecord): Date {
   if (e.data) {
     const timeStr = e.ora ?? "00:00:00";
     return new Date(`${e.data}T${timeStr}`);
@@ -43,7 +60,7 @@ function isPast(d: Date) {
   return d < new Date();
 }
 
-const getCover = (e: any) => e.locandina || e.cover_image || null;
+const getCover = (e: EventRecord) => e.locandina || e.cover_image || null;
 
 export default function EventoDetailPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -51,7 +68,7 @@ export default function EventoDetailPage() {
   const id = params?.id as string;
   const router = useRouter();
 
-  const [event, setEvent] = useState<any | null>(null);
+  const [event, setEvent] = useState<EventRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);

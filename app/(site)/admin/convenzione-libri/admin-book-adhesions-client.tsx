@@ -26,7 +26,6 @@ import {
   DELIVERY_MODE_LABELS,
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
-  PRODUCT_TYPE_LABELS,
   STUDY_AREAS,
   STUDY_AREA_LABELS,
   type BookYear,
@@ -42,12 +41,12 @@ import {
   formatPrice,
   formatRoundLabel,
   getAdhesionConventionTitle,
-  getAdhesionOriginalTotal,
   getAdhesionSavings,
   getAdhesionTotal,
   getConventionTitle,
   getFullName,
   getProfileEmail,
+  getProfilePhone,
   getSelectedProducts,
   matchesAdhesionSearch,
 } from "./adhesion-utils";
@@ -342,108 +341,55 @@ export default function AdminBookAdhesionsClient({
   const exportCsv = useCallback(() => {
     const rows: Array<Array<string | number>> = [
       [
-        "ID adesione",
-        "ID utente",
-        "Data adesione",
         "Nome e cognome",
-        "Email istituzionale",
-        "Corso",
-        "Anno utente",
-        "CF / Partita IVA",
-        "Indirizzo spedizione / fatturazione",
-        "Convenzione",
-        "Raccolta",
+        "Email",
+        "Telefono",
+        "Codice fiscale / Partita IVA",
         "Modalità consegna",
+        "Indirizzo consegna / fatturazione",
         "Metodo pagamento",
-        "Prodotti",
-        "ISBN prodotto e libri bundle",
-        "Tipi prodotto",
-        "Contenuto bundle",
-        "Aree di studio",
-        "Anni di riferimento",
-        "Prezzi originali EUR",
-        "Prezzi convenzionati EUR",
-        "Risparmi per prodotto EUR",
-        "Totale originale EUR",
-        "Risparmio totale EUR",
-        "Totale convenzionato EUR",
+        "Prodotti ordinati",
+        "ISBN",
+        "Prezzo convenzione EUR",
+        "Totale ordine EUR",
       ],
       ...filteredAdhesions.map((adhesion) => {
         const products = getSelectedProducts(adhesion, data.books);
         const profile = adhesion.profiles;
-        const originalTotal = getAdhesionOriginalTotal(adhesion, data.books);
         return [
-          adhesion.id,
-          adhesion.user_id,
-          formatDate(adhesion.created_at),
           getFullName(profile),
           getProfileEmail(profile),
-          profile?.corso_di_laurea || "",
-          String(profile?.anno_di_laurea ?? ""),
+          getProfilePhone(profile),
           adhesion.fiscal_code_or_vat || "",
-          adhesion.billing_shipping_address || "",
-          getAdhesionConventionTitle(adhesion),
-          formatRoundLabel(adhesion.book_convention_rounds),
           formatDeliveryMode(adhesion.book_convention_rounds?.delivery_mode),
+          adhesion.billing_shipping_address || "",
           formatPaymentMethod(adhesion.payment_method),
-          products.map((product) => `${product.title} (${formatPrice(product.price)})`).join(" | "),
-          products
-            .map((product) => {
-              const bundleIsbns = product.bundle_items
-                .filter((item) => item.isbn)
-                .map((item) => `${item.title}: ${item.isbn}`);
-              const productIsbn = product.isbn
-                ? [`${product.title}: ${product.isbn}`]
-                : [];
-              const values = [...productIsbn, ...bundleIsbns];
-              return values.length > 0 ? values.join(", ") : `${product.title}: —`;
-            })
-            .join(" | "),
-          products.map((product) => PRODUCT_TYPE_LABELS[product.product_type]).join(" | "),
-          products
-            .filter((product) => product.bundle_items.length > 0)
-            .map((product) =>
-              `${product.title}: ${product.bundle_items
-                .map((item) =>
-                  item.isbn ? `${item.title} (ISBN ${item.isbn})` : item.title
-                )
-                .join(", ")}`
-            )
-            .join(" | "),
           products
             .map((product) =>
-              product.study_area ? STUDY_AREA_LABELS[product.study_area] : ""
-            )
-            .filter(Boolean)
-            .join(" | "),
-          products
-            .map((product) =>
-              product.reference_year ? BOOK_YEAR_LABELS[product.reference_year] : ""
-            )
-            .filter(Boolean)
-            .join(" | "),
-          products
-            .map((product) =>
-              `${product.title}: ${
-                product.original_price === null ? "" : product.original_price.toFixed(2)
-              }`
-            )
-            .join(" | "),
-          products
-            .map(
-              (product) =>
-                `${product.title}: ${product.price === null ? "" : product.price.toFixed(2)}`
+              product.bundle_items.length === 0
+                ? product.title
+                : `${product.title}: ${product.bundle_items
+                    .map((item) => item.title)
+                    .join(", ")}`
             )
             .join(" | "),
           products
             .map((product) => {
-              const originalPrice = product.original_price ?? product.price;
-              if (originalPrice === null || product.price === null) return `${product.title}: `;
-              return `${product.title}: ${Math.max(0, originalPrice - product.price).toFixed(2)}`;
+              const isbns = [
+                ...(product.isbn ? [`${product.title}: ${product.isbn}`] : []),
+                ...product.bundle_items
+                  .filter((item) => item.isbn)
+                  .map((item) => `${item.title}: ${item.isbn}`),
+              ];
+              return isbns.join(", ");
             })
+            .filter(Boolean)
             .join(" | "),
-          originalTotal === null ? "" : originalTotal.toFixed(2),
-          getAdhesionSavings(adhesion, data.books).toFixed(2),
+          products
+            .map((product) =>
+              `${product.title}: ${product.price === null ? "" : product.price.toFixed(2)}`
+            )
+            .join(" | "),
           getAdhesionTotal(adhesion, data.books).toFixed(2),
         ];
       }),
@@ -455,23 +401,14 @@ export default function AdminBookAdhesionsClient({
     );
     const anchor = document.createElement("a");
     anchor.href = url;
-    const selectedRound =
-      filters.roundId === "all"
-        ? null
-        : data.rounds.find((round) => round.id === filters.roundId) ?? null;
-    const conventionSuffix =
-      filters.conventionId === "all" ? "" : `-convenzione-${filters.conventionId}`;
-    const collectionSuffix = selectedRound
-      ? `-raccolta-${selectedRound.starts_at.slice(0, 10)}-${selectedRound.id.slice(0, 8)}`
-      : "";
-    anchor.download = `adesioni-convenzioni-libri${conventionSuffix}${collectionSuffix}-${new Date()
+    anchor.download = `ordini-editore-${new Date()
       .toISOString()
       .slice(0, 10)}.csv`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
     URL.revokeObjectURL(url);
-  }, [data.books, data.rounds, filteredAdhesions, filters.conventionId, filters.roundId]);
+  }, [data.books, filteredAdhesions]);
 
   useEffect(() => {
     if (!autoExport || loading || error || autoExportTriggeredRef.current) return;

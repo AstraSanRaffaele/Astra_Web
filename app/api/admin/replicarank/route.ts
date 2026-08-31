@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
         ? editions?.find((edition) => edition.id === editionId)
         : editions?.find((edition) => edition.is_current) ?? editions?.[0];
 
-    let participants: any[] = [];
+    let participants: unknown[] = [];
 
     if (selectedEdition?.id) {
       const { data, error } = await supabase

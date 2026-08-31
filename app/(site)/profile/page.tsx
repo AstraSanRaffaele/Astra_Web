@@ -85,6 +85,7 @@ export default function ProfilePage() {
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
   const [passwordResetMessage, setPasswordResetMessage] = useState("");
   const [passwordResetCooldownUntil, setPasswordResetCooldownUntil] = useState<number | null>(null);
+  const [passwordResetCurrentTime, setPasswordResetCurrentTime] = useState<number | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
 
   const [nome, setNome] = useState("");
@@ -101,7 +102,9 @@ export default function ProfilePage() {
     return `password-reset-cooldown:${emailIstituzionale.toLowerCase()}`;
   }, [emailIstituzionale]);
 
-  const remainingPasswordResetMs = passwordResetCooldownUntil ? Math.max(passwordResetCooldownUntil - Date.now(), 0) : 0;
+  const remainingPasswordResetMs = passwordResetCooldownUntil && passwordResetCurrentTime !== null
+    ? Math.max(passwordResetCooldownUntil - passwordResetCurrentTime, 0)
+    : 0;
   const isPasswordResetLocked = remainingPasswordResetMs > 0;
   const courseOptions = useMemo(() => degreeOptionsMap[facolta] ?? [], [facolta]);
 
@@ -127,7 +130,11 @@ export default function ProfilePage() {
         const stored = window.localStorage.getItem(key);
         if (stored) {
           const until = Number(stored);
-          if (Number.isFinite(until) && until > Date.now()) setPasswordResetCooldownUntil(until);
+          const currentTime = Date.now();
+          if (Number.isFinite(until) && until > currentTime) {
+            setPasswordResetCurrentTime(currentTime);
+            setPasswordResetCooldownUntil(until);
+          }
           else { window.localStorage.removeItem(key); setPasswordResetCooldownUntil(null); }
         }
       }
@@ -139,10 +146,14 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!passwordResetCooldownUntil) return;
     const interval = window.setInterval(() => {
-      if (passwordResetCooldownUntil <= Date.now()) {
+      const currentTime = Date.now();
+      if (passwordResetCooldownUntil <= currentTime) {
         if (passwordResetStorageKey) window.localStorage.removeItem(passwordResetStorageKey);
         setPasswordResetCooldownUntil(null);
+        setPasswordResetCurrentTime(null);
         setPasswordResetMessage("Ora puoi richiedere una nuova email per reimpostare la password.");
+      } else {
+        setPasswordResetCurrentTime(currentTime);
       }
     }, 1000);
     return () => window.clearInterval(interval);
@@ -154,8 +165,10 @@ export default function ProfilePage() {
     setPasswordResetLoading(true); setPasswordResetMessage("");
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(emailIstituzionale, { redirectTo: `${window.location.origin}/update-password` });
     if (resetError) { setPasswordResetMessage(resetError.message || "Non è stato possibile inviare l'email."); setPasswordResetLoading(false); return; }
-    const until = Date.now() + PASSWORD_RESET_COOLDOWN_MS;
+    const currentTime = Date.now();
+    const until = currentTime + PASSWORD_RESET_COOLDOWN_MS;
     if (passwordResetStorageKey) window.localStorage.setItem(passwordResetStorageKey, String(until));
+    setPasswordResetCurrentTime(currentTime);
     setPasswordResetCooldownUntil(until);
     setPasswordResetMessage("Email inviata. Puoi richiederne una nuova solo ogni ora.");
     setPasswordResetLoading(false);

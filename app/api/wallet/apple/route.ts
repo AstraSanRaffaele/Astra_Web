@@ -118,11 +118,11 @@ export async function GET() {
       },
     });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
   console.error("PASS ERROR:", err);
 
   return NextResponse.json(
-    { error: err?.message || String(err) },
+    { error: err instanceof Error ? err.message : String(err) },
     { status: 500 }
   );
 }

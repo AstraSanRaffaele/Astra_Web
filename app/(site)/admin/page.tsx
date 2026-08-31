@@ -1,27 +1,6 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import Navbar from "@/components/ui/navbar";
-import Footer from "@/components/ui/footer";
-import { createClient } from "@/lib/supabase/client";
-
-type Role = "user" | "admin";
-
-type Profile = {
-  id: string;
-  nome: string;
-  cognome: string;
-  email_istituzionale: string;
-  numero_telefono: string;
-  facolta: string;
-  corso_di_laurea: string;
-  anno_di_laurea: number;
-  data_di_nascita: string;
-  role: Role;
-  created_at: string;
-  updated_at: string;
-};
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
 type DashboardStats = {
   totalUsers: number;
@@ -31,132 +10,66 @@ type DashboardStats = {
   filosofiaUsers: number;
 };
 
-export default function AdminPage() {
-  const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
+const EMPTY_STATS: DashboardStats = {
+  totalUsers: 0,
+  totalAdmins: 0,
+  medicinaUsers: 0,
+  psicologiaUsers: 0,
+  filosofiaUsers: 0,
+};
 
-  const [loading, setLoading] = useState(true);
-  const [adminProfile, setAdminProfile] = useState<Profile | null>(null);
-  const [recentUsers, setRecentUsers] = useState<Profile[]>([]);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    totalAdmins: 0,
-    medicinaUsers: 0,
-    psicologiaUsers: 0,
-    filosofiaUsers: 0,
-  });
-  const [error, setError] = useState("");
+export default async function AdminPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  async function fetchAllProfiles() {
-    const batchSize = 1000;
-    let from = 0;
-    let rows: Profile[] = [];
-    let total: number | null = null;
-
-    while (true) {
-      const { data, error, count } = await supabase
-        .from("profiles")
-        .select("*", { count: from === 0 ? "exact" : undefined })
-        .order("created_at", { ascending: false })
-        .range(from, from + batchSize - 1);
-
-      if (error) throw error;
-
-      const chunk = (data ?? []) as Profile[];
-      rows = [...rows, ...chunk];
-
-      if (from === 0) total = count ?? null;
-
-      if (chunk.length < batchSize) break;
-      if (total !== null && rows.length >= total) break;
-
-      from += batchSize;
-    }
-
-    return rows;
+  if (!user) {
+    redirect("/login?next=/admin");
   }
 
-  useEffect(() => {
-    async function loadAdminPage() {
-      setLoading(true);
-      setError("");
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
+  if (profile?.role !== "admin") {
+    redirect("/profile");
+  }
 
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
+  let stats: DashboardStats = EMPTY_STATS;
+  let error = "";
 
-      const { data: myProfile, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+  try {
+    const countResults = await Promise.all([
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin"),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("facolta", "medicina"),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("facolta", "psicologia"),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("facolta", "filosofia"),
+    ]);
 
-      if (profileError || !myProfile) {
-        router.replace("/login");
-        return;
-      }
-
-      const typedProfile = myProfile as Profile;
-
-      if (typedProfile.role !== "admin") {
-        router.replace("/profile");
-        return;
-      }
-
-      setAdminProfile(typedProfile);
-
-      let profiles: Profile[] = [];
-
-      try {
-        profiles = await fetchAllProfiles();
-      } catch {
-        setError("Impossibile caricare i dati amministrativi.");
-        setLoading(false);
-        return;
-      }
-
-      setRecentUsers(profiles.slice(0, 6));
-
-      setStats({
-        totalUsers: profiles.length,
-        totalAdmins: profiles.filter((p) => p.role === "admin").length,
-        medicinaUsers: profiles.filter((p) => p.facolta === "medicina").length,
-        psicologiaUsers: profiles.filter((p) => p.facolta === "psicologia").length,
-        filosofiaUsers: profiles.filter((p) => p.facolta === "filosofia").length,
-      });
-
-      setLoading(false);
+    if (countResults.some(({ count, error: countError }) => countError || count === null)) {
+      throw new Error("Profile count failed");
     }
 
-    loadAdminPage();
-  }, [router, supabase]);
-
-  if (loading) {
-    return (
-      <main className="admin-page">
-        <Navbar />
-        <div className="admin-shell">
-          <div className="loading-card">
-            <span className="section-tag">Admin</span>
-            <h1 className="admin-title">Caricamento dashboard...</h1>
-            <p className="admin-subtitle">Sto recuperando i dati amministrativi.</p>
-          </div>
-        </div>
-        <Footer />
-        <style>{styles}</style>
-      </main>
-    );
+    stats = {
+      totalUsers: countResults[0].count ?? 0,
+      totalAdmins: countResults[1].count ?? 0,
+      medicinaUsers: countResults[2].count ?? 0,
+      psicologiaUsers: countResults[3].count ?? 0,
+      filosofiaUsers: countResults[4].count ?? 0,
+    };
+  } catch {
+    stats = EMPTY_STATS;
+    error = "Impossibile caricare i dati amministrativi.";
   }
 
   return (
     <main className="admin-page">
       <div className="bg-orb bg-orb-1" />
       <div className="bg-orb bg-orb-2" />
-      <Navbar />
       <div className="admin-shell">
         <section className="hero">
           <div className="heroText">
@@ -208,68 +121,68 @@ export default function AdminPage() {
               </div>
 
               <nav className="adminMenu" aria-label="Strumenti amministratore">
-                <a href="/admin/convenzioni" className="adminMenuItem">
+                <Link href="/admin/convenzioni" className="adminMenuItem">
                   <span className="adminMenuIcon">01</span>
                   <span className="adminMenuText">
                     <strong>Convenzioni generali</strong>
                     <small>Gestisci partner, vantaggi e convenzioni non librarie</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
-                </a>
+                </Link>
 
-                <a href="/admin/convenzione-libri" className="adminMenuItem">
+                <Link href="/admin/convenzione-libri" className="adminMenuItem">
                   <span className="adminMenuIcon">02</span>
                   <span className="adminMenuText">
                     <strong>Convenzioni libri</strong>
                     <small>Consulta adesioni, catalogo e periodi</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
-                </a>
+                </Link>
 
-                <a href="/admin/eventi" className="adminMenuItem">
+                <Link href="/admin/eventi" className="adminMenuItem">
                   <span className="adminMenuIcon">03</span>
                   <span className="adminMenuText">
                     <strong>Eventi</strong>
                     <small>Crea e modifica gli eventi</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
-                </a>
+                </Link>
 
-                <a href="/admin/rsvp" className="adminMenuItem">
+                <Link href="/admin/rsvp" className="adminMenuItem">
                   <span className="adminMenuIcon">04</span>
                   <span className="adminMenuText">
                     <strong>RSVP</strong>
                     <small>Gestisci le adesioni agli eventi</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
-                </a>
+                </Link>
 
-                <a href="/admin/utenti" className="adminMenuItem">
+                <Link href="/admin/utenti" className="adminMenuItem">
                   <span className="adminMenuIcon">05</span>
                   <span className="adminMenuText">
                     <strong>Utenti</strong>
                     <small>Visualizza e gestisci gli utenti registrati</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
-                </a>
+                </Link>
 
-                <a href="/admin/replicarank" className="adminMenuItem">
+                <Link href="/admin/replicarank" className="adminMenuItem">
                   <span className="adminMenuIcon">06</span>
                   <span className="adminMenuText">
                     <strong>ReplicaRANK</strong>
                     <small>Edizioni, esami, partecipanti e graduatoria</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
-                </a>
+                </Link>
 
-                <a href="/admin/matricole" className="adminMenuItem">
+                <Link href="/admin/matricole" className="adminMenuItem">
                   <span className="adminMenuIcon">07</span>
                   <span className="adminMenuText">
                     <strong>Matricole</strong>
                     <small>Attiva la pagina, il banner e i link dei corsi</small>
                   </span>
                   <span className="adminMenuArrow">→</span>
-                </a>
+                </Link>
               </nav>
             </div>
           </div>

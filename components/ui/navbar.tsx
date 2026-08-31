@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 function AstraLogo({ size = 36 }: { size?: number }) {
@@ -70,7 +71,6 @@ export default function Navbar() {
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const mobileActionsRef = useRef<HTMLDivElement | null>(null);
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
-  const hasResolvedInitialAuthRef = useRef(false);
   const hasAppliedCachedAuthRef = useRef(false);
   const isSigningOutRef = useRef(false);
 
@@ -172,7 +172,6 @@ export default function Navbar() {
       setUserCohortYear("");
       setAuthReady(true);
 
-      hasResolvedInitialAuthRef.current = true;
       hasAppliedCachedAuthRef.current = true;
 
       if (typeof window !== "undefined") {
@@ -230,118 +229,106 @@ export default function Navbar() {
 
   useEffect(() => {
     let mounted = true;
-    hasResolvedInitialAuthRef.current = false;
+    let authSequence = 0;
+    let deferredAuthTimer: number | null = null;
+
+    const isCurrent = (sequence: number) => mounted && sequence === authSequence;
+
+    const applySignedOut = (sequence: number, clearCache: boolean) => {
+      if (!isCurrent(sequence)) return;
+      setIsLoggedIn(false);
+      setProfileName("");
+      setIsAdmin(false);
+      setUserCohortYear("");
+      setAuthReady(true);
+      if (clearCache) {
+        window.sessionStorage.removeItem("navbar-auth-cache");
+      }
+    };
+
+    const resolveSession = async (
+      session: Session | null,
+      sequence: number,
+      clearCacheWhenSignedOut: boolean,
+    ) => {
+      try {
+        const user = session?.user;
+        if (!user) {
+          applySignedOut(sequence, clearCacheWhenSignedOut);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (!isCurrent(sequence)) return;
+
+        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+        setIsLoggedIn(true);
+        setIsAdmin(profile?.role === "admin");
+        setUserCohortYear(
+          String(
+            profile?.cohort_year ||
+            profile?.classe ||
+            profile?.class_year ||
+            profile?.graduation_year ||
+            user.user_metadata?.cohort_year ||
+            user.user_metadata?.classe ||
+            ""
+          ).match(/\d{4}/)?.[0] ?? ""
+        );
+        setProfileName(fullName || user.email || "Profilo");
+        setAuthReady(true);
+      } catch {
+        applySignedOut(sequence, clearCacheWhenSignedOut);
+      }
+    };
+
+    const deferSessionResolution = (session: Session | null) => {
+      const sequence = ++authSequence;
+      if (deferredAuthTimer !== null) {
+        window.clearTimeout(deferredAuthTimer);
+      }
+      deferredAuthTimer = window.setTimeout(() => {
+        deferredAuthTimer = null;
+        void resolveSession(session, sequence, true);
+      }, 0);
+    };
 
     const loadUser = async () => {
+      const sequence = ++authSequence;
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        if (!mounted) return;
-        const user = session?.user;
-        if (!user) {
-          setIsLoggedIn(false);
-          setProfileName("");
-          setIsAdmin(false);
-          setUserCohortYear("");
-          setAuthReady(true);
-          return;
-        }
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (!mounted) return;
-        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
-          .filter(Boolean)
-          .join(" ")
-          .trim();
-        setIsLoggedIn(true);
-        setIsAdmin(profile?.role === "admin");
-        setUserCohortYear(
-          String(
-            profile?.cohort_year ||
-            profile?.classe ||
-            profile?.class_year ||
-            profile?.graduation_year ||
-            user.user_metadata?.cohort_year ||
-            user.user_metadata?.classe ||
-            ""
-          ).match(/\d{4}/)?.[0] ?? ""
-        );
-        setProfileName(fullName || user.email || "Profilo");
-        setAuthReady(true);
+        if (!isCurrent(sequence)) return;
+        await resolveSession(session, sequence, false);
       } catch {
-        if (!mounted) return;
-        setIsLoggedIn(false);
-        setProfileName("");
-        setIsAdmin(false);
-        setUserCohortYear("");
-        setAuthReady(true);
-      } finally {
-        if (mounted) hasResolvedInitialAuthRef.current = true;
+        applySignedOut(sequence, false);
       }
     };
 
-    loadUser();
+    void loadUser();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === "INITIAL_SESSION") return;
-      if (!hasResolvedInitialAuthRef.current && event !== "SIGNED_OUT") return;
-      const user = session?.user;
-      try {
-        if (!user) {
-          setIsLoggedIn(false);
-          setProfileName("");
-          setIsAdmin(false);
-          setUserCohortYear("");
-          setAuthReady(true);
-          if (typeof window !== "undefined") {
-            window.sessionStorage.removeItem("navbar-auth-cache");
-          }
-          return;
-        }
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (!mounted) return;
-        const fullName = [user.user_metadata?.nome, user.user_metadata?.cognome]
-          .filter(Boolean)
-          .join(" ")
-          .trim();
-        setIsLoggedIn(true);
-        setIsAdmin(profile?.role === "admin");
-        setUserCohortYear(
-          String(
-            profile?.cohort_year ||
-            profile?.classe ||
-            profile?.class_year ||
-            profile?.graduation_year ||
-            user.user_metadata?.cohort_year ||
-            user.user_metadata?.classe ||
-            ""
-          ).match(/\d{4}/)?.[0] ?? ""
-        );
-        setProfileName(fullName || user.email || "Profilo");
-        setAuthReady(true);
-      } catch {
-        if (!mounted) return;
-        setIsLoggedIn(false);
-        setProfileName("");
-        setIsAdmin(false);
-        setUserCohortYear("");
-        setAuthReady(true);
-      }
+      deferSessionResolution(session);
     });
 
     return () => {
       mounted = false;
+      authSequence += 1;
+      if (deferredAuthTimer !== null) {
+        window.clearTimeout(deferredAuthTimer);
+      }
       subscription.unsubscribe();
     };
   }, [supabase]);
@@ -412,12 +399,12 @@ export default function Navbar() {
           transition: "background .3s, border-color .3s, box-shadow .3s",
         }}
       >
-        <a
+        <Link
           href="/"
           style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}
         >
           <AstraLogo size={96} />
-        </a>
+        </Link>
 
         <ul
           className="navbar-desktop-links"
@@ -817,7 +804,7 @@ export default function Navbar() {
               {!authReady ? (
                 <span className="nb-skeleton" style={{ display: "block", height: 60, borderRadius: "18px" }} />
               ) : !isLoggedIn ? (
-                <a
+                <Link
                   href="/#join"
                   onClick={closeMenu}
                   style={{
@@ -857,7 +844,7 @@ export default function Navbar() {
                       />
                     </svg>
                   </span>
-                </a>
+                </Link>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {isAdmin && (

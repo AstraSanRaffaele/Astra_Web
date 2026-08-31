@@ -4,8 +4,23 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+type EventRecord = {
+  id: string;
+  title: string;
+  description: string | null;
+  cover_image: string | null;
+  locandina: string | null;
+  location: string | null;
+  event_date: string;
+  data: string | null;
+  ora: string | null;
+  partnership: string | null;
+  iscrizioni_aperte: boolean | null;
+  iscrizioni_esterne: boolean | null;
+};
+
 // ── Helpers ───────────────────────────────────────────────────────
-function getEventDate(e: any): Date {
+function getEventDate(e: EventRecord): Date {
   // Prefer dedicated data + ora fields, fallback to event_date
   if (e.data) {
     const dateStr = e.data;
@@ -52,7 +67,7 @@ function SkeletonRow() {
 export default function EventiPage() {
   const supabase = useMemo(() => createClient(), []);
 
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<EventRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"prossimi" | "tutti" | "passati">("prossimi");
   const [view, setView] = useState<"list" | "grid">("grid");
@@ -80,7 +95,7 @@ export default function EventiPage() {
   }, [events, filter]);
 
   // ── Cover image: prefer locandina, fallback cover_image
-  const getCover = (e: any) => e.locandina || e.cover_image || null;
+  const getCover = (e: EventRecord) => e.locandina || e.cover_image || null;
 
   return (
     <>

@@ -338,7 +338,7 @@ export default function MatricoleCoursePage() {
                   Il tuo percorso sta per iniziare
                 </h2>
                 <p className="muted">
-                  Scopri quando inizieranno le lezioni del tuo corso e preparati a vivere la tua esperienza universitaria al meglio. Segna la data sul calendario e non perdere l'inizio del tuo percorso accademico.
+                  Scopri quando inizieranno le lezioni del tuo corso e preparati a vivere la tua esperienza universitaria al meglio. Segna la data sul calendario e non perdere l’inizio del tuo percorso accademico.
                 </p>
               </div>
 

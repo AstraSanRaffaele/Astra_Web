@@ -1079,6 +1079,7 @@ export async function GET(req: NextRequest) {
           nome,
           cognome,
           email_istituzionale,
+          numero_telefono,
           corso_di_laurea,
           anno_di_laurea
         ),
