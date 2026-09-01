@@ -249,6 +249,31 @@ export default function BookConventionStyles() {
         text-transform: uppercase;
       }
 
+      .book-distributor {
+        padding: 0 3rem 1.15rem;
+      }
+
+      .book-distributor-note {
+        display: inline-flex;
+        align-items: center;
+        gap: .42rem;
+        margin: 0;
+        color: #747B8C;
+        font-size: .7rem;
+        line-height: 1.45;
+      }
+
+      .book-distributor-note svg {
+        flex: none;
+        color: #2E4080;
+        opacity: .62;
+      }
+
+      .book-distributor-note strong {
+        color: #3A4359;
+        font-weight: 600;
+      }
+
       .book-notices {
         display: grid;
         gap: .75rem;
@@ -987,6 +1012,7 @@ export default function BookConventionStyles() {
           font-size: clamp(2.75rem,14vw,4rem);
         }
 
+        .book-distributor,
         .book-notices,
         .book-shop {
           padding-left: 1.25rem;

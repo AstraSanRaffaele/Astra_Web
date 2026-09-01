@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   CircleAlert,
+  PackageCheck,
   RotateCcw,
   Search,
   X,
@@ -362,6 +363,15 @@ export default function BookConventionClient() {
             </header>
           </div>
         </section>
+
+        <div className="book-shell book-distributor">
+          <p className="book-distributor-note">
+            <PackageCheck size={14} strokeWidth={1.7} aria-hidden="true" />
+            <span>
+              Distribuzione libri a cura di <strong>CP GROUP s.r.l.s.</strong>
+            </span>
+          </p>
+        </div>
 
         <div className="book-shell book-notices" aria-live="polite">
           {successMessage ? (
