@@ -19,6 +19,7 @@ import {
   STUDY_AREA_LABELS,
 } from "@/lib/book-convention";
 import {
+  formatBookYear,
   formatDate,
   formatDeliveryMode,
   formatPaymentMethod,
@@ -27,6 +28,7 @@ import {
   getAdhesionConventionTitle,
   getAdhesionOriginalTotal,
   getAdhesionSavings,
+  getAdhesionSelectedYear,
   getAdhesionTotal,
   getFullName,
   getProfileCourse,
@@ -182,6 +184,14 @@ export default function AdhesionDetailDialog({
                 <DetailRow
                   label="Raccolta"
                   value={formatRoundLabel(adhesion.book_convention_rounds)}
+                />
+                <DetailRow
+                  label="Anno selezionato"
+                  value={
+                    <span className={styles.selectedYearBadge}>
+                      {formatBookYear(getAdhesionSelectedYear(adhesion))}
+                    </span>
+                  }
                 />
               </DetailSection>
             </div>

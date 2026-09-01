@@ -29,6 +29,22 @@ import OrderSummary from "./order-summary";
 
 type LoadState = "loading" | "ready" | "error";
 
+type SelectedProduct = {
+  productId: number;
+  selectedYear: BookYear;
+};
+
+function isProductAvailableForYear(
+  product: BookConventionCatalogBook,
+  year: BookYear
+) {
+  return (
+    product.reference_years.includes(year) &&
+    product.is_available &&
+    !product.adhered_years.includes(year)
+  );
+}
+
 function normalizeSearchValue(value: string) {
   return value
     .normalize("NFD")
@@ -79,7 +95,7 @@ export default function BookConventionClient() {
   const [activeArea, setActiveArea] = useState<StudyArea>(STUDY_AREAS[0]);
   const [activeYear, setActiveYear] = useState<BookYear>(BOOK_YEARS[0]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SelectedProduct[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const loadRequestIdRef = useRef(0);
@@ -131,10 +147,13 @@ export default function BookConventionClient() {
             `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
           );
         }
-        setSelectedIds((current) =>
-          current.filter((productId) =>
-            catalog.some((product) => product.id === productId && product.is_available)
-          )
+        setSelectedItems((current) =>
+          current.filter(({ productId, selectedYear }) => {
+            const product = catalog.find((item) => item.id === productId);
+            return Boolean(
+              product && isProductAvailableForYear(product, selectedYear)
+            );
+          })
         );
         setActiveArea((current) =>
           catalog.some((product) => product.study_area === current)
@@ -164,7 +183,8 @@ export default function BookConventionClient() {
   useEffect(() => {
     const productsInCurrentYear = catalog.some(
       (product) =>
-        product.study_area === activeArea && product.reference_year === activeYear
+        product.study_area === activeArea &&
+        product.reference_years.includes(activeYear)
     );
 
     if (productsInCurrentYear) return;
@@ -172,7 +192,9 @@ export default function BookConventionClient() {
     const allowedYears = BOOK_YEARS_BY_STUDY_AREA[activeArea];
     const firstYearWithProducts = allowedYears.find((year) =>
       catalog.some(
-        (product) => product.study_area === activeArea && product.reference_year === year
+        (product) =>
+          product.study_area === activeArea &&
+          product.reference_years.includes(year)
       )
     );
 
@@ -189,7 +211,7 @@ export default function BookConventionClient() {
       catalog.filter((product) => {
         if (
           product.study_area !== activeArea ||
-          product.reference_year !== activeYear
+          !product.reference_years.includes(activeYear)
         ) {
           return false;
         }
@@ -213,10 +235,19 @@ export default function BookConventionClient() {
   const selectedProducts = useMemo(() => {
     const productsById = new Map(catalog.map((product) => [product.id, product]));
 
-    return selectedIds
-      .map((productId) => productsById.get(productId))
-      .filter((product): product is BookConventionCatalogBook => Boolean(product));
-  }, [catalog, selectedIds]);
+    return selectedItems.flatMap(({ productId, selectedYear }) => {
+      const product = productsById.get(productId);
+
+      if (!product?.reference_years.includes(selectedYear)) return [];
+
+      return [
+        {
+          ...product,
+          reference_year: selectedYear,
+        },
+      ];
+    });
+  }, [catalog, selectedItems]);
 
   const total = useMemo(
     () =>
@@ -229,22 +260,31 @@ export default function BookConventionClient() {
 
   const canAdhere = Boolean(data?.canAdhere);
 
-  function toggleProduct(productId: number) {
+  function toggleProduct(productId: number, selectedYear: BookYear) {
     if (!canAdhere) return;
 
     const product = catalog.find((item) => item.id === productId);
-    if (!product?.is_available) return;
+    if (!product || !isProductAvailableForYear(product, selectedYear)) return;
 
-    setSelectedIds((current) =>
-      current.includes(productId)
-        ? current.filter((id) => id !== productId)
-        : [...current, productId]
-    );
+    setSelectedItems((current) => {
+      const alreadySelected = current.some(
+        (item) =>
+          item.productId === productId && item.selectedYear === selectedYear
+      );
+
+      return alreadySelected
+        ? current.filter(
+            (item) =>
+              item.productId !== productId ||
+              item.selectedYear !== selectedYear
+          )
+        : [...current, { productId, selectedYear }];
+    });
   }
 
   function handleCompleted(message: string) {
     setDialogOpen(false);
-    setSelectedIds([]);
+    setSelectedItems([]);
     setSuccessMessage(message);
     void loadConvention(true);
   }
@@ -288,7 +328,12 @@ export default function BookConventionClient() {
   const activeAdhesions = data.activeAdhesions ?? [];
   const activeRounds = data.activeRounds ?? [];
   const activeRoundHasProducts =
-    activeRounds.length > 0 && catalog.some((product) => product.is_available);
+    activeRounds.length > 0 &&
+    catalog.some((product) =>
+      product.reference_years.some((year) =>
+        isProductAvailableForYear(product, year)
+      )
+    );
 
   return (
     <>
@@ -339,8 +384,8 @@ export default function BookConventionClient() {
                     : "Adesioni già registrate"}
                 </strong>
                 <p>
-                  Le proposte già ordinate nella raccolta corrente non sono più
-                  selezionabili; puoi comunque aderire alle altre proposte disponibili.
+                  Gli anni per cui hai già inviato un ordine non sono più
+                  selezionabili; puoi comunque aderire per gli altri anni disponibili.
                 </p>
               </div>
             </div>
@@ -449,7 +494,7 @@ export default function BookConventionClient() {
                         const count = catalog.filter(
                           (product) =>
                             product.study_area === activeArea &&
-                            product.reference_year === year
+                            product.reference_years.includes(year)
                         ).length;
                         const active = activeYear === year;
 
@@ -489,7 +534,12 @@ export default function BookConventionClient() {
                       <BookProductCard
                         key={product.id}
                         product={product}
-                        selected={selectedIds.includes(product.id)}
+                        selectedYear={activeYear}
+                        selected={selectedItems.some(
+                          (item) =>
+                            item.productId === product.id &&
+                            item.selectedYear === activeYear
+                        )}
                         selectionDisabled={!canAdhere}
                         onToggle={toggleProduct}
                       />

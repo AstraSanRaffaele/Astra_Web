@@ -43,6 +43,7 @@ export type AdminBookConventionProduct = {
   original_price?: number | string | null;
   isbn?: string | null;
   reference_year: BookYear;
+  reference_years: BookYear[];
   description: string | null;
   sort_order: number | null;
   product_type: ProductType;
@@ -60,6 +61,7 @@ export type SelectedProductSnapshot = {
   original_price?: number | string | null;
   isbn?: string | null;
   reference_year?: BookYear;
+  reference_years?: BookYear[];
   description?: string | null;
   product_type?: ProductType;
   bundle_items?: Array<BookBundleItem | string>;
@@ -72,6 +74,8 @@ export type LegacyBookItem = {
   price?: number | string | null;
   original_price?: number | string | null;
   isbn?: string | null;
+  reference_year?: BookYear;
+  reference_years?: BookYear[];
   bundle_items?: Array<BookBundleItem | string>;
 };
 
@@ -79,6 +83,7 @@ export type AdminBookAdhesion = {
   id: string;
   user_id: string;
   convention_id: number | null;
+  selected_year: BookYear | null;
   payment_method: PaymentMethod | string | null;
   fiscal_code_or_vat?: string | null;
   billing_shipping_address?: string | null;
@@ -101,6 +106,7 @@ export type DisplaySelectedProduct = {
   original_price: number | null;
   isbn: string | null;
   reference_year?: BookYear;
+  reference_years: BookYear[];
   description?: string | null;
   product_type: ProductType;
   bundle_items: BookBundleItem[];

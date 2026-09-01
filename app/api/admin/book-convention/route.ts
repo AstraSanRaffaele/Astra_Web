@@ -13,6 +13,7 @@ import {
   STUDY_AREAS,
   isBookYearAllowedForStudyArea,
   normalizeBookConventionCoverUrl,
+  normalizeBookYears,
   type BookYear,
   type BookBundleItem,
   type PaymentMethod,
@@ -27,6 +28,7 @@ type IncomingBook = {
   original_price?: unknown;
   isbn?: unknown;
   reference_year?: unknown;
+  reference_years?: unknown;
   description?: unknown;
   sort_order?: unknown;
   bundle_items?: unknown;
@@ -42,6 +44,8 @@ type NormalizedBookInput = {
   original_price: number | null | undefined;
   isbn: string | null | undefined;
   reference_year: BookYear;
+  reference_years: BookYear[];
+  reference_years_provided: boolean;
   description: string | null;
   sort_order: number;
   bundle_items: BookBundleItem[] | undefined;
@@ -58,6 +62,7 @@ type ExistingBookRow = {
   original_price: number | string | null;
   isbn: string | null;
   reference_year: BookYear;
+  reference_years: BookYear[];
   description: string | null;
   sort_order: number | null;
   product_type: ProductType;
@@ -185,6 +190,29 @@ function parseInteger(value: unknown) {
 
 function isBookYear(value: unknown): value is BookYear {
   return typeof value === "string" && BOOK_YEARS.includes(value as BookYear);
+}
+
+function normalizeIncomingBookYears(
+  value: unknown,
+  fallback: BookYear,
+  productTitle: string
+) {
+  if (value === undefined) return [fallback];
+
+  if (!Array.isArray(value) || value.length === 0 || value.length > BOOK_YEARS.length) {
+    throw new Error(`Seleziona almeno un anno valido per: ${productTitle}`);
+  }
+
+  if (!value.every((year) => isBookYear(year))) {
+    throw new Error(`Uno o più anni non sono validi per: ${productTitle}`);
+  }
+
+  const normalizedYears = normalizeBookYears(value);
+  if (normalizedYears.length !== value.length) {
+    throw new Error(`La selezione degli anni contiene duplicati per: ${productTitle}`);
+  }
+
+  return normalizedYears;
 }
 
 function isPaymentMethod(value: unknown): value is PaymentMethod {
@@ -388,6 +416,12 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
       throw new Error(`Anno di riferimento non valido per: ${title}`);
     }
 
+    const referenceYears = normalizeIncomingBookYears(
+      book.reference_years,
+      book.reference_year,
+      title
+    );
+
     if (description.length > 4000) {
       throw new Error(`Descrizione troppo lunga per: ${title}`);
     }
@@ -410,10 +444,12 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
 
     if (
       studyArea &&
-      !isBookYearAllowedForStudyArea(studyArea, book.reference_year)
+      referenceYears.some(
+        (year) => !isBookYearAllowedForStudyArea(studyArea, year)
+      )
     ) {
       throw new Error(
-        `L’anno selezionato non è disponibile per la macro-area di “${title}”.`
+        `Uno o più anni selezionati non sono disponibili per la macro-area di “${title}”.`
       );
     }
 
@@ -427,7 +463,9 @@ function normalizeBooks(value: unknown): NormalizedBookInput[] {
       price,
       original_price: originalPrice,
       isbn,
-      reference_year: book.reference_year,
+      reference_year: referenceYears[0],
+      reference_years: referenceYears,
+      reference_years_provided: book.reference_years !== undefined,
       description: description || null,
       sort_order: sortOrder,
       bundle_items: resolvedBundleItems,
@@ -920,7 +958,7 @@ async function getBooksWithRoundIds(
   let booksQuery = supabase
     .from("book_convention_books")
     .select(
-      "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image, created_at, updated_at"
+      "id, convention_id, title, price, original_price, isbn, reference_year, reference_years, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image, created_at, updated_at"
     )
     .order("study_area", { ascending: true })
     .order("reference_year", { ascending: true })
@@ -1065,6 +1103,7 @@ export async function GET(req: NextRequest) {
         user_id,
         convention_id,
         round_id,
+        selected_year,
         payment_method,
         fiscal_code_or_vat,
         billing_shipping_address,
@@ -1379,7 +1418,7 @@ export async function POST(req: NextRequest) {
     const currentBooksResult = await supabase
       .from("book_convention_books")
       .select(
-        "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+        "id, convention_id, title, price, original_price, isbn, reference_year, reference_years, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
       )
       .eq("convention_id", savedConventionId);
 
@@ -1438,6 +1477,18 @@ export async function POST(req: NextRequest) {
         book.original_price !== undefined
           ? book.original_price
           : parseNullableNumber(existing?.original_price);
+      const referenceYears = book.reference_years_provided
+        ? book.reference_years
+        : existing
+          ? normalizeBookYears(existing.reference_years, existing.reference_year)
+          : book.reference_years;
+
+      if (referenceYears.length === 0) {
+        return privateJson(
+          { error: `Seleziona almeno un anno valido per “${book.title}”.` },
+          400
+        );
+      }
 
       if (
         originalPrice !== null &&
@@ -1451,10 +1502,14 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (!isBookYearAllowedForStudyArea(studyArea, book.reference_year)) {
+      if (
+        referenceYears.some(
+          (year) => !isBookYearAllowedForStudyArea(studyArea, year)
+        )
+      ) {
         return privateJson(
           {
-            error: `L’anno selezionato non è disponibile per la macro-area di “${book.title}”.`,
+            error: `Uno o più anni selezionati non sono disponibili per la macro-area di “${book.title}”.`,
           },
           400
         );
@@ -1471,7 +1526,8 @@ export async function POST(req: NextRequest) {
         price: book.price,
         original_price: originalPrice,
         isbn,
-        reference_year: book.reference_year,
+        reference_year: referenceYears[0],
+        reference_years: referenceYears,
         description: book.description,
         sort_order: book.sort_order,
         product_type: productType,

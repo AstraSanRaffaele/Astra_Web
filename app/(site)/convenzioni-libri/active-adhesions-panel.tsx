@@ -142,7 +142,8 @@ export default function ActiveAdhesionsPanel({
                       </span>
                     </span>
                     <span className={styles.summaryMeta}>
-                      Inviata il {formatDateTime(adhesion.created_at)} · {productCount}{" "}
+                      {BOOK_YEAR_LABELS[adhesion.selected_year]} · Inviata il{" "}
+                      {formatDateTime(adhesion.created_at)} · {productCount}{" "}
                       {productCount === 1 ? "prodotto" : "prodotti"}
                     </span>
                   </span>

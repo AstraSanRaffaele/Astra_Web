@@ -2,9 +2,11 @@
 
 import { useEffect, useId, useState } from "react";
 import { ChevronDown, ShieldCheck, ShoppingBag, Trash2, X } from "lucide-react";
-import type {
-  BookBundleItem,
-  BookConventionCatalogBook,
+import {
+  BOOK_YEAR_LABELS,
+  type BookBundleItem,
+  type BookConventionCatalogBook,
+  type BookYear,
 } from "@/lib/book-convention";
 import styles from "./order-summary.module.css";
 
@@ -58,7 +60,7 @@ export default function OrderSummary({
   products: BookConventionCatalogBook[];
   total: number;
   canAdhere: boolean;
-  onRemove: (productId: number) => void;
+  onRemove: (productId: number, selectedYear: BookYear) => void;
   onProceed: () => void;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -164,10 +166,16 @@ export default function OrderSummary({
                     : 0;
 
                   return (
-                    <article key={product.id} className={styles.item}>
+                    <article
+                      key={`${product.id}:${product.reference_year}`}
+                      className={styles.item}
+                    >
                       <div className={styles.itemTop}>
                         <div className={styles.itemCopy}>
                           <h3>{product.title}</h3>
+                          <p className={styles.itemYear}>
+                            {BOOK_YEAR_LABELS[product.reference_year]}
+                          </p>
                           <BundleItemsSummary items={product.bundle_items} />
                         </div>
 
@@ -189,9 +197,13 @@ export default function OrderSummary({
                         )}
                         <button
                           type="button"
-                          onClick={() => onRemove(product.id)}
+                          onClick={() =>
+                            onRemove(product.id, product.reference_year)
+                          }
                           className={styles.remove}
-                          aria-label={`Rimuovi ${product.title} dal carrello`}
+                          aria-label={`Rimuovi ${product.title} per ${BOOK_YEAR_LABELS[
+                            product.reference_year
+                          ]} dal carrello`}
                         >
                           <Trash2 size={14} aria-hidden="true" />
                           Rimuovi

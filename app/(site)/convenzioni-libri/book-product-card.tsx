@@ -7,6 +7,7 @@ import {
   PRODUCT_TYPE_LABELS,
   type BookAvailabilityReason,
   type BookConventionCatalogBook,
+  type BookYear,
 } from "@/lib/book-convention";
 
 const AVAILABILITY_LABELS: Record<Exclude<BookAvailabilityReason, null>, string> = {
@@ -14,7 +15,7 @@ const AVAILABILITY_LABELS: Record<Exclude<BookAvailabilityReason, null>, string>
   round_inactive: "Raccolta non aperta",
   not_in_round: "Non disponibile in questa raccolta",
   price_unavailable: "Prezzo non disponibile",
-  already_adhered: "Già ordinato in questa raccolta",
+  already_adhered: "Adesione già inviata per questo anno",
 };
 
 function formatPrice(value: number | null) {
@@ -28,17 +29,20 @@ function formatPrice(value: number | null) {
 
 export default function BookProductCard({
   product,
+  selectedYear,
   selected,
   selectionDisabled,
   onToggle,
 }: {
   product: BookConventionCatalogBook;
+  selectedYear: BookYear;
   selected: boolean;
   selectionDisabled: boolean;
-  onToggle: (productId: number) => void;
+  onToggle: (productId: number, selectedYear: BookYear) => void;
 }) {
   const [failedCoverUrl, setFailedCoverUrl] = useState<string | null>(null);
-  const unavailable = !product.is_available;
+  const alreadyAdhered = product.adhered_years.includes(selectedYear);
+  const unavailable = !product.is_available || alreadyAdhered;
   const disabled = unavailable || selectionDisabled;
   const isBundle = product.product_type === "bundle";
   const visibleBundleItems = product.bundle_items.slice(0, 4);
@@ -46,7 +50,9 @@ export default function BookProductCard({
     product.bundle_items.length - visibleBundleItems.length,
     0
   );
-  const unavailableLabel = product.availability_reason
+  const unavailableLabel = alreadyAdhered
+    ? AVAILABILITY_LABELS.already_adhered
+    : product.availability_reason
     ? AVAILABILITY_LABELS[product.availability_reason]
     : "Selezione non disponibile";
   const conventionPrice =
@@ -166,7 +172,7 @@ export default function BookProductCard({
         <div className="book-product-footer">
           <div>
             <span className="book-product-year">
-              {BOOK_YEAR_LABELS[product.reference_year]}
+              {BOOK_YEAR_LABELS[selectedYear]}
             </span>
             {hasDiscount ? (
               <span className="book-product-original-price">
@@ -185,15 +191,15 @@ export default function BookProductCard({
             aria-pressed={selected}
             aria-label={
               selected
-                ? `Rimuovi ${product.title} dalla selezione`
+                ? `Rimuovi ${product.title} per ${BOOK_YEAR_LABELS[selectedYear]} dalla selezione`
                 : disabled
-                  ? `${product.title}: ${
+                  ? `${product.title} per ${BOOK_YEAR_LABELS[selectedYear]}: ${
                     unavailable ? unavailableLabel : "selezione non disponibile"
                   }`
-                  : `Aggiungi ${product.title} alla selezione`
+                  : `Aggiungi ${product.title} per ${BOOK_YEAR_LABELS[selectedYear]} alla selezione`
             }
             disabled={disabled}
-            onClick={() => onToggle(product.id)}
+            onClick={() => onToggle(product.id, selectedYear)}
             className={`book-product-action${selected ? " selected" : ""}`}
           >
             {disabled ? (

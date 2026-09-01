@@ -22,6 +22,7 @@ import {
   STUDY_AREAS,
   normalizeBookBundleItems,
   normalizeBookConventionCoverUrl,
+  normalizeBookYears,
   type BookConventionAdhesion,
   type BookConventionBook,
   type BookConventionCatalogBook,
@@ -204,18 +205,41 @@ function normalizeBookRow(value: unknown): BookConventionBook | null {
   const sortOrder = Number(row.sort_order);
   const price = parseDatabasePrice(row.price);
   const originalPrice = parseDatabasePrice(row.original_price);
+  const referenceYear = row.reference_year as BookYear;
+  const studyArea = row.study_area as StudyArea;
+  const referenceYears = normalizeBookYears(
+    row.reference_years,
+    referenceYear
+  );
+  const hasInvalidStoredYears =
+    row.reference_years !== undefined &&
+    row.reference_years !== null &&
+    (!Array.isArray(row.reference_years) ||
+      row.reference_years.length !== referenceYears.length);
+
+  if (
+    hasInvalidStoredYears ||
+    referenceYears.length === 0 ||
+    referenceYears.some(
+      (year) =>
+        !(BOOK_YEARS_BY_STUDY_AREA[studyArea] as readonly BookYear[]).includes(year)
+    )
+  ) {
+    return null;
+  }
 
   return {
     id,
     convention_id: conventionId,
     title,
     price,
-    reference_year: row.reference_year,
+    reference_year: referenceYear,
+    reference_years: referenceYears,
     description: cleanRequiredString(row.description) || null,
     sort_order: Number.isInteger(sortOrder) ? sortOrder : null,
     product_type: row.product_type,
     bundle_items: normalizeBookBundleItems(row.bundle_items),
-    study_area: row.study_area,
+    study_area: studyArea,
     is_active: row.is_active === true,
     cover_image: normalizeBookConventionCoverUrl(row.cover_image),
     isbn: normalizeIsbn(row.isbn),
@@ -244,6 +268,10 @@ function normalizeSelectedBookSnapshot(
     reference_year: isBookYear(row.reference_year)
       ? row.reference_year
       : undefined,
+    reference_years: normalizeBookYears(
+      row.reference_years,
+      isBookYear(row.reference_year) ? row.reference_year : null
+    ),
     description: cleanRequiredString(row.description) || null,
     product_type: isProductType(row.product_type)
       ? row.product_type
@@ -289,6 +317,9 @@ function normalizeAdhesionRow(value: unknown): BookConventionAdhesion | null {
     id,
     convention_id: conventionId,
     round_id: cleanRequiredString(row.round_id) || null,
+    selected_year: isBookYear(row.selected_year)
+      ? row.selected_year
+      : selectedBooks?.[0]?.reference_year ?? BOOK_YEARS[0],
     selected_book_ids: selectedBookIds,
     selected_books: selectedBooks,
     total_price: parseDatabasePrice(row.total_price),
@@ -307,7 +338,7 @@ function priceToCents(price: number) {
 function groupBooksByYear(books: BookConventionBook[]) {
   return BOOK_YEARS.reduce<Record<BookYear, BookConventionBook[]>>(
     (acc, year) => {
-      acc[year] = books.filter((book) => book.reference_year === year);
+      acc[year] = books.filter((book) => book.reference_years.includes(year));
       return acc;
     },
     {
@@ -327,7 +358,7 @@ function groupBooksByArea(books: BookConventionCatalogBook[]) {
       areas[area] = BOOK_YEARS.reduce<Record<BookYear, BookConventionCatalogBook[]>>(
         (years, year) => {
           years[year] = books.filter(
-            (book) => book.study_area === area && book.reference_year === year
+            (book) => book.study_area === area && book.reference_years.includes(year)
           );
           return years;
         },
@@ -795,7 +826,7 @@ export async function GET() {
 
     const conventionIds = conventions.map((item) => item.id);
     const adhesionFields =
-      "id, convention_id, round_id, selected_book_ids, selected_books, total_price, fiscal_code_or_vat, billing_shipping_address, payment_method, created_at";
+      "id, convention_id, round_id, selected_year, selected_book_ids, selected_books, total_price, fiscal_code_or_vat, billing_shipping_address, payment_method, created_at";
 
     const [roundsResult, booksResult, adhesionsResult, profileResult] = await Promise.all([
       serviceClient
@@ -806,7 +837,7 @@ export async function GET() {
       serviceClient
         .from("book_convention_books")
         .select(
-          "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+          "id, convention_id, title, price, original_price, isbn, reference_year, reference_years, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
         )
         .in("convention_id", conventionIds)
         .eq("is_active", true)
@@ -892,43 +923,60 @@ export async function GET() {
       const activeRound = activeRoundsByConvention.get(adhesion.convention_id);
       return Boolean(activeRound && adhesion.round_id === activeRound.id);
     });
-    const adheredRoundIds = new Set(
-      activeAdhesions
-        .map((adhesion) => adhesion.round_id)
-        .filter((roundId): roundId is string => Boolean(roundId))
-    );
+    const adheredYearsByRound = new Map<string, Set<BookYear>>();
+
+    for (const adhesion of activeAdhesions) {
+      if (!adhesion.round_id) continue;
+      const adheredYears = adheredYearsByRound.get(adhesion.round_id) ?? new Set<BookYear>();
+      adheredYears.add(adhesion.selected_year);
+      adheredYearsByRound.set(adhesion.round_id, adheredYears);
+    }
 
     const normalizedBooks = (booksResult.data ?? [])
       .map((book) => normalizeBookRow(book))
       .filter((book): book is BookConventionBook => book !== null)
       .filter((book) =>
-        (BOOK_YEARS_BY_STUDY_AREA[book.study_area] as readonly BookYear[]).includes(
-          book.reference_year
+        book.reference_years.every((year) =>
+          (BOOK_YEARS_BY_STUDY_AREA[book.study_area] as readonly BookYear[]).includes(
+            year
+          )
         )
       );
 
     const catalogBooks: BookConventionCatalogBook[] = normalizedBooks.map((book) => {
       let availabilityReason: BookConventionCatalogBook["availability_reason"] = null;
       const activeRound = activeRoundsByConvention.get(book.convention_id) ?? null;
+      const adheredYears = activeRound
+        ? Array.from(adheredYearsByRound.get(activeRound.id) ?? []).filter((year) =>
+            book.reference_years.includes(year)
+          )
+        : [];
 
       if (!activeRound) availabilityReason = "round_inactive";
       else if (!linkedBookRoundKeys.has(`${activeRound.id}:${book.id}`)) {
         availabilityReason = "not_in_round";
       }
       else if (book.price === null) availabilityReason = "price_unavailable";
-      else if (adheredRoundIds.has(activeRound.id)) availabilityReason = "already_adhered";
+      else if (adheredYears.length === book.reference_years.length) {
+        availabilityReason = "already_adhered";
+      }
 
       return {
         ...book,
         is_available: availabilityReason === null,
         availability_reason: availabilityReason,
+        adhered_years: normalizeBookYears(adheredYears),
         active_round_id: activeRound?.id ?? null,
         delivery_mode: activeRound?.delivery_mode ?? null,
       };
     });
 
     // Compatibilità con la modale esistente: `books` contiene solo elementi selezionabili.
-    const selectableBooks = catalogBooks.filter((book) => book.is_available);
+    const selectableBooks = catalogBooks.filter(
+      (book) =>
+        book.is_available &&
+        book.reference_years.some((year) => !book.adhered_years.includes(year))
+    );
     const activeAdhesion = activeAdhesions[0] ?? null;
     const latestAdhesion = adhesions[0] ?? null;
     const receiptProfile = getUserProfileForReceipt(
@@ -972,6 +1020,7 @@ export async function GET() {
 type GroupedAdhesionInput = {
   conventionId: number;
   roundId: string;
+  selectedYear: BookYear;
   bookIds: number[];
 };
 
@@ -1020,6 +1069,7 @@ async function submitGroupedAdhesions(params: {
 
     const conventionId = Number(rawConventionId);
     const roundId = cleanRequiredString(row.round_id);
+    const selectedYear = row.selected_year;
 
     if (!hasOnlyValidUniqueBookIds(row.selected_book_ids)) {
       return privateJson({ error: "Selezione delle proposte non valida." }, 400);
@@ -1035,27 +1085,29 @@ async function submitGroupedAdhesions(params: {
       return privateJson({ error: "Raccolta non valida." }, 400);
     }
 
+    if (!isBookYear(selectedYear)) {
+      return privateJson({ error: "Anno di corso non valido." }, 400);
+    }
+
     if (bookIds.length === 0) {
       return privateJson({ error: "Seleziona almeno una proposta." }, 400);
     }
 
-    normalizedGroups.push({ conventionId, roundId, bookIds });
+    normalizedGroups.push({ conventionId, roundId, selectedYear, bookIds });
   }
 
   const groupKeys = normalizedGroups.map(
-    (group) => `${group.conventionId}:${group.roundId}`
+    (group) => `${group.conventionId}:${group.roundId}:${group.selectedYear}`
   );
   if (new Set(groupKeys).size !== groupKeys.length) {
     return privateJson({ error: "La stessa raccolta è presente più di una volta." }, 400);
   }
 
   const selectedBookIds = normalizedGroups.flatMap((group) => group.bookIds);
-  if (
-    selectedBookIds.length > 50 ||
-    new Set(selectedBookIds).size !== selectedBookIds.length
-  ) {
-    return privateJson({ error: "La selezione contiene troppe proposte o elementi duplicati." }, 400);
+  if (selectedBookIds.length > 50) {
+    return privateJson({ error: "La selezione contiene troppe proposte." }, 400);
   }
+  const uniqueSelectedBookIds = Array.from(new Set(selectedBookIds));
 
   const conventionIds = Array.from(
     new Set(normalizedGroups.map((group) => group.conventionId))
@@ -1118,19 +1170,19 @@ async function submitGroupedAdhesions(params: {
     serviceClient
       .from("book_convention_books")
       .select(
-        "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+        "id, convention_id, title, price, original_price, isbn, reference_year, reference_years, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
       )
       .eq("is_active", true)
-      .in("id", selectedBookIds),
+      .in("id", uniqueSelectedBookIds),
     serviceClient
       .from("book_convention_book_rounds")
       .select("book_id, convention_id, round_id")
-      .in("book_id", selectedBookIds)
+      .in("book_id", uniqueSelectedBookIds)
       .in("convention_id", conventionIds)
       .in("round_id", normalizedGroups.map((group) => group.roundId)),
     serviceClient
       .from("book_convention_adhesions")
-      .select("id, convention_id, round_id")
+      .select("id, convention_id, round_id, selected_year")
       .eq("user_id", user.id)
       .in("convention_id", conventionIds)
       .in("round_id", normalizedGroups.map((group) => group.roundId)),
@@ -1151,7 +1203,7 @@ async function submitGroupedAdhesions(params: {
   );
   const existingByGroup = new Map(
     (existingResult.data ?? []).map((adhesion) => [
-      `${Number(adhesion.convention_id)}:${String(adhesion.round_id)}`,
+      `${Number(adhesion.convention_id)}:${String(adhesion.round_id)}:${String(adhesion.selected_year)}`,
       String(adhesion.id),
     ])
   );
@@ -1166,8 +1218,9 @@ async function submitGroupedAdhesions(params: {
       selectedBooks.some((book) => book.convention_id !== group.conventionId) ||
       selectedBooks.some(
         (book) =>
+          !book.reference_years.includes(group.selectedYear) ||
           !(BOOK_YEARS_BY_STUDY_AREA[book.study_area] as readonly BookYear[]).includes(
-            book.reference_year
+            group.selectedYear
           )
       ) ||
       selectedBooks.some((book) => book.price === null) ||
@@ -1201,7 +1254,9 @@ async function submitGroupedAdhesions(params: {
           0
         ) / 100,
       existingAdhesionId:
-        existingByGroup.get(`${group.conventionId}:${group.roundId}`) ?? null,
+        existingByGroup.get(
+          `${group.conventionId}:${group.roundId}:${group.selectedYear}`
+        ) ?? null,
     };
   });
 
@@ -1229,7 +1284,12 @@ async function submitGroupedAdhesions(params: {
   const groupsToInsert = preparedGroups.filter(
     (group) => !group.existingAdhesionId
   );
-  let insertedRows: Array<{ id: string; convention_id: number; round_id: string }> = [];
+  let insertedRows: Array<{
+    id: string;
+    convention_id: number;
+    round_id: string;
+    selected_year: BookYear;
+  }> = [];
 
   if (groupsToInsert.length > 0) {
     const { data: inserted, error: insertError } = await serviceClient
@@ -1239,12 +1299,14 @@ async function submitGroupedAdhesions(params: {
           user_id: user.id,
           convention_id: group.conventionId,
           round_id: group.roundId,
+          selected_year: group.selectedYear,
           selected_book_ids: group.selectedBooks.map((book) => book.id),
           selected_books: group.selectedBooks.map((book) => ({
             id: book.id,
             title: book.title,
             price: book.price,
-            reference_year: book.reference_year,
+            reference_year: group.selectedYear,
+            reference_years: book.reference_years,
             description: book.description,
             product_type: book.product_type,
             bundle_items: book.bundle_items,
@@ -1262,32 +1324,38 @@ async function submitGroupedAdhesions(params: {
           payment_method: paymentMethod,
         }))
       )
-      .select("id, convention_id, round_id");
+      .select("id, convention_id, round_id, selected_year");
 
     if (insertError) {
       if (insertError.code === "23505") {
         const { data: concurrentRows, error: concurrentError } =
           await serviceClient
             .from("book_convention_adhesions")
-            .select("id, convention_id, round_id")
+            .select("id, convention_id, round_id, selected_year")
             .eq("user_id", user.id)
             .in("convention_id", conventionIds)
             .in(
               "round_id",
               normalizedGroups.map((group) => group.roundId)
+            )
+            .in(
+              "selected_year",
+              normalizedGroups.map((group) => group.selectedYear)
             );
 
         if (concurrentError) throw concurrentError;
 
         const concurrentIdsByGroup = new Map(
           (concurrentRows ?? []).map((row) => [
-            `${Number(row.convention_id)}:${String(row.round_id)}`,
+            `${Number(row.convention_id)}:${String(row.round_id)}:${String(row.selected_year)}`,
             String(row.id),
           ])
         );
         const concurrentAdhesionIds = preparedGroups
           .map((group) =>
-            concurrentIdsByGroup.get(`${group.conventionId}:${group.roundId}`)
+            concurrentIdsByGroup.get(
+              `${group.conventionId}:${group.roundId}:${group.selectedYear}`
+            )
           )
           .filter((id): id is string => Boolean(id));
 
@@ -1315,6 +1383,9 @@ async function submitGroupedAdhesions(params: {
       id: String(row.id),
       convention_id: Number(row.convention_id),
       round_id: String(row.round_id),
+      selected_year: isBookYear(row.selected_year)
+        ? row.selected_year
+        : BOOK_YEARS[0],
     }));
   }
 
@@ -1349,11 +1420,21 @@ async function submitGroupedAdhesions(params: {
       user,
       (profileData as BookProfileRow | null) ?? null
     );
-    const insertedBooks = groupsToInsert.flatMap((group) => group.selectedBooks);
+    const insertedBooks = groupsToInsert.flatMap((group) =>
+      group.selectedBooks.map((book) => ({
+        ...book,
+        reference_year: group.selectedYear,
+      }))
+    );
     const insertedTotal = groupsToInsert.reduce(
       (sum, group) => sum + priceToCents(group.totalPrice),
       0
     ) / 100;
+    const insertedRounds = Array.from(
+      new Map(
+        groupsToInsert.map((group) => [group.activeRound.id, group.activeRound])
+      ).values()
+    );
 
     emailSent = await sendBookConventionReceiptEmail({
       to: profile.email,
@@ -1363,7 +1444,7 @@ async function submitGroupedAdhesions(params: {
       paymentMethod,
       selectedBooks: insertedBooks,
       totalPrice: insertedTotal,
-      activeRounds: groupsToInsert.map((group) => group.activeRound),
+      activeRounds: insertedRounds,
     });
   } catch (mailError) {
     logRouteError(
@@ -1402,6 +1483,7 @@ export async function POST(req: NextRequest) {
     submissions?: unknown;
     convention_id?: unknown;
     round_id?: unknown;
+    selected_year?: unknown;
     selected_book_ids?: unknown;
     payment_method?: unknown;
     fiscal_code_or_vat?: unknown;
@@ -1427,6 +1509,7 @@ export async function POST(req: NextRequest) {
       ? Number(body.convention_id)
       : null;
   const requestedRoundId = cleanRequiredString(body.round_id);
+  const requestedSelectedYear = body.selected_year;
   const selectedBookIds = cleanBookIds(body.selected_book_ids);
   const paymentMethod = body.payment_method;
   const fiscalCodeOrVat = cleanRequiredString(body.fiscal_code_or_vat)
@@ -1444,6 +1527,10 @@ export async function POST(req: NextRequest) {
 
   if (!isPaymentMethod(paymentMethod)) {
     return privateJson({ error: "Metodo di pagamento non valido." }, 400);
+  }
+
+  if (requestedSelectedYear !== undefined && !isBookYear(requestedSelectedYear)) {
+    return privateJson({ error: "Anno di corso non valido." }, 400);
   }
 
   if (body.submissions !== undefined) {
@@ -1537,7 +1624,7 @@ export async function POST(req: NextRequest) {
       serviceClient
         .from("book_convention_books")
         .select(
-          "id, convention_id, title, price, original_price, isbn, reference_year, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
+          "id, convention_id, title, price, original_price, isbn, reference_year, reference_years, description, sort_order, product_type, bundle_items, study_area, is_active, cover_image"
         )
         .eq("convention_id", conventionId)
         .eq("is_active", true)
@@ -1560,6 +1647,9 @@ export async function POST(req: NextRequest) {
     const selectedBooks = selectedBookIds
       .map((bookId) => booksById.get(bookId))
       .filter((book): book is BookConventionBook => Boolean(book));
+    const selectedYear = isBookYear(requestedSelectedYear)
+      ? requestedSelectedYear
+      : selectedBooks[0]?.reference_year ?? BOOK_YEARS[0];
     const linkedBookIds = new Set(
       (linksResult.data ?? [])
         .map((link) => Number(link.book_id))
@@ -1571,8 +1661,9 @@ export async function POST(req: NextRequest) {
       selectedBookIds.some((bookId) => !linkedBookIds.has(bookId)) ||
       selectedBooks.some(
         (book) =>
+          !book.reference_years.includes(selectedYear) ||
           !(BOOK_YEARS_BY_STUDY_AREA[book.study_area] as readonly BookYear[]).includes(
-            book.reference_year
+            selectedYear
           )
       )
     ) {
@@ -1601,6 +1692,7 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user.id)
       .eq("convention_id", conventionId)
       .eq("round_id", activeRound.id)
+      .eq("selected_year", selectedYear)
       .limit(1)
       .maybeSingle();
 
@@ -1634,12 +1726,14 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         convention_id: conventionId,
         round_id: activeRound.id,
+        selected_year: selectedYear,
         selected_book_ids: selectedBooks.map((book) => book.id),
         selected_books: selectedBooks.map((book) => ({
           id: book.id,
           title: book.title,
           price: book.price,
-          reference_year: book.reference_year,
+          reference_year: selectedYear,
+          reference_years: book.reference_years,
           description: book.description,
           product_type: book.product_type,
           bundle_items: book.bundle_items,
@@ -1690,7 +1784,10 @@ export async function POST(req: NextRequest) {
         fiscalCodeOrVat,
         billingShippingAddress: addressForAdhesion,
         paymentMethod,
-        selectedBooks,
+        selectedBooks: selectedBooks.map((book) => ({
+          ...book,
+          reference_year: selectedYear,
+        })),
         totalPrice,
         activeRounds: [activeRound],
       });

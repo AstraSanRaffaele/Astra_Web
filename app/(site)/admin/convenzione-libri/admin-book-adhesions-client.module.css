@@ -532,6 +532,21 @@ select.field {
   text-overflow: ellipsis;
 }
 
+.selectedYearBadge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  margin-top: 0.38rem;
+  padding: 0.18rem 0.42rem;
+  border-radius: 999px;
+  background: #eaf0fc;
+  color: #1847a3;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  line-height: 1.25;
+}
+
 .userEmail {
   white-space: nowrap;
 }
@@ -879,6 +894,10 @@ select.field {
     font-size: 0.66rem;
     font-weight: 650;
     line-height: 1.4;
+  }
+
+  .mobileDetails .selectedYearBadge {
+    margin-top: 0;
   }
 
   .mobileDetailWide {

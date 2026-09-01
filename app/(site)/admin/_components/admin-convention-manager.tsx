@@ -49,6 +49,7 @@ type BookConventionBook = {
   original_price: number | null;
   isbn: string | null;
   reference_year: BookYear;
+  reference_years?: BookYear[] | null;
   description: string | null;
   sort_order: number;
   product_type: ProductType;
@@ -148,6 +149,7 @@ function createEmptyBook(sortOrder = 0): BookConventionBook {
     original_price: null,
     isbn: null,
     reference_year: "primo_anno",
+    reference_years: ["primo_anno"],
     description: "",
     sort_order: sortOrder,
     product_type: "book",
@@ -171,6 +173,28 @@ function getValidReferenceYear(
   }
 
   return BOOK_YEARS_BY_STUDY_AREA[studyArea][0];
+}
+
+function getValidReferenceYears(
+  studyArea: StudyArea,
+  referenceYears: unknown,
+  legacyReferenceYear: BookYear | null | undefined
+): BookYear[] {
+  const allowedYears = BOOK_YEARS_BY_STUDY_AREA[studyArea] as readonly BookYear[];
+  const selectedYears = new Set(
+    Array.isArray(referenceYears)
+      ? referenceYears.filter(
+        (year): year is BookYear =>
+          typeof year === "string" &&
+          (allowedYears as readonly string[]).includes(year)
+      )
+      : []
+  );
+  const normalizedYears = allowedYears.filter(year => selectedYears.has(year));
+
+  if (normalizedYears.length > 0) return [...normalizedYears];
+
+  return [getValidReferenceYear(studyArea, legacyReferenceYear)];
 }
 
 function normalizeEditableBundleItems(value: unknown): BookBundleItem[] {
@@ -315,6 +339,11 @@ function ConvModal({
           initialBooks.length > 0
             ? initialBooks.map((book, index) => {
               const studyArea = book.study_area ?? "medicina_chirurgia";
+              const referenceYears = getValidReferenceYears(
+                studyArea,
+                book.reference_years,
+                book.reference_year
+              );
 
               return {
                 id: book.id ?? null,
@@ -327,10 +356,8 @@ function ConvModal({
                     ? book.original_price
                     : null,
                 isbn: book.isbn ?? null,
-                reference_year: getValidReferenceYear(
-                  studyArea,
-                  book.reference_year
-                ),
+                reference_year: referenceYears[0],
+                reference_years: referenceYears,
                 description: book.description ?? "",
                 sort_order: book.sort_order ?? index,
                 product_type: book.product_type ?? "book",
@@ -371,6 +398,39 @@ function ConvModal({
     setForm(current => ({
       ...current,
       books: current.books.map((book, i) => i === index ? { ...book, ...patch } : book),
+    }));
+  };
+
+  const toggleBookReferenceYear = (index: number, year: BookYear) => {
+    setForm(current => ({
+      ...current,
+      books: current.books.map((book, bookIndex) => {
+        if (bookIndex !== index) return book;
+        if (!isBookYearAllowedForStudyArea(book.study_area, year)) return book;
+
+        const currentYears = getValidReferenceYears(
+          book.study_area,
+          book.reference_years,
+          book.reference_year
+        );
+        const isSelected = currentYears.includes(year);
+        const nextSelection = isSelected
+          ? currentYears.length > 1
+            ? currentYears.filter(selectedYear => selectedYear !== year)
+            : currentYears
+          : [...currentYears, year];
+        const referenceYears = getValidReferenceYears(
+          book.study_area,
+          nextSelection,
+          book.reference_year
+        );
+
+        return {
+          ...book,
+          reference_year: referenceYears[0],
+          reference_years: referenceYears,
+        };
+      }),
     }));
   };
 
@@ -583,15 +643,20 @@ function ConvModal({
         return;
       }
 
-      const invalidReferenceYear = form.books.find(
-        book =>
-          !isBookYearAllowedForStudyArea(
-            book.study_area,
-            book.reference_year
+      const invalidReferenceYears = form.books.find(book => {
+        if (!Array.isArray(book.reference_years) || book.reference_years.length === 0) {
+          return true;
+        }
+
+        return (
+          new Set(book.reference_years).size !== book.reference_years.length ||
+          book.reference_years.some(
+            year => !isBookYearAllowedForStudyArea(book.study_area, year)
           )
-      );
-      if (invalidReferenceYear) {
-        setErr("L’anno selezionato non è disponibile per l’area di studio indicata.");
+        );
+      });
+      if (invalidReferenceYears) {
+        setErr("Seleziona almeno un anno valido per ogni libro o bundle.");
         return;
       }
 
@@ -972,6 +1037,12 @@ function ConvModal({
                       const automaticTitle = isBundle
                         ? buildAutomaticProductTitle(includedBooks)
                         : book.title;
+                      const referenceYears = getValidReferenceYears(
+                        book.study_area,
+                        book.reference_years,
+                        book.reference_year
+                      );
+                      const referenceYearsHelpId = `book-reference-years-${index}-help`;
 
                       return (
                       <div key={book.id ?? `new-${index}`} style={{ border: "1px solid rgba(15,47,110,.1)", background: "white", borderRadius: "16px", padding: "1rem", display: "grid", gap: ".85rem" }}>
@@ -1120,7 +1191,7 @@ function ConvModal({
                           />
                         </div>
 
-                        <div className="book-admin-grid-3" style={{ display: "grid", gridTemplateColumns: ".9fr .9fr .9fr", gap: ".75rem" }}>
+                        <div className="book-admin-grid-3" style={{ display: "grid", gridTemplateColumns: ".72fr .72fr 1.56fr", gap: ".75rem" }}>
                           <MField
                             label="Prezzo originale"
                             type="number"
@@ -1139,18 +1210,52 @@ function ConvModal({
                             })}
                             placeholder="45"
                           />
-                          <div style={{ display: "flex", flexDirection: "column", gap: ".4rem" }}>
-                            <label style={{ fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>Anno *</label>
-                            <select
-                              value={book.reference_year}
-                              onChange={e => updateBook(index, { reference_year: e.target.value as BookYear })}
-                              style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: "#102a56", borderRadius: "12px", padding: ".8rem 1rem", fontSize: ".95rem", outline: "none" }}
-                            >
-                              {BOOK_YEARS_BY_STUDY_AREA[book.study_area].map(year => (
-                                <option key={year} value={year}>{BOOK_YEAR_LABELS[year]}</option>
-                              ))}
-                            </select>
-                          </div>
+                          <fieldset style={{ minWidth: 0, margin: 0, padding: 0, border: 0, display: "flex", flexDirection: "column", gap: ".4rem" }}>
+                            <legend style={{ padding: 0, fontSize: ".8rem", fontWeight: 700, color: "#17315f" }}>
+                              Anni di corso *
+                            </legend>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: ".38rem" }}>
+                              {BOOK_YEARS_BY_STUDY_AREA[book.study_area].map(year => {
+                                const isSelected = referenceYears.includes(year);
+                                const isOnlySelectedYear = isSelected && referenceYears.length === 1;
+
+                                return (
+                                  <label
+                                    key={year}
+                                    style={{
+                                      minHeight: 34,
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: ".35rem",
+                                      border: `1px solid ${isSelected ? "rgba(15,47,110,.42)" : "rgba(15,47,110,.12)"}`,
+                                      background: isSelected ? "rgba(15,47,110,.08)" : "white",
+                                      color: isSelected ? "#0f2f6e" : "#5d6b82",
+                                      borderRadius: "999px",
+                                      padding: ".35rem .58rem",
+                                      fontSize: ".7rem",
+                                      fontWeight: 800,
+                                      cursor: isOnlySelectedYear ? "not-allowed" : "pointer",
+                                      opacity: isOnlySelectedYear ? .78 : 1,
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      disabled={isOnlySelectedYear}
+                                      onChange={() => toggleBookReferenceYear(index, year)}
+                                      aria-describedby={referenceYearsHelpId}
+                                      style={{ width: 14, height: 14, margin: 0, accentColor: "#0f2f6e" }}
+                                    />
+                                    {BOOK_YEAR_LABELS[year]}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            <span id={referenceYearsHelpId} style={{ color: "#71809a", fontSize: ".65rem", lineHeight: 1.35 }}>
+                              Puoi selezionare più anni; almeno uno è obbligatorio.
+                            </span>
+                          </fieldset>
                         </div>
 
                         <div className="book-admin-grid-2" style={{ display: "grid", gridTemplateColumns: "1.25fr .8fr", gap: ".75rem" }}>
@@ -1160,12 +1265,15 @@ function ConvModal({
                               value={book.study_area}
                               onChange={e => {
                                 const studyArea = e.target.value as StudyArea;
+                                const referenceYears = getValidReferenceYears(
+                                  studyArea,
+                                  book.reference_years,
+                                  book.reference_year
+                                );
                                 updateBook(index, {
                                   study_area: studyArea,
-                                  reference_year: getValidReferenceYear(
-                                    studyArea,
-                                    book.reference_year
-                                  ),
+                                  reference_year: referenceYears[0],
+                                  reference_years: referenceYears,
                                 });
                               }}
                               style={{ border: "1px solid rgba(15,47,110,.12)", background: "white", color: "#102a56", borderRadius: "12px", padding: ".8rem 1rem", fontSize: ".9rem", outline: "none" }}
@@ -1518,6 +1626,11 @@ export default function AdminConventionManager({
                   isbn: normalizeIsbn(item.isbn) || null,
                 }))
                 .filter(item => Boolean(item.title));
+              const referenceYears = getValidReferenceYears(
+                book.study_area,
+                book.reference_years,
+                book.reference_year
+              );
 
               return {
                 id: book.id ?? null,
@@ -1528,7 +1641,8 @@ export default function AdminConventionManager({
                     ? null
                     : Number(book.original_price),
                 isbn: normalizeIsbn(book.isbn) || null,
-                reference_year: book.reference_year,
+                reference_year: referenceYears[0],
+                reference_years: referenceYears,
                 description: book.description?.trim() || null,
                 sort_order: Number(book.sort_order ?? index),
                 included_books: includedBooks,

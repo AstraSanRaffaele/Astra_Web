@@ -29,6 +29,25 @@ export const BOOK_YEARS = [
 
 export type BookYear = (typeof BOOK_YEARS)[number];
 
+export function normalizeBookYears(
+  value: unknown,
+  fallback?: BookYear | null
+): BookYear[] {
+  const requestedYears = Array.isArray(value) ? value : [];
+  const selectedYears = new Set(
+    requestedYears.filter(
+      (year): year is BookYear =>
+        typeof year === "string" && BOOK_YEARS.includes(year as BookYear)
+    )
+  );
+
+  if (selectedYears.size === 0 && fallback) {
+    selectedYears.add(fallback);
+  }
+
+  return BOOK_YEARS.filter((year) => selectedYears.has(year));
+}
+
 export const BOOK_YEAR_LABELS: Record<BookYear, string> = {
   primo_anno: "Primo anno",
   secondo_anno: "Secondo anno",
@@ -185,6 +204,7 @@ export type BookConventionBook = {
   title: string;
   price: number | null;
   reference_year: BookYear;
+  reference_years: BookYear[];
   description: string | null;
   sort_order: number | null;
   product_type: ProductType;
@@ -207,6 +227,7 @@ export type BookAvailabilityReason =
 export type BookConventionCatalogBook = BookConventionBook & {
   is_available: boolean;
   availability_reason: BookAvailabilityReason;
+  adhered_years: BookYear[];
   active_round_id: string | null;
   delivery_mode: DeliveryMode | null;
 };
@@ -216,6 +237,7 @@ export type SelectedBookSnapshot = {
   title?: string;
   price?: number | null;
   reference_year?: BookYear;
+  reference_years?: BookYear[];
   description?: string | null;
   product_type?: ProductType;
   bundle_items?: BookBundleItem[];
@@ -229,6 +251,7 @@ export type BookConventionAdhesion = {
   id: string;
   convention_id: number;
   round_id: string | null;
+  selected_year: BookYear;
   selected_book_ids: number[] | null;
   selected_books: SelectedBookSnapshot[] | null;
   total_price: number | null;

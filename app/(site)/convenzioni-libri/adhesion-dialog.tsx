@@ -18,12 +18,14 @@ import {
 } from "lucide-react";
 import {
   BOOK_CONVENTION_BANK_DETAILS,
+  BOOK_YEAR_LABELS,
   DELIVERY_MODE_LABELS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHODS,
   type BookBundleItem,
   type BookConventionCatalogBook,
   type BookConventionSubmitResponse,
+  type BookYear,
   type DeliveryMode,
   type PaymentMethod,
 } from "@/lib/book-convention";
@@ -130,6 +132,7 @@ export default function AdhesionDialog({
       {
         conventionId: number;
         roundId: string;
+        selectedYear: BookYear;
         deliveryMode: DeliveryMode;
         products: BookConventionCatalogBook[];
       }
@@ -138,7 +141,7 @@ export default function AdhesionDialog({
     for (const product of products) {
       if (!product.active_round_id || !product.delivery_mode) continue;
 
-      const key = `${product.convention_id}:${product.active_round_id}`;
+      const key = `${product.convention_id}:${product.active_round_id}:${product.reference_year}`;
       const current = groups.get(key);
 
       if (current) {
@@ -147,6 +150,7 @@ export default function AdhesionDialog({
         groups.set(key, {
           conventionId: product.convention_id,
           roundId: product.active_round_id,
+          selectedYear: product.reference_year,
           deliveryMode: product.delivery_mode,
           products: [product],
         });
@@ -353,6 +357,7 @@ export default function AdhesionDialog({
           submissions: submissionGroups.map((group) => ({
             convention_id: group.conventionId,
             round_id: group.roundId,
+            selected_year: group.selectedYear,
             selected_book_ids: group.products.map((product) => product.id),
           })),
           payment_method: paymentMethod,
@@ -668,7 +673,10 @@ export default function AdhesionDialog({
                       const originalPrice = getOriginalPrice(product);
 
                       return (
-                        <article key={product.id} className={styles.productRow}>
+                        <article
+                          key={`${product.id}:${product.reference_year}`}
+                          className={styles.productRow}
+                        >
                           <div className={styles.productCopy}>
                             <div className={styles.productTitleRow}>
                               <span
@@ -683,6 +691,9 @@ export default function AdhesionDialog({
                                   <BookOpen size={12} aria-hidden="true" />
                                 )}
                                 {isBundle ? "Bundle" : "Libro"}
+                              </span>
+                              <span className={styles.productYear}>
+                                {BOOK_YEAR_LABELS[product.reference_year]}
                               </span>
                             </div>
                             <h4>{product.title}</h4>

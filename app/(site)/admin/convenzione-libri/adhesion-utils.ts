@@ -1,9 +1,13 @@
 import {
+  BOOK_YEARS,
+  BOOK_YEAR_LABELS,
   DELIVERY_MODE_LABELS,
   PAYMENT_METHOD_LABELS,
   PRODUCT_TYPES,
   normalizeBookBundleItems,
   normalizeBookConventionCoverUrl,
+  normalizeBookYears,
+  type BookYear,
   type DeliveryMode,
   type PaymentMethod,
   type ProductType,
@@ -151,8 +155,27 @@ function normalizeSnapshot(
     "original_price"
   );
   const snapshotHasIsbn = Object.prototype.hasOwnProperty.call(snapshot, "isbn");
+  const snapshotHasReferenceYear = Object.prototype.hasOwnProperty.call(
+    snapshot,
+    "reference_year"
+  );
+  const snapshotHasReferenceYears = Object.prototype.hasOwnProperty.call(
+    snapshot,
+    "reference_years"
+  );
   const snapshotHasDescription = Object.prototype.hasOwnProperty.call(snapshot, "description");
   const snapshotHasCover = Object.prototype.hasOwnProperty.call(snapshot, "cover_image");
+  const referenceYears = snapshotHasReferenceYears
+    ? normalizeBookYears(
+        snapshot.reference_years,
+        snapshot.reference_year ?? catalogProduct?.reference_year
+      )
+    : snapshotHasReferenceYear
+      ? normalizeBookYears(undefined, snapshot.reference_year)
+      : normalizeBookYears(
+          catalogProduct?.reference_years,
+          catalogProduct?.reference_year
+        );
 
   return {
     id: typeof snapshot.id === "number" ? snapshot.id : catalogProduct?.id,
@@ -162,7 +185,9 @@ function normalizeSnapshot(
       snapshotHasOriginalPrice ? snapshot.original_price : catalogProduct?.original_price
     ),
     isbn: String(snapshotHasIsbn ? snapshot.isbn ?? "" : catalogProduct?.isbn ?? "").trim() || null,
-    reference_year: snapshot.reference_year ?? catalogProduct?.reference_year,
+    reference_year:
+      snapshot.reference_year ?? referenceYears[0] ?? catalogProduct?.reference_year,
+    reference_years: referenceYears,
     description: snapshotHasDescription
       ? snapshot.description ?? null
       : catalogProduct?.description ?? null,
@@ -207,6 +232,55 @@ export function getSelectedProducts(
   }
 
   return [];
+}
+
+function isBookYear(value: unknown): value is BookYear {
+  return typeof value === "string" && BOOK_YEARS.includes(value as BookYear);
+}
+
+function getUnambiguousLegacySnapshotYear(
+  snapshots: Array<SelectedProductSnapshot | undefined>
+) {
+  const legacyYears = new Set<BookYear>();
+  let hasMultiYearSnapshot = false;
+
+  snapshots.forEach((snapshot) => {
+    if (!snapshot) return;
+
+    const referenceYears = normalizeBookYears(snapshot.reference_years);
+    if (referenceYears.length > 1) {
+      // The product visibility does not identify the year chosen for the order.
+      hasMultiYearSnapshot = true;
+      return;
+    }
+
+    const legacyYear = referenceYears[0] ?? snapshot.reference_year;
+    if (isBookYear(legacyYear)) legacyYears.add(legacyYear);
+  });
+
+  return !hasMultiYearSnapshot && legacyYears.size === 1
+    ? [...legacyYears][0]
+    : null;
+}
+
+export function getAdhesionSelectedYear(adhesion: AdminBookAdhesion) {
+  if (isBookYear(adhesion.selected_year)) return adhesion.selected_year;
+
+  const selectedBookSnapshots = Array.isArray(adhesion.selected_books)
+    ? adhesion.selected_books
+    : [];
+  if (selectedBookSnapshots.length > 0) {
+    return getUnambiguousLegacySnapshotYear(selectedBookSnapshots);
+  }
+
+  const legacyBookSnapshots = Array.isArray(adhesion.book_items)
+    ? adhesion.book_items
+    : [];
+  return getUnambiguousLegacySnapshotYear(legacyBookSnapshots);
+}
+
+export function formatBookYear(value: BookYear | null | undefined) {
+  return value ? BOOK_YEAR_LABELS[value] : "—";
 }
 
 export function getAdhesionTotal(
@@ -286,6 +360,7 @@ export function matchesAdhesionSearch(
     adhesion.billing_shipping_address ?? "",
     formatPaymentMethod(adhesion.payment_method),
     formatDeliveryMode(adhesion.book_convention_rounds?.delivery_mode),
+    formatBookYear(getAdhesionSelectedYear(adhesion)),
     products
       .flatMap((product) => [
         product.title,

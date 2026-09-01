@@ -135,6 +135,18 @@
   -webkit-line-clamp: 2;
 }
 
+.itemYear {
+  display: inline-flex;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+  background: #e8edfb;
+  padding: 0.2rem 0.45rem;
+  color: #0e1f6b;
+  font-size: 0.59rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
 .bundleSummary {
   display: -webkit-box;
   margin-top: 0.38rem;

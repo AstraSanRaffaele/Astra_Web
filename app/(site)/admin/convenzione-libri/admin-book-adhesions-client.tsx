@@ -37,11 +37,13 @@ import {
   formatDate,
   formatDateOnly,
   formatDeliveryMode,
+  formatBookYear,
   formatPaymentMethod,
   formatPrice,
   formatRoundLabel,
   getAdhesionConventionTitle,
   getAdhesionSavings,
+  getAdhesionSelectedYear,
   getAdhesionTotal,
   getConventionTitle,
   getFullName,
@@ -243,13 +245,13 @@ export default function AdminBookAdhesionsClient({
         return false;
       }
 
-      const products = getSelectedProducts(adhesion, data.books);
       if (
         filters.year !== "all" &&
-        !products.some((product) => product.reference_year === filters.year)
+        getAdhesionSelectedYear(adhesion) !== filters.year
       ) {
         return false;
       }
+      const products = getSelectedProducts(adhesion, data.books);
       if (
         filters.studyArea !== "all" &&
         !products.some((product) => product.study_area === filters.studyArea)
@@ -348,6 +350,7 @@ export default function AdminBookAdhesionsClient({
         "Modalità consegna",
         "Indirizzo consegna / fatturazione",
         "Metodo pagamento",
+        "Anno selezionato",
         "Prodotti ordinati",
         "ISBN",
         "Prezzo convenzione EUR",
@@ -364,6 +367,7 @@ export default function AdminBookAdhesionsClient({
           formatDeliveryMode(adhesion.book_convention_rounds?.delivery_mode),
           adhesion.billing_shipping_address || "",
           formatPaymentMethod(adhesion.payment_method),
+          formatBookYear(getAdhesionSelectedYear(adhesion)),
           products
             .map((product) =>
               product.bundle_items.length === 0
@@ -592,7 +596,7 @@ export default function AdminBookAdhesionsClient({
             </FilterSelect>
 
             <FilterSelect
-              label="Anno prodotto"
+              label="Anno selezionato"
               value={filters.year}
               onChange={(value) => updateFilter("year", value as BookYear | "all")}
             >
@@ -830,6 +834,9 @@ function AdhesionTableRow({
         <span className={styles.deliveryLine}>
           {formatDeliveryMode(adhesion.book_convention_rounds?.delivery_mode)}
         </span>
+        <span className={styles.selectedYearBadge}>
+          {formatBookYear(getAdhesionSelectedYear(adhesion))}
+        </span>
       </td>
       <td className={`${styles.tableCell} ${styles.paymentCell}`}>
         {formatPaymentMethod(adhesion.payment_method)}
@@ -895,6 +902,14 @@ function AdhesionMobileCard({
         <div>
           <dt>Pagamento</dt>
           <dd>{formatPaymentMethod(adhesion.payment_method)}</dd>
+        </div>
+        <div>
+          <dt>Anno selezionato</dt>
+          <dd>
+            <span className={styles.selectedYearBadge}>
+              {formatBookYear(getAdhesionSelectedYear(adhesion))}
+            </span>
+          </dd>
         </div>
         <div className={styles.mobileDetailWide}>
           <dt>Raccolta</dt>

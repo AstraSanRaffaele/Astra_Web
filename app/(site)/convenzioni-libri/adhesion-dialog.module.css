@@ -577,6 +577,8 @@
 .productTitleRow {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
 }
 
 .productType {
@@ -598,6 +600,19 @@
 .bundleType {
   background: #0e1f6b;
   color: #fff;
+}
+
+.productYear {
+  display: inline-flex;
+  min-height: 1.35rem;
+  align-items: center;
+  padding: 0.15rem 0.42rem;
+  border-radius: 999px;
+  background: #edf2ff;
+  color: #30447f;
+  font-size: 0.53rem;
+  font-weight: 700;
+  line-height: 1.1;
 }
 
 .productCopy h4 {
