@@ -2,6 +2,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  FACULTY_OPTIONS as facultyOptions,
+  GRADUATION_YEAR_OPTIONS as graduationYearOptions,
+  getDegreeOptions,
+} from "@/lib/profile-options";
 
 type Role = "user" | "admin";
 type Facolta = "medicina" | "psicologia" | "filosofia";
@@ -20,39 +25,6 @@ type Profile = {
   created_at: string;
   updated_at: string;
 };
-
-const facultyOptions = [
-  { value: "medicina", label: "Medicina" },
-  { value: "psicologia", label: "Psicologia" },
-  { value: "filosofia", label: "Filosofia" },
-];
-
-const degreeOptionsMap: Record<string, { value: string; label: string }[]> = {
-  medicina: [
-    { value: "medicina_e_chirurgia", label: "Medicina e Chirurgia" },
-    { value: "international_medical_doctor_program", label: "International Medical Doctor Program" },
-    { value: "ricerca_biotecnologica_in_medicina", label: "Ricerca biotecnologica in medicina" },
-    { value: "fisioterapia", label: "Fisioterapia" },
-    { value: "igiene_dentale", label: "Igiene dentale" },
-    { value: "odontoiatria_e_protesi_dentaria", label: "Odontoiatria e protesi dentaria" },
-    { value: "biotechnology_for_innovative_therapeutics", label: "Biotechnology for Innovative Therapeutics" },
-    { value: "scienze_riabilitative_delle_professioni_sanitarie", label: "Scienze riabilitative delle professioni sanitarie" },
-    { value: "ostetricia", label: "Ostetricia" },
-    { value: "health_informatics", label: "Health Informatics" },
-  ],
-  psicologia: [{ value: "psicologia", label: "Psicologia" }],
-  filosofia: [
-    { value: "filosofia_triennale", label: "Filosofia" },
-    { value: "filosofia_del_mondo_contemporaneo", label: "Filosofia del mondo contemporaneo" },
-    { value: "teoria_e_storia_delle_arti_e_dell_immagine", label: "Teoria e storia delle arti e dell'immagine" },
-    { value: "politics_philosophy_and_public_affairs", label: "Politics, Philosophy and Public Affairs" },
-  ],
-};
-
-const graduationYearOptions = Array.from({ length: 2040 - 2020 + 1 }, (_, i) => {
-  const year = 2040 - i;
-  return { value: String(year), label: String(year) };
-});
 
 const PASSWORD_RESET_COOLDOWN_MS = 60 * 60 * 1000;
 
@@ -106,7 +78,10 @@ export default function ProfilePage() {
     ? Math.max(passwordResetCooldownUntil - passwordResetCurrentTime, 0)
     : 0;
   const isPasswordResetLocked = remainingPasswordResetMs > 0;
-  const courseOptions = useMemo(() => degreeOptionsMap[facolta] ?? [], [facolta]);
+  const courseOptions = useMemo(
+    () => getDegreeOptions(facolta, corsoDiLaurea),
+    [corsoDiLaurea, facolta],
+  );
 
   useEffect(() => {
     async function loadProfile() {
