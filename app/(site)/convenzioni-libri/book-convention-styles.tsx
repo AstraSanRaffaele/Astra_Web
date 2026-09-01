@@ -174,7 +174,8 @@ export default function BookConventionStyles() {
       }
 
       .book-hero {
-        padding: 8.5rem 3rem 2.75rem;
+        max-width: 1440px;
+        padding: 8.5rem 3rem 1.85rem;
       }
 
       .book-back-link {
@@ -250,7 +251,8 @@ export default function BookConventionStyles() {
       }
 
       .book-distributor {
-        padding: 0 3rem 1.15rem;
+        max-width: 1440px;
+        padding: 0 3rem .45rem;
       }
 
       .book-distributor-note {
@@ -378,7 +380,7 @@ export default function BookConventionStyles() {
         grid-template-columns: minmax(0,1fr) 18rem;
         align-items: start;
         gap: 1.25rem;
-        margin-top: 1.25rem;
+        margin-top: .85rem;
       }
 
       .book-catalog {
@@ -1005,7 +1007,7 @@ export default function BookConventionStyles() {
 
       @media (max-width: 700px) {
         .book-hero {
-          padding: 7.5rem 1.25rem 2.2rem;
+          padding: 7.5rem 1.25rem 1.55rem;
         }
 
         .book-hero-title {
