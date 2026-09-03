@@ -20,11 +20,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const smtpHost = process.env.ARUBA_SMTP_HOST;
-    const smtpPort = Number(process.env.ARUBA_SMTP_PORT ?? 465);
-    const smtpUser = process.env.ARUBA_SMTP_USER;
-    const smtpPass = process.env.ARUBA_SMTP_PASS;
-    const mailFrom = process.env.ARUBA_MAIL_FROM ?? smtpUser;
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = Number(process.env.SMTP_PORT ?? 587);
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    const mailFrom = process.env.SMTP_FROM ?? smtpUser;
 
     if (!smtpHost || !smtpPort || !smtpUser || !smtpPass || !mailFrom) {
       return NextResponse.json(

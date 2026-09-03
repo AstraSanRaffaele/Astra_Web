@@ -317,7 +317,7 @@ export default function PrivacyPage() {
                 <ul>
                   <li>Vercel per hosting e infrastruttura cloud;</li>
                   <li>Supabase per database PostgreSQL e autenticazione;</li>
-                  <li>Aruba per l’invio email tramite SMTP.</li>
+                  <li>Brevo per l’invio email tramite SMTP.</li>
                 </ul>
                 <p>
                   Tali soggetti operano, a seconda dei casi, come responsabili del
