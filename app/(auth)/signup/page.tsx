@@ -8,7 +8,7 @@ import { AuthMessage, AuthShell, FieldLabel } from "@/app/auth-shared";
 import { useRouter } from "next/navigation";
 import {
   DEGREE_OPTIONS as degreeOptionsMap,
-  FACULTY_OPTIONS as facultyOptions,
+  FACULTY_OPTIONS as facultyOptions, 
   GRADUATION_YEAR_OPTIONS as graduationYearOptions,
 } from "@/lib/profile-options";
 
