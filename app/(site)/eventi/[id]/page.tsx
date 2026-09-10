@@ -86,18 +86,7 @@ export default function EventoDetailPage() {
       let shouldRedirectToLogin = false;
 
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (cancelled) return;
-
-        if (!user) {
-          shouldRedirectToLogin = true;
-          router.replace(`/login?next=${encodeURIComponent(`/eventi/${id}`)}`);
-          return;
-        }
-
+        // 1. Prima recuperiamo l'evento, anche se l'utente non è autenticato
         const { data, error } = await supabase
           .from("events")
           .select("*")
@@ -112,12 +101,39 @@ export default function EventoDetailPage() {
           return;
         }
 
-        setEvent(data);
+        const eventData = data as EventRecord;
+
+        // 2. Se l'evento usa iscrizioni esterne,
+        // la pagina è accessibile anche senza login
+        if (eventData.iscrizioni_esterne) {
+          setEvent(eventData);
+          return;
+        }
+
+        // 3. Solo per le iscrizioni interne controlliamo il login
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (cancelled) return;
+
+        if (!user) {
+          shouldRedirectToLogin = true;
+
+          router.replace(
+            `/login?next=${encodeURIComponent(`/eventi/${id}`)}`
+          );
+
+          return;
+        }
+
+        // 4. Utente autenticato + evento interno
+        setEvent(eventData);
       } catch {
         if (cancelled) return;
-        shouldRedirectToLogin = true;
-        router.replace(`/login?next=${encodeURIComponent(`/eventi/${id}`)}`);
-        return;
+
+        setNotFound(true);
+        setEvent(null);
       } finally {
         if (!cancelled && !shouldRedirectToLogin) {
           setCheckingAuth(false);
@@ -750,7 +766,7 @@ export default function EventoDetailPage() {
                         strokeLinejoin="round"
                       />
                     </svg>
-                    Iscriviti sulla piattaforma esterna
+                    Registrati all’evento
                   </a>
                 ) : iscrizioniAperte ? (
                   <RsvpButton eventId={event.id} maxPosti={event.max_posti} />
