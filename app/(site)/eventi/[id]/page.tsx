@@ -763,7 +763,7 @@ export default function EventoDetailPage() {
                         stroke="currentColor"
                         strokeWidth="1.5"
                         strokeLinecap="round"
-                        strokeLinejoin="round"
+                        strokeLinejoin="round" 
                       />
                     </svg>
                     Registrati all’evento
