@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { CALENDAR_OWNER_EMAIL } from "@/lib/university-calendar/server";
 
 type DashboardStats = {
   totalUsers: number;
@@ -183,6 +184,17 @@ export default async function AdminPage() {
                   </span>
                   <span className="adminMenuArrow">→</span>
                 </Link>
+
+                {user.email_confirmed_at && user.email?.toLowerCase() === CALENDAR_OWNER_EMAIL && (
+                  <Link href="/admin/calendario-universita" className="adminMenuItem">
+                    <span className="adminMenuIcon">08</span>
+                    <span className="adminMenuText">
+                      <strong>Calendario universitario</strong>
+                      <small>Orari UniSR, filtri e abbonamenti per Calendario Apple</small>
+                    </span>
+                    <span className="adminMenuArrow">→</span>
+                  </Link>
+                )}
               </nav>
             </div>
           </div>

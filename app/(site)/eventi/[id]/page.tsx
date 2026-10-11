@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import RsvpButton from "@/components/ui/rsvp-button";
@@ -66,12 +66,10 @@ export default function EventoDetailPage() {
   const supabase = useMemo(() => createClient(), []);
   const params = useParams();
   const id = params?.id as string;
-  const router = useRouter();
 
   const [event, setEvent] = useState<EventRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
     if (!id) return;
@@ -81,12 +79,8 @@ export default function EventoDetailPage() {
     async function load() {
       setLoading(true);
       setNotFound(false);
-      setCheckingAuth(true);
-
-      let shouldRedirectToLogin = false;
 
       try {
-        // 1. Prima recuperiamo l'evento, anche se l'utente non è autenticato
         const { data, error } = await supabase
           .from("events")
           .select("*")
@@ -101,42 +95,14 @@ export default function EventoDetailPage() {
           return;
         }
 
-        const eventData = data as EventRecord;
-
-        // 2. Se l'evento usa iscrizioni esterne,
-        // la pagina è accessibile anche senza login
-        if (eventData.iscrizioni_esterne) {
-          setEvent(eventData);
-          return;
-        }
-
-        // 3. Solo per le iscrizioni interne controlliamo il login
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (cancelled) return;
-
-        if (!user) {
-          shouldRedirectToLogin = true;
-
-          router.replace(
-            `/login?next=${encodeURIComponent(`/eventi/${id}`)}`
-          );
-
-          return;
-        }
-
-        // 4. Utente autenticato + evento interno
-        setEvent(eventData);
+        setEvent(data as EventRecord);
       } catch {
         if (cancelled) return;
 
         setNotFound(true);
         setEvent(null);
       } finally {
-        if (!cancelled && !shouldRedirectToLogin) {
-          setCheckingAuth(false);
+        if (!cancelled) {
           setLoading(false);
         }
       }
@@ -147,10 +113,10 @@ export default function EventoDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, supabase, router]);
+  }, [id, supabase]);
 
   // ── Loading ──
-  if (loading || checkingAuth) {
+  if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: "#F8F7F3" }}>
         <style>{`@keyframes sk { 0%,100%{opacity:.4} 50%{opacity:.9} }`}</style>
@@ -278,14 +244,27 @@ export default function EventoDetailPage() {
 
         .back-btn { transition: background .18s, border-color .18s; }
         .back-btn:hover { background: rgba(8,16,42,.04) !important; border-color: rgba(8,16,42,.2) !important; }
+        .det-hero { min-height:clamp(340px,43vw,500px) !important; }
+        .det-hero::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg,rgba(8,16,42,.28),transparent 70%); }
+        .det-status { display:inline-flex; align-items:center; width:max-content; padding:.45rem .85rem; border-radius:999px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.24); color:#fff; font-size:.72rem; font-weight:700; letter-spacing:.04em; }
+        .det-status::before { content:''; display:block; width:7px; height:7px; border-radius:50%; background:#a5edc1; margin-right:.55rem; }
+        .det-status.closed::before { background:#f3ca99; }
+        .det-grid { margin-top:1rem; }
+        .det-body > div:first-child { min-height:200px; }
+        .det-sidebar > a:focus-visible, .back-pill:focus-visible, .back-btn:focus-visible { outline:3px solid #758adc; outline-offset:3px; }
 
         @media (max-width: 780px) {
+          .det-hero { min-height:350px !important; }
           .det-content { padding: 0 1.25rem 4rem !important; }
           .det-grid    { grid-template-columns: 1fr !important; }
-          .det-sidebar { position: static !important; }
-          .hero-inner  { padding: 0 1.5rem !important; }
-          .meta-chip-blue { display: none !important; }
+          .det-sidebar { position: static !important; order:-1; }
+          .hero-inner  { padding: 7.5rem 1.25rem 2.5rem !important; }
+          .det-meta-section { padding:1.4rem 1.25rem !important; }
+          .meta-chip { border-radius:.8rem; font-size:.78rem; padding:.55rem .8rem; }
+          .det-body > div:first-child { min-height:0; padding:1.5rem !important; }
+          .det-sidebar > div:first-child { padding:1.35rem !important; }
         }
+        @media (prefers-reduced-motion: reduce) { .det-meta, .det-body { animation:none; } }
       `}</style>
 
       <div
@@ -297,6 +276,7 @@ export default function EventoDetailPage() {
         }}
       >
         <div
+          className="det-hero"
           style={{
             position: "relative",
             width: "100%",
@@ -378,24 +358,9 @@ export default function EventoDetailPage() {
               </Link>
             </div>
 
-            {past && (
-              <div>
-                <span
-                  style={{
-                    fontSize: ".62rem",
-                    fontWeight: 700,
-                    letterSpacing: ".1em",
-                    textTransform: "uppercase",
-                    background: "rgba(255,255,255,.14)",
-                    color: "rgba(255,255,255,.8)",
-                    padding: ".3rem .9rem",
-                    borderRadius: "999px",
-                  }}
-                >
-                  Evento passato
-                </span>
-              </div>
-            )}
+            <span className={`det-status${past || !iscrizioniAperte && !iscrizioniEsterne ? " closed" : ""}`}>
+              {past ? "Evento passato" : iscrizioniEsterne ? "Iscrizioni esterne" : iscrizioniAperte ? "Iscrizioni aperte" : "Iscrizioni chiuse"}
+            </span>
 
             <h1
               style={{
@@ -415,6 +380,7 @@ export default function EventoDetailPage() {
         </div>
 
         <section
+          className="det-meta-section"
           style={{
             maxWidth: 1100,
             margin: "0 auto",
@@ -509,7 +475,7 @@ export default function EventoDetailPage() {
               className="det-body"
               style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
             >
-              {event.description && (
+              {event.description ? (
                 <div
                   style={{
                     background: "#fff",
@@ -542,6 +508,11 @@ export default function EventoDetailPage() {
                   >
                     {event.description}
                   </p>
+                </div>
+              ) : (
+                <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.07)", borderRadius: "2rem", padding: "2.5rem" }}>
+                  <p style={{ fontSize: ".65rem", fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: "#2E4080", marginBottom: "1rem" }}>L’evento</p>
+                  <p style={{ fontSize: "1.05rem", lineHeight: 1.7, color: "#374151" }}>Tutti i dettagli disponibili sono riportati qui accanto. Ti aspettiamo!</p>
                 </div>
               )}
 
@@ -768,7 +739,7 @@ export default function EventoDetailPage() {
                     </svg>
                     Registrati all’evento
                   </a>
-                ) : iscrizioniAperte ? (
+                ) : !iscrizioniEsterne && iscrizioniAperte ? (
                   <RsvpButton eventId={event.id} maxPosti={event.max_posti} />
                 ) : (
                   <div

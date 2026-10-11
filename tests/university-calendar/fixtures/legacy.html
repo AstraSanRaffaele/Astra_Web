@@ -1,0 +1,1355 @@
+
+<!DOCTYPE html>
+ <HTML>
+ <HEAD>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+	<TITLE>Calendario Aule UniSR</TITLE>
+ 	<META NAME="AUTHOR" CONTENT="Università Vita-Salute San Raffaele">
+ 	<META NAME="DESCRIPTION" CONTENT="">
+ 	<META NAME="KEYWORDS" CONTENT ="">
+	<meta content="IE=edge" http-equiv="X-UA-Compatible">
+	<meta content="width=device-width, initial-scale=1" name="viewport">
+ 	<META HTTP-EQUIV="content-language" CONTENT="it">
+	<META HTTP-EQUIV="Cache-Control" CONTENT="no-cache">
+	<META HTTP-EQUIV=Pragma CONTENT=NOCACHE>
+	<META HTTP-EQUIV="Expires" CONTENT="0">
+	<meta http-equiv="refresh" content="60">
+	<link rel="shortcut icon" href="favicon.ico" />
+	<link rel="stylesheet" href="https://orario.unisr.it/etc/style.css" />
+	<script src="https://orario.unisr.it/etc/scripts.js"></script>
+	<script src="https://orario.unisr.it/etc/jquery-3.6.0.min.js" data-semver="3.6.0" data-require="jquery"></script>
+ </HEAD>
+<body>
+<center>
+<div class="logo"><a href="https://orario.unisr.it/today.asp"><img src="/images/logo.png" width="250px"></a></div>
+<a href="https://sso.unisr.it/?u=https://orario.unisr.it/mycalendar.asp"><img src="/images/login_off.png" width="48px" title="Il mio calendario"></a>
+
+<br>
+
+	<div class="head"><h1>Calendario Aule</h1></div>
+
+<div class="wrap">
+<header class="header" role="banner">
+<div class="header-inner">
+	
+<link rel="stylesheet" type="text/css" href="epoch_styles.css" />
+<script type="text/javascript" src="epoch_classes.js"></script>
+<script type="text/javascript">
+/*You can also place this code in a separate file and link to it like epoch_classes.js*/
+	var bas_cal,dp_cal,ms_cal;      
+window.onload = function () {
+	dp_cal  = new Epoch('epoch_popup','popup',document.getElementById('popup_container1'));
+};
+</script>
+
+<div class="parent-container">
+  <ul class="faq">
+    <li class="">
+	<h3 class="question"><font color="#049AD9">espandi i filtri<br>expand filter</font>
+	<div class="plus-minus-toggle collapsed"></div>
+    </h3>
+      <div class="answer">
+		<table width="100%" cellspacing="1" cellpadding="1" border="0">
+		<tr bgcolor="#EFEFEF">
+			<td align="center">
+				<div class="nero">Selezionare uno o più filtri e cliccare su "MOSTRA"</div>
+				<div class="nero">Select one or more filter and click "SHOW"</div>
+				<form name="form0" action="default.asp" method="post">
+				<table>
+				<tr>
+					<td class="nero">
+					Data
+					<input id="popup_container1" type="text" name="data" value="12/10/2026" maxlength="10" size="12" onblur="this.style.backgroundColor='#ffffff'" onfocus="this.style.backgroundColor='#dbe8fb'">
+					gg/mm/aaaa&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+					ora inizio
+					<select name="DAORA">
+						<option value="0" selected>tutte</option>
+						
+						<option value="8">08:00</option>
+						
+						<option value="9">09:00</option>
+						
+						<option value="10">10:00</option>
+						
+						<option value="11">11:00</option>
+						
+						<option value="12">12:00</option>
+						
+						<option value="13">13:00</option>
+						
+						<option value="14">14:00</option>
+						
+						<option value="15">15:00</option>
+						
+						<option value="16">16:00</option>
+						
+						<option value="17">17:00</option>
+						
+						<option value="18">18:00</option>
+						
+					</select>
+					</td>
+					<td class="nero" align="left">
+					<input type="checkbox" name="lezioni" value="ok" checked>Lezioni&nbsp;
+					<input type="checkbox" name="esami" value="ok" checked>Esami
+					</td>
+				</tr>
+				<tr>
+					<td class="nero" colspan="2">
+					Palazzo
+					<select name="id_palazzo" class="selezione">
+						<option value="0" selected>tutti</option>
+						
+						<option value="21">AULE VIRTUALI</option>
+						
+						<option value="17">BORROMINI</option>
+						
+						<option value="16">CANOVA</option>
+						
+						<option value="1">DIBIT1</option>
+						
+						<option value="8">DIBIT2</option>
+						
+						<option value="18">DONATELLO</option>
+						
+						<option value="9">IOB</option>
+						
+						<option value="3">SAN RAFFAELE TURRO</option>
+						
+						<option value="22">VASARI</option>
+						
+						<option value="24">VERROCCHIO</option>
+						
+					</select>
+					</td>
+				</tr>
+				<tr>
+					<td class="nero" colspan="2">
+					Aula
+					<select name="id_aula" class="selezione">
+						<option value="0" selected>tutte</option>
+						
+						<option value="199">VIRT01 (AULE VIRTUALI - piano PT)</option>
+						
+						<option value="200">VIRT02 (AULE VIRTUALI - piano PT)</option>
+						
+						<option value="201">VIRT03 (AULE VIRTUALI - piano PT)</option>
+						
+						<option value="202">VIRT04 (AULE VIRTUALI - piano PT)</option>
+						
+						<option value="203">VIRT05 (AULE VIRTUALI - piano PT)</option>
+						
+						<option value="204">VIRT06 (AULE VIRTUALI - piano PT)</option>
+						
+						<option value="205">VIRT07 (AULE VIRTUALI - piano PT)</option>
+						
+						<option value="206">VIRT08 (AULE VIRTUALI - piano PT)</option>
+						
+						<option value="207">VIRT09 (AULE VIRTUALI - piano PT)</option>
+						
+						<option value="208">VIRT10 (AULE VIRTUALI - piano PT)</option>
+						
+						<option value="147">BO101 (BORROMINI - piano 1P)</option>
+						
+						<option value="148">BO102 (BORROMINI - piano 1P)</option>
+						
+						<option value="149">BO201 (BORROMINI - piano 2P)</option>
+						
+						<option value="150">BO202 (BORROMINI - piano 2P)</option>
+						
+						<option value="151">BO301 (BORROMINI - piano 3P)</option>
+						
+						<option value="152">BO302 (BORROMINI - piano 3P)</option>
+						
+						<option value="197">BO401 (BORROMINI - piano 4P)</option>
+						
+						<option value="198">BO402 (BORROMINI - piano 4P)</option>
+						
+						<option value="193">BO705 (BORROMINI - piano 7P)</option>
+						
+						<option value="269">Sala podcast (BO 604) (BORROMINI - piano 6P)</option>
+						
+						<option value="268">Sala riprese (BO 605) (BORROMINI - piano 6P)</option>
+						
+						<option value="246">SALA STUDIO (BORROMINI - piano PT)</option>
+						
+						<option value="247">SALA STUDIO (BORROMINI - piano 5P)</option>
+						
+						<option value="153">CA101 (CANOVA - piano 1P)</option>
+						
+						<option value="155">CA101A (CANOVA - piano 1P)</option>
+						
+						<option value="156">CA101B (CANOVA - piano 1P)</option>
+						
+						<option value="154">CA102 (CANOVA - piano 1P)</option>
+						
+						<option value="157">CA102A (CANOVA - piano 1P)</option>
+						
+						<option value="158">CA102B (CANOVA - piano 1P)</option>
+						
+						<option value="159">CA201 (CANOVA - piano 2P)</option>
+						
+						<option value="160">CA202 (CANOVA - piano 2P)</option>
+						
+						<option value="161">CA202A (CANOVA - piano 2P)</option>
+						
+						<option value="162">CA202B (CANOVA - piano 2P)</option>
+						
+						<option value="163">CA301 (CANOVA - piano 3P)</option>
+						
+						<option value="164">CA302 (CANOVA - piano 3P)</option>
+						
+						<option value="165">CA302A (CANOVA - piano 3P)</option>
+						
+						<option value="180">CA302B (CANOVA - piano 3P)</option>
+						
+						<option value="195">Sala docenti (CANOVA - piano 3P)</option>
+						
+						<option value="194">Sala riunioni (CANOVA - piano 2P)</option>
+						
+						<option value="244">SALA STUDIO (CANOVA - piano 1P)</option>
+						
+						<option value="245">SALA STUDIO (CANOVA - piano 3P)</option>
+						
+						<option value="1">Agnodice (DIBIT1 - piano PT)</option>
+						
+						<option value="4">Archimede (DIBIT1 - piano PT)</option>
+						
+						<option value="5">Aristotele (DIBIT1 - piano PT)</option>
+						
+						<option value="6">Asclepio (DIBIT1 - piano PT)</option>
+						
+						<option value="7">Avicenna (DIBIT1 - piano PT)</option>
+						
+						<option value="8">Bacone (DIBIT1 - piano PT)</option>
+						
+						<option value="58">Caravella S. Maria (DIBIT1 - piano 2S)</option>
+						
+						<option value="106">Casartelli (DIBIT1 - piano 2S)</option>
+						
+						<option value="10">Catone (DIBIT1 - piano 1P)</option>
+						
+						<option value="101">Catullo (DIBIT1 - piano PT)</option>
+						
+						<option value="11">Celso (DIBIT1 - piano 1S)</option>
+						
+						<option value="102">Cicerone (DIBIT1 - piano PT)</option>
+						
+						<option value="12">Costantino (DIBIT1 - piano 1S)</option>
+						
+						<option value="13">Democrito (DIBIT1 - piano 1S)</option>
+						
+						<option value="21">Descartes (DIBIT1 - piano PT)</option>
+						
+						<option value="184">Esercitazioni Fisioterapia (DIBIT1 - piano 1S)</option>
+						
+						<option value="23">Fleming (DIBIT1 - piano PT)</option>
+						
+						<option value="25">Galvani (DIBIT1 - piano PT)</option>
+						
+						<option value="27">Himhotep (DIBIT1 - piano PT)</option>
+						
+						<option value="28">Ippocrate (DIBIT1 - piano PT)</option>
+						
+						<option value="29">Jenner (DIBIT1 - piano PT)</option>
+						
+						<option value="30">Koch (DIBIT1 - piano PT)</option>
+						
+						<option value="54">Lab. an. movimento (DIBIT1 - piano 1S)</option>
+						
+						<option value="20">Lab. Biotecnologie (DIBIT1 - piano 1S)</option>
+						
+						<option value="95">Lab. manichini odontoiatria (DIBIT1 - piano 2S)</option>
+						
+						<option value="67">Lab. manichini-teste ID (DIBIT1 - piano 1S)</option>
+						
+						<option value="104">Lab. Neurobiol. comp. (DIBIT1 - piano 1S)</option>
+						
+						<option value="115">Lab. Psic. Cognitiva (LAPCO) (DIBIT1 - piano 2S)</option>
+						
+						<option value="31">Leonardo (DIBIT1 - piano PT)</option>
+						
+						<option value="35">Microscopi (DIBIT1 - piano 1S)</option>
+						
+						<option value="34">Morgan (DIBIT1 - piano 1S)</option>
+						
+						<option value="36">Newton (DIBIT1 - piano PT)</option>
+						
+						<option value="37">Nina (DIBIT1 - piano 1S)</option>
+						
+						<option value="99">Ovidio (DIBIT1 - piano PT)</option>
+						
+						<option value="53">Paracelso (DIBIT1 - piano 1S)</option>
+						
+						<option value="39">Pasteur (DIBIT1 - piano PT)</option>
+						
+						<option value="40">Pinta (DIBIT1 - piano 1S)</option>
+						
+						<option value="41">Platone (DIBIT1 - piano PT)</option>
+						
+						<option value="97">Riuniti igiene dentale (DIBIT1 - piano 2S)</option>
+						
+						<option value="118">Riuniti igiene dentale 1 (DIBIT1 - piano 2S)</option>
+						
+						<option value="181">Riuniti igiene dentale 1 TIR AD (DIBIT1 - piano 2S)</option>
+						
+						<option value="116">Riuniti igiene dentale 2 (DIBIT1 - piano 2S)</option>
+						
+						<option value="182">Riuniti igiene dentale 2 TIR AD (DIBIT1 - piano 2S)</option>
+						
+						<option value="117">Riuniti igiene dentale 3 (DIBIT1 - piano 2S)</option>
+						
+						<option value="183">Riuniti igiene dentale 3 TIR AD (DIBIT1 - piano 2S)</option>
+						
+						<option value="94">Riuniti odontontoiatria (DIBIT1 - piano 2S)</option>
+						
+						<option value="105">Riuniti odontontoiatria 2 (DIBIT1 - piano 2S)</option>
+						
+						<option value="109">Riuniti odontontoiatria 3 (DIBIT1 - piano 2S)</option>
+						
+						<option value="96">Rotelli G. (DIBIT1 - piano 2S)</option>
+						
+						<option value="26">S. Giustino (DIBIT1 - piano PT)</option>
+						
+						<option value="33">S. Luigi (DIBIT1 - piano 1S)</option>
+						
+						<option value="44">S. Tommaso (DIBIT1 - piano PT)</option>
+						
+						<option value="91">Sala Counseling (DIBIT1 - piano 1S)</option>
+						
+						<option value="107">Sala docenti Medicina (DIBIT1 - piano PT)</option>
+						
+						<option value="138">Sala Riunioni 135  (DIBIT1 - piano 1)</option>
+						
+						<option value="108">Sala Riunioni Amministrazione (DIBIT1 - piano PT)</option>
+						
+						<option value="98">Sala Riunioni Filosofia (DIBIT1 - piano 1P)</option>
+						
+						<option value="139">Sala studio h24 (DIBIT1 - piano PT)</option>
+						
+						<option value="42">Salk (DIBIT1 - piano PT)</option>
+						
+						<option value="103">Seneca (DIBIT1 - piano PT)</option>
+						
+						<option value="254">SimLab 2 - ICU 2
+ (DIBIT1 - piano PT)</option>
+						
+						<option value="255">SimLab 2 - ICU 3
+ (DIBIT1 - piano PT)</option>
+						
+						<option value="258">SimLab 2 - MEETING ROOM 2
+ (DIBIT1 - piano PT)</option>
+						
+						<option value="256">SimLab 2 - OR 2
+ (DIBIT1 - piano PT)</option>
+						
+						<option value="257">SimLab 2 - OR 3
+ (DIBIT1 - piano PT)</option>
+						
+						<option value="259">SimLab 2 - PLENARIA 2
+ (DIBIT1 - piano PT)</option>
+						
+						<option value="260">SimLab 2 - TASK ROOM 2
+ (DIBIT1 - piano PT)</option>
+						
+						<option value="267">Smiley lab (DIBIT1 - piano PT)</option>
+						
+						<option value="2">SS. Cosma e Damiano (DIBIT1 - piano 1S)</option>
+						
+						<option value="43">Talete (DIBIT1 - piano 1P)</option>
+						
+						<option value="100">Virgilio (DIBIT1 - piano PT)</option>
+						
+						<option value="137">Centro Simulazione (DIBIT2 - piano 1S)</option>
+						
+						<option value="209">Centro Simulazione 2 (DIBIT2 - piano 1S)</option>
+						
+						<option value="78">Ciborio (DIBIT2 - piano 1S)</option>
+						
+						<option value="82">Demostene (DIBIT2 - piano 1P)</option>
+						
+						<option value="81">Eraclito (DIBIT2 - piano 1P)</option>
+						
+						<option value="85">Origene (DIBIT2 - piano 1S)</option>
+						
+						<option value="79">Pitagora (DIBIT2 - piano 1P)</option>
+						
+						<option value="84">Plotino (DIBIT2 - piano 1P)</option>
+						
+						<option value="70">S. Agostino (DIBIT2 - piano PR)</option>
+						
+						<option value="71">S. Ambrogio (DIBIT2 - piano PR)</option>
+						
+						<option value="73">S. Atanasio (DIBIT2 - piano PR)</option>
+						
+						<option value="86">S. Cipriano (DIBIT2 - piano 1S)</option>
+						
+						<option value="72">S. G. Crisostomo (DIBIT2 - piano PR)</option>
+						
+						<option value="76">S. Ignazio (DIBIT2 - piano PR)</option>
+						
+						<option value="74">S. Ippolito (DIBIT2 - piano PR)</option>
+						
+						<option value="75">S. Ireneo (DIBIT2 - piano PR)</option>
+						
+						<option value="89">S. Leone Magno (DIBIT2 - piano 1S)</option>
+						
+						<option value="83">S. Martino (DIBIT2 - piano 1P)</option>
+						
+						<option value="77">S. Policarpo (DIBIT2 - piano PR)</option>
+						
+						<option value="92">Sala Consiliare (DIBIT2 - piano 1P)</option>
+						
+						<option value="90">Sala Docenti (DIBIT2 - piano 1P)</option>
+						
+						<option value="242">SALA STUDIO (DIBIT2 - piano 1S)</option>
+						
+						<option value="243">SALA STUDIO BALCONATA (DIBIT2 - piano 1P)</option>
+						
+						<option value="87">Scuola di Atene (DIBIT2 - piano 1S)</option>
+						
+						<option value="265">SimLab 1 - ICU 1
+ (DIBIT2 - piano 1S)</option>
+						
+						<option value="262">SimLab 1 - MEETING ROOM 1
+ (DIBIT2 - piano 1S)</option>
+						
+						<option value="261">SimLab 1 - OR 1
+ (DIBIT2 - piano 1S)</option>
+						
+						<option value="263">SimLab 1 - PLENARIA 1
+ (DIBIT2 - piano 1S)</option>
+						
+						<option value="264">SimLab 1 - TASK ROOM 1
+ (DIBIT2 - piano 1S)</option>
+						
+						<option value="80">Socrate (DIBIT2 - piano 1P)</option>
+						
+						<option value="88">Tertulliano (DIBIT2 - piano 1S)</option>
+						
+						<option value="266">UO Anatomia Patologica (DIBIT2 - piano 6P)</option>
+						
+						<option value="166">DO101 (DONATELLO - piano 1P)</option>
+						
+						<option value="167">DO102 (DONATELLO - piano 1P)</option>
+						
+						<option value="168">DO103 (DONATELLO - piano 1P)</option>
+						
+						<option value="169">DO104 (DONATELLO - piano 1P)</option>
+						
+						<option value="170">DO105 (DONATELLO - piano 1P)</option>
+						
+						<option value="171">DO106 (DONATELLO - piano 1P)</option>
+						
+						<option value="172">DO201 (DONATELLO - piano 2P)</option>
+						
+						<option value="173">DO202 (DONATELLO - piano 2P)</option>
+						
+						<option value="174">DO203 (DONATELLO - piano 2P)</option>
+						
+						<option value="175">DO204 (DONATELLO - piano 2P)</option>
+						
+						<option value="176">DO205 (DONATELLO - piano 2P)</option>
+						
+						<option value="177">DO206 (DONATELLO - piano 2P)</option>
+						
+						<option value="178">DO207 (DONATELLO - piano 2P)</option>
+						
+						<option value="179">DO208 (DONATELLO - piano 2P)</option>
+						
+						<option value="250">SALA STUDIO (DONATELLO - piano 2P)</option>
+						
+						<option value="249">SALA STUDIO SUD (DONATELLO - piano PT)</option>
+						
+						<option value="192">Student Lounge (DONATELLO - piano PT)</option>
+						
+						<option value="136">S. Donato (IOB - piano PT)</option>
+						
+						<option value="114">S. Marco (IOB - piano PT)</option>
+						
+						<option value="110">S. Pietro (IOB - piano PT)</option>
+						
+						<option value="145">S. Pietro palazzina (IOB - piano PT)</option>
+						
+						<option value="18">Aula Informatica (SAN RAFFAELE TURRO - piano 1P)</option>
+						
+						<option value="19">Aula Specializzandi (SAN RAFFAELE TURRO - piano PT)</option>
+						
+						<option value="14">Maria Bambina (SAN RAFFAELE TURRO - piano PT)</option>
+						
+						<option value="16">S. Chiara (SAN RAFFAELE TURRO - piano PT)</option>
+						
+						<option value="15">S. Toscana (SAN RAFFAELE TURRO - piano PT)</option>
+						
+						<option value="17">Sala Studio (SAN RAFFAELE TURRO - piano PT)</option>
+						
+						<option value="210">VA101 (VASARI - piano 1P)</option>
+						
+						<option value="218">VA101A (VASARI - piano 1P)</option>
+						
+						<option value="219">VA101B (VASARI - piano 1P)</option>
+						
+						<option value="211">VA102 (VASARI - piano 1P)</option>
+						
+						<option value="220">VA102A (VASARI - piano 1P)</option>
+						
+						<option value="221">VA102B (VASARI - piano 1P)</option>
+						
+						<option value="212">VA201 (VASARI - piano 2P)</option>
+						
+						<option value="222">VA201A (VASARI - piano 2P)</option>
+						
+						<option value="223">VA201B (VASARI - piano 2P)</option>
+						
+						<option value="213">VA202 (VASARI - piano 2P)</option>
+						
+						<option value="224">VA202A (VASARI - piano 2P)</option>
+						
+						<option value="225">VA202B (VASARI - piano 2P)</option>
+						
+						<option value="214">VA301 (VASARI - piano 3P)</option>
+						
+						<option value="226">VA301A (VASARI - piano 3P)</option>
+						
+						<option value="227">VA301B (VASARI - piano 3P)</option>
+						
+						<option value="215">VA302 (VASARI - piano 3P)</option>
+						
+						<option value="228">VA302A (VASARI - piano 3P)</option>
+						
+						<option value="229">VA302B (VASARI - piano 3P)</option>
+						
+						<option value="216">VA401 (VASARI - piano 4P)</option>
+						
+						<option value="230">VA401A (VASARI - piano 4P)</option>
+						
+						<option value="231">VA401B (VASARI - piano 4P)</option>
+						
+						<option value="217">VA402 (VASARI - piano 4P)</option>
+						
+						<option value="232">VA402A (VASARI - piano 4P)</option>
+						
+						<option value="233">VA402B (VASARI - piano 4P)</option>
+						
+						<option value="277">VE101 (VERROCCHIO - piano 1P)</option>
+						
+						<option value="278">VE101A (VERROCCHIO - piano 1P)</option>
+						
+						<option value="279">VE101B (VERROCCHIO - piano 1P)</option>
+						
+						<option value="280">VE102 (VERROCCHIO - piano 1P)</option>
+						
+						<option value="281">VE102A (VERROCCHIO - piano 1P)</option>
+						
+						<option value="282">VE102B (VERROCCHIO - piano 1P)</option>
+						
+						<option value="283">VE201 (VERROCCHIO - piano 2P)</option>
+						
+						<option value="284">VE201A (VERROCCHIO - piano 2P)</option>
+						
+						<option value="285">VE201B (VERROCCHIO - piano 2P)</option>
+						
+						<option value="286">VE202 (VERROCCHIO - piano 2P)</option>
+						
+						<option value="287">VE202A (VERROCCHIO - piano 2P)</option>
+						
+						<option value="288">VE202B (VERROCCHIO - piano 2P)</option>
+						
+					</select>
+					</td>
+				</tr>
+				<tr>
+					<td class="nero" colspan="2">
+					Corso di laurea
+					<select name="CDS_ID" class="selezione">
+						<option value="0">tutti</option>
+						
+						<option value="10213">Biotechnology and Medical Biology (AA Attivazione 2010)</option>
+						
+						<option value="10314">Biotechnology for Innovative Therapeutics (AA Attivazione 2010)</option>
+						
+						<option value="10262">Corso di Dottorato di Ricerca in Filosofia (AA Attivazione 2022)</option>
+						
+						<option value="10259">Corso di Dottorato di Ricerca in Scienze Cognitive e Comportamentali (AA Attivazione 2022)</option>
+						
+						<option value="10260">Corso di Dottorato di Ricerca Internazionale di Medicina Molecolare (AA Attivazione 2022)</option>
+						
+						<option value="10121">Corso di Laurea in Filosofia (AA Attivazione 2010)</option>
+						
+						<option value="10315">Corso di Laurea in Filosofia (AA Attivazione 2010)</option>
+						
+						<option value="10129">Corso di Laurea in Fisioterapia (AA Attivazione 2010)</option>
+						
+						<option value="10128">Corso di Laurea in Igiene Dentale (AA Attivazione 2010)</option>
+						
+						<option value="10120">Corso di Laurea in Infermieristica (AA Attivazione 2010)</option>
+						
+						<option value="10326">Corso di Laurea in Infermieristica 2 (AA Attivazione 2010)</option>
+						
+						<option value="10310">Corso di Laurea in Osteopatia (AA Attivazione 2025)</option>
+						
+						<option value="10230">Corso di Laurea in Ostetricia (AA Attivazione 2019)</option>
+						
+						<option value="10318">Corso di Laurea in Ricerca biotecnologica in medicina (AA Attivazione 2010)</option>
+						
+						<option value="10212">Corso di Laurea in Ricerca biotecnologica in medicina (AA Attivazione 2018)</option>
+						
+						<option value="10114">Corso di Laurea in Scienze e Tecniche Psicologiche (AA Attivazione 2009)</option>
+						
+						<option value="10313">Corso di Laurea in Scienze e Tecniche Psicologiche (AA Attivazione 2009)</option>
+						
+						<option value="10242">Corso di Laurea in Scienze Politiche e Strategie Globali (AA Attivazione 2021)</option>
+						
+						<option value="10319">Corso di Laurea in Scienze Politiche e Strategie Globali (AA Attivazione 2025)</option>
+						
+						<option value="10309">Corso di Laurea in Tecniche di Radiologia Medica per Immagini e Radioterapia (AA Attivazione 2024)</option>
+						
+						<option value="10185">Corso di Laurea Magistrale in Filosofia del mondo contemporaneo (AA Attivazione 2010)</option>
+						
+						<option value="10316">Corso di Laurea Magistrale in Filosofia del mondo contemporaneo (AA Attivazione 2010)</option>
+						
+						<option value="10283">Corso di Laurea Magistrale in Health Informatics (AA Attivazione 2023)</option>
+						
+						<option value="10115" selected>Corso di Laurea magistrale in Medicina e Chirurgia (AA Attivazione 2009)</option>
+						
+						<option value="10311">Corso di Laurea magistrale in Medicina e Chirurgia (AA Attivazione 2009)</option>
+						
+						<option value="10325">Corso di Laurea magistrale in Medicina e Chirurgia 2 (AA Attivazione 2009)</option>
+						
+						<option value="10284">Corso di Laurea magistrale in Medicina e Chirurgia 2 (AA Attivazione 2024)</option>
+						
+						<option value="10324">Corso di Laurea magistrale in Medicina e Chirurgia 3 (AA Attivazione 2009)</option>
+						
+						<option value="10285">Corso di Laurea magistrale in Medicina e Chirurgia 3 (AA Attivazione 2024)</option>
+						
+						<option value="10130">Corso di Laurea Magistrale in Odontoiatria e Protesi Dentaria (AA Attivazione 2010)</option>
+						
+						<option value="10322">Corso di Laurea Magistrale in Odontoiatria e Protesi Dentaria (AA Attivazione 2010)</option>
+						
+						<option value="10123">Corso di Laurea Magistrale in Psicologia (AA Attivazione 2010)</option>
+						
+						<option value="10312">Corso di Laurea Magistrale in Psicologia (AA Attivazione 2010)</option>
+						
+						<option value="10184">Corso di Laurea Magistrale in Psicologia Cognitiva nella Comunicazione della Salute (AA Attivazione 2016)</option>
+						
+						<option value="10317">Corso di Laurea Magistrale in Psicologia Cognitiva nella Comunicazione della Salute (AA Attivazione 2025)</option>
+						
+						<option value="10235">Corso di Laurea Magistrale in Scienze Infermieristiche e Ostetriche (AA Attivazione 2019)</option>
+						
+						<option value="10203">Corso di Laurea Magistrale in Scienze Riabilitative delle Professioni Sanitarie (AA Attivazione 2016)</option>
+						
+						<option value="10236">Corso di Laurea Magistrale in Teoria e storia delle arti e dell'immagine (AA Attivazione 2019)</option>
+						
+						<option value="10320">Corso di Laurea Magistrale in Teoria e storia delle arti e dell'immagine (AA Attivazione 2019)</option>
+						
+						<option value="10054">erasmus (AA Attivazione 2001)</option>
+						
+						<option value="10124">International MD Program Corso di Laurea Magistrale in Medicina e Chirurgia (AA Attivazione 2010)</option>
+						
+						<option value="10321">International MD Program Corso di Laurea Magistrale in Medicina e Chirurgia (AA Attivazione 2010)</option>
+						
+						<option value="10250">Master di II  livello in "Il nervo ottico: occhio, cervello, visione" (AA Attivazione 2021)</option>
+						
+						<option value="10340">Master di II livello in Chirurgia Colorettale (AA Attivazione 2025)</option>
+						
+						<option value="10333">Master di II livello in Chirurgia Robotica in Urologia (AA Attivazione 2025)</option>
+						
+						<option value="10294">Master di II livello in Coronary Interventional Cardiology (AA Attivazione 2024)</option>
+						
+						<option value="10278">Master di II livello in Endocrinologia e Diabetologia Pediatrica (AA Attivazione 2023)</option>
+						
+						<option value="10265">Master di secondo livello in Ecocardiografia Interventistica (AA Attivazione 2022)</option>
+						
+						<option value="10298">Master di secondo livello in Epidemiologia (AA Attivazione 2024)</option>
+						
+						<option value="10116">Master di secondo livello in Psicopatologia Forense e Criminologia Clinica (AA Attivazione 2009)</option>
+						
+						<option value="10277">Master di Secondo Livello in Traumatologia dello Sport (AA Attivazione 2023)</option>
+						
+						<option value="10223">Master II livello in Osteoporosi e Malattie del Metabolismo Osseo (AA Attivazione 2018)</option>
+						
+						<option value="10246">Master in Comunicazione della Scienza e della Salute (AA Attivazione 2021)</option>
+						
+						<option value="10210">Master Universitario di primo livello in Wound Care (AA Attivazione 2017)</option>
+						
+						<option value="10191">Master Universitario di primo livello per Infermiere Ostetrica di Ricerca (AA Attivazione 2016)</option>
+						
+						<option value="10240">Tirocinio di adattamento Igiene dentale (AA Attivazione 2020)</option>
+						
+					</select>
+					</td>
+				</tr>
+				<tr>
+					<td class="nero" colspan="2">
+					anno di corso
+					<select name="ANNO_CORSO" class="selezione">
+						<option value="0" selected>tutti</option>
+						
+						<option value="1">1</option>
+						
+						<option value="2">2</option>
+						
+						<option value="3">3</option>
+						
+						<option value="4">4</option>
+						
+						<option value="5">5</option>
+						
+						<option value="6">6</option>
+						
+					</select>
+					</td>
+				</tr>
+				<tr>
+					<td class="nero" colspan="2">
+					docente
+					<input type="text" name="Referente" value="">
+					</td>
+				</tr>
+				</table>
+				<center>
+				<input type="submit" name="mostra" value="mostra / show" style="color:#ffffff; background-color:#049AD9;border-radius: 6px;">
+				</center>
+				</form>
+			</td>
+		</tr>
+		</table>
+      </div>
+    </li>
+  </ul>
+</div>
+<script id="rendered-js">
+// Toggle Collapse
+$('.faq li .question').click(function () {
+  $(this).find('.plus-minus-toggle').toggleClass('collapsed');
+  $(this).parent().toggleClass('active');
+});
+//# sourceURL=pen.js
+</script>
+	<form>
+	<table width="100%" cellspacing="1" cellpadding="1" border="0">
+		<tr>
+			<td align="left">
+			
+			<form>
+			<input type="button" name="prev" value="<< prev day" onclick="javascript:self.location.href='default.asp?ext=ok&data=11/10/2026&CDS_ID=10115&DAORA=0&ANNO_CORSO=0&id_palazzo=0&lezioni=ok&esami=ok';" style="color:#ffffff; background-color:#049AD9;border-radius: 6px;">
+			</form>
+			
+			</td>
+			<td align="center" class="nero">
+			<b>Monday, October 12, 2026</b>
+			</td>
+			<td align="right">
+			
+			<form>
+			<input type="button" name="succ" value="next day >>" onclick="javascript:self.location.href='default.asp?ext=ok&data=13/10/2026&CDS_ID=10115&DAORA=0&ANNO_CORSO=0&id_palazzo=0&lezioni=ok&esami=ok';" style="color:#ffffff; background-color:#049AD9;border-radius: 6px;">
+			</form>
+			
+			</td>
+		</tr>
+	</table>
+	<table width="100%" cellspacing="1" cellpadding="1" border="0" bgcolor="#ffffff">
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;"><font color=#cc0000 size=2><b>12/10/2026</b></font></td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;">&nbsp;</td>
+	</tr>
+	<tr bgcolor="#ffffff">
+		<td bgcolor="#EFEFEF" width="80px" align="center" class="nero">
+		
+			<a href="https://unisr.2guide.cloud/maps/milano2/?poi=1958" target="_blank"><img src="/images/maps.png" width="32" border="0" align="absmiddle" title="clicca qui per scoprire come raggiungere l'aula"></a>
+		
+		</td>
+		<td bgcolor="#C0C0C0" width="600px" class="nero">
+			<font color=#049AD9 size=2>BORROMINI</font> - <font color=#cc0000 size=2><b>Aula BO102</b></font> (1 piano)
+			
+				<a href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_NWU0NzEyNmMtNjVhYS00M2ZiLTkyOWEtM2MwNGE5MjgzYzJi%40thread.v2/0?context=%7b%22Tid%22%3a%22332da351-3370-4472-aaf7-a03b2c9f58f8%22%2c%22Oid%22%3a%22e1618c13-be8a-4965-9d46-cc742d37f376%22%7d" target="_blank"><img src="./images/teams.png" width="32" border="0" align="absmiddle"> live</a>
+			
+		</td>
+		<td bgcolor="#C0C0C0" width="250px" align="center" class="nero">
+			Corso di Laurea
+		</td>
+		<td bgcolor="#C0C0C0" width="80px" align="center" class="nero">
+			anno
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>14:30-16:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Ginecologia ed Ostetricia (LINEA BIANCA)&nbsp;(docente: BERGAMINI ALICE)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		6
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>17:30-19:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Malattie sistemiche e infiammazione oculare&nbsp;(docente: MISEROCCHI ELISABETTA)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;">&nbsp;</td>
+	</tr>
+	<tr bgcolor="#ffffff">
+		<td bgcolor="#EFEFEF" width="80px" align="center" class="nero">
+		
+			<a href="https://unisr.2guide.cloud/maps/milano2/?poi=3236" target="_blank"><img src="/images/maps.png" width="32" border="0" align="absmiddle" title="clicca qui per scoprire come raggiungere l'aula"></a>
+		
+		</td>
+		<td bgcolor="#C0C0C0" width="600px" class="nero">
+			<font color=#049AD9 size=2>BORROMINI</font> - <font color=#cc0000 size=2><b>Aula BO201</b></font> (2 piano)
+			
+				<a href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_NmY5MzYzZTItNGE2NS00MjIyLWFjNzgtZDUxZGY1NjVkNmY1%40thread.v2/0?context=%7b%22Tid%22%3a%22332da351-3370-4472-aaf7-a03b2c9f58f8%22%2c%22Oid%22%3a%22e26c3820-2078-4848-8016-d6087a2af5ef%22%7d" target="_blank"><img src="./images/teams.png" width="32" border="0" align="absmiddle"> live</a>
+			
+		</td>
+		<td bgcolor="#C0C0C0" width="250px" align="center" class="nero">
+			Corso di Laurea
+		</td>
+		<td bgcolor="#C0C0C0" width="80px" align="center" class="nero">
+			anno
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>17:30-19:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Cardiologia di Precisione: l'Integrazione tra ECG Avanzato e Ricerca Traslazionale nel Management delle Cardiomiopatie Complesse&nbsp;(docente: PERETTO GIOVANNI)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		5
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;">&nbsp;</td>
+	</tr>
+	<tr bgcolor="#ffffff">
+		<td bgcolor="#EFEFEF" width="80px" align="center" class="nero">
+		
+			<a href="https://unisr.2guide.cloud/maps/milano2/?poi=3298" target="_blank"><img src="/images/maps.png" width="32" border="0" align="absmiddle" title="clicca qui per scoprire come raggiungere l'aula"></a>
+		
+		</td>
+		<td bgcolor="#C0C0C0" width="600px" class="nero">
+			<font color=#049AD9 size=2>BORROMINI</font> - <font color=#cc0000 size=2><b>Aula BO202</b></font> (2 piano)
+			
+				<a href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_NTZkYjZkMmEtNDRlYS00NmE1LWIzNDAtYmJjODYyZjQ5YTZj%40thread.v2/0?context=%7b%22Tid%22%3a%22332da351-3370-4472-aaf7-a03b2c9f58f8%22%2c%22Oid%22%3a%22a53f192a-7557-4759-9b7f-243be947aa0b%22%7d" target="_blank"><img src="./images/teams.png" width="32" border="0" align="absmiddle"> live</a>
+			
+		</td>
+		<td bgcolor="#C0C0C0" width="250px" align="center" class="nero">
+			Corso di Laurea
+		</td>
+		<td bgcolor="#C0C0C0" width="80px" align="center" class="nero">
+			anno
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>17:30-19:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Meccanismi fisiopatologici, diagnosi e monitoraggio delle demenze&nbsp;(docente: SPINELLI EDOARDO GIOELE)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		5
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;">&nbsp;</td>
+	</tr>
+	<tr bgcolor="#ffffff">
+		<td bgcolor="#EFEFEF" width="80px" align="center" class="nero">
+		
+			<a href="https://unisr.2guide.cloud/maps/milano2/?poi=2966" target="_blank"><img src="/images/maps.png" width="32" border="0" align="absmiddle" title="clicca qui per scoprire come raggiungere l'aula"></a>
+		
+		</td>
+		<td bgcolor="#C0C0C0" width="600px" class="nero">
+			<font color=#049AD9 size=2>BORROMINI</font> - <font color=#cc0000 size=2><b>Aula BO402</b></font> (4 piano)
+			
+				<a href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZDkwMGRhYzktZjQzYy00ZmY3LWFhZGUtNjljODAzMjJmNjlk%40thread.v2/0?context=%7b%22Tid%22%3a%22332da351-3370-4472-aaf7-a03b2c9f58f8%22%2c%22Oid%22%3a%22f9e44e3e-eb49-4d5d-96c7-85f890b507cf%22%7d" target="_blank"><img src="./images/teams.png" width="32" border="0" align="absmiddle"> live</a>
+			
+		</td>
+		<td bgcolor="#C0C0C0" width="250px" align="center" class="nero">
+			Corso di Laurea
+		</td>
+		<td bgcolor="#C0C0C0" width="80px" align="center" class="nero">
+			anno
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>09:30-11:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Pediatria (LINEA BIANCA)&nbsp;(docente: AIUTI ALESSANDRO)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		6
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;">&nbsp;</td>
+	</tr>
+	<tr bgcolor="#ffffff">
+		<td bgcolor="#EFEFEF" width="80px" align="center" class="nero">
+		
+			<a href="https://unisr.2guide.cloud/maps/milano2/?poi=1322" target="_blank"><img src="/images/maps.png" width="32" border="0" align="absmiddle" title="clicca qui per scoprire come raggiungere l'aula"></a>
+		
+		</td>
+		<td bgcolor="#C0C0C0" width="600px" class="nero">
+			<font color=#049AD9 size=2>CANOVA</font> - <font color=#cc0000 size=2><b>Aula CA102</b></font> (1 piano)
+			
+				<a href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_NDY5ZDM5ODItYzFjYS00YmVlLWEzZjgtZjZmZmQwMWE5ZGE5%40thread.v2/0?context=%7b%22Tid%22%3a%22332da351-3370-4472-aaf7-a03b2c9f58f8%22%2c%22Oid%22%3a%2290cf02e6-11b3-414a-9cd8-0dcecca371ff%22%7d" target="_blank"><img src="./images/teams.png" width="32" border="0" align="absmiddle"> live</a>
+			
+		</td>
+		<td bgcolor="#C0C0C0" width="250px" align="center" class="nero">
+			Corso di Laurea
+		</td>
+		<td bgcolor="#C0C0C0" width="80px" align="center" class="nero">
+			anno
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>16:30-18:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Introduzione all'intelligenza artificiale nell'imaging medico&nbsp;(docente: PICCHIO MARIA)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		6
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;">&nbsp;</td>
+	</tr>
+	<tr bgcolor="#ffffff">
+		<td bgcolor="#EFEFEF" width="80px" align="center" class="nero">
+		
+			<a href="https://unisr.2guide.cloud/maps/milano2/?poi=1642" target="_blank"><img src="/images/maps.png" width="32" border="0" align="absmiddle" title="clicca qui per scoprire come raggiungere l'aula"></a>
+		
+		</td>
+		<td bgcolor="#C0C0C0" width="600px" class="nero">
+			<font color=#049AD9 size=2>CANOVA</font> - <font color=#cc0000 size=2><b>Aula CA202</b></font> (2 piano)
+			
+				<a href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_MTcyMzdmODMtZTE5ZC00MmMyLThjMTQtMzZhYmQ2ZmJkNWM0%40thread.v2/0?context=%7b%22Tid%22%3a%22332da351-3370-4472-aaf7-a03b2c9f58f8%22%2c%22Oid%22%3a%2281d3e975-76b0-410b-a1bc-13584a7b062d%22%7d" target="_blank"><img src="./images/teams.png" width="32" border="0" align="absmiddle"> live</a>
+			
+		</td>
+		<td bgcolor="#C0C0C0" width="250px" align="center" class="nero">
+			Corso di Laurea
+		</td>
+		<td bgcolor="#C0C0C0" width="80px" align="center" class="nero">
+			anno
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>11:30-13:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Pediatria (LINEA GIALLA)&nbsp;(docente: BERNARDO MARIA ESTER)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		6
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>11:30-13:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Pediatria (LINEA VERDE)&nbsp;(docente: BERNARDO MARIA ESTER)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		6
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>13:30-15:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Anatomia Patologica (LINEA AZZURRA)&nbsp;(docente: MASTROPASQUA MAURO GIUSEPPE)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>13:30-15:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Anatomia Patologica (LINEA BIANCA)&nbsp;(docente: MASTROPASQUA MAURO GIUSEPPE)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;">&nbsp;</td>
+	</tr>
+	<tr bgcolor="#ffffff">
+		<td bgcolor="#EFEFEF" width="80px" align="center" class="nero">
+		
+			<a href="https://unisr.2guide.cloud/maps/olgettina/?poi=8018" target="_blank"><img src="/images/maps.png" width="32" border="0" align="absmiddle" title="clicca qui per scoprire come raggiungere l'aula"></a>
+		
+		</td>
+		<td bgcolor="#C0C0C0" width="600px" class="nero">
+			<font color=#049AD9 size=2>DIBIT1</font> - <font color=#cc0000 size=2><b>Aula SIMLAB 2 - PLENARIA 2
+</b></font> (piano terra)
+			
+		</td>
+		<td bgcolor="#C0C0C0" width="250px" align="center" class="nero">
+			Corso di Laurea
+		</td>
+		<td bgcolor="#C0C0C0" width="80px" align="center" class="nero">
+			anno
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>08:30-12:00</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Attività professionalizzanti: Internato in Chirurgia e Specializzazioni Chirurgiche (LINEA VERDE)&nbsp;(docente: PARTELLI STEFANO)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>13:00-17:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Attività professionalizzanti: Internato in Chirurgia e Specializzazioni Chirurgiche (LINEA VERDE)&nbsp;(docente: PARTELLI STEFANO)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;">&nbsp;</td>
+	</tr>
+	<tr bgcolor="#ffffff">
+		<td bgcolor="#EFEFEF" width="80px" align="center" class="nero">
+		
+			<a href="https://unisr.2guide.cloud/maps/milano2/?poi=2910" target="_blank"><img src="/images/maps.png" width="32" border="0" align="absmiddle" title="clicca qui per scoprire come raggiungere l'aula"></a>
+		
+		</td>
+		<td bgcolor="#C0C0C0" width="600px" class="nero">
+			<font color=#049AD9 size=2>VASARI</font> - <font color=#cc0000 size=2><b>Aula VA101</b></font> (1 piano)
+			
+				<a href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_NGQ3MDQ4Y2YtMWI3MS00MzdjLWIxZTQtYzA1YzVlZDliYTYz%40thread.v2/0?context=%7b%22Tid%22%3a%22332da351-3370-4472-aaf7-a03b2c9f58f8%22%2c%22Oid%22%3a%22d9ec4dfb-c40f-4750-9fdc-ff8e3f4090d0%22%7d" target="_blank"><img src="./images/teams.png" width="32" border="0" align="absmiddle"> live</a>
+			
+		</td>
+		<td bgcolor="#C0C0C0" width="250px" align="center" class="nero">
+			Corso di Laurea
+		</td>
+		<td bgcolor="#C0C0C0" width="80px" align="center" class="nero">
+			anno
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>10:30-12:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Anatomia Patologica (LINEA ROSSA)&nbsp;(docente: PEDICA FEDERICA)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>10:30-12:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Anatomia Patologica (LINEA VIOLA)&nbsp;(docente: PEDICA FEDERICA)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>13:30-15:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Gastroenterologia (LINEA ROSSA)&nbsp;(docente: VANELLA GIUSEPPE)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>13:30-15:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Gastroenterologia (LINEA VIOLA)&nbsp;(docente: VANELLA GIUSEPPE)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;">&nbsp;</td>
+	</tr>
+	<tr bgcolor="#ffffff">
+		<td bgcolor="#EFEFEF" width="80px" align="center" class="nero">
+		
+			<a href="https://unisr.2guide.cloud/maps/milano2/?poi=1620" target="_blank"><img src="/images/maps.png" width="32" border="0" align="absmiddle" title="clicca qui per scoprire come raggiungere l'aula"></a>
+		
+		</td>
+		<td bgcolor="#C0C0C0" width="600px" class="nero">
+			<font color=#049AD9 size=2>VASARI</font> - <font color=#cc0000 size=2><b>Aula VA102</b></font> (1 piano)
+			
+				<a href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_MzdiNDkyNGMtYTAzYy00ZDJlLWE1NmYtMmExNzg3MzFhODAz%40thread.v2/0?context=%7b%22Tid%22%3a%22332da351-3370-4472-aaf7-a03b2c9f58f8%22%2c%22Oid%22%3a%22440ffe8a-21c4-49ce-94be-572f41fc25fb%22%7d" target="_blank"><img src="./images/teams.png" width="32" border="0" align="absmiddle"> live</a>
+			
+		</td>
+		<td bgcolor="#C0C0C0" width="250px" align="center" class="nero">
+			Corso di Laurea
+		</td>
+		<td bgcolor="#C0C0C0" width="80px" align="center" class="nero">
+			anno
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>08:30-10:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Gastroenterologia (LINEA AZZURRA)&nbsp;(docente: SASSONE PAGANO JENNY)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>08:30-10:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Gastroenterologia (LINEA BIANCA)&nbsp;(docente: SASSONE PAGANO JENNY)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>10:30-12:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Malattie Infettive (LINEA AZZURRA)&nbsp;(docente: NOZZA SILVIA)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>10:30-12:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Malattie Infettive (LINEA BIANCA)&nbsp;(docente: NOZZA SILVIA)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		4
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td colspan="4" style="font-size: 4px;">&nbsp;</td>
+	</tr>
+	<tr bgcolor="#ffffff">
+		<td bgcolor="#EFEFEF" width="80px" align="center" class="nero">
+		
+			<a href="https://unisr.2guide.cloud/maps/milano2/?poi=1214" target="_blank"><img src="/images/maps.png" width="32" border="0" align="absmiddle" title="clicca qui per scoprire come raggiungere l'aula"></a>
+		
+		</td>
+		<td bgcolor="#C0C0C0" width="600px" class="nero">
+			<font color=#049AD9 size=2>VASARI</font> - <font color=#cc0000 size=2><b>Aula VA301</b></font> (3 piano)
+			
+				<a href="https://teams.microsoft.com/l/meetup-join/19%3ameeting_NGNhMTVjM2QtZmE0My00OTkwLThmMTMtNjE4YWZiZWQxYzRh%40thread.v2/0?context=%7b%22Tid%22%3a%22332da351-3370-4472-aaf7-a03b2c9f58f8%22%2c%22Oid%22%3a%22f27bb488-5881-4e22-be7a-34113a32c62b%22%7d" target="_blank"><img src="./images/teams.png" width="32" border="0" align="absmiddle"> live</a>
+			
+		</td>
+		<td bgcolor="#C0C0C0" width="250px" align="center" class="nero">
+			Corso di Laurea
+		</td>
+		<td bgcolor="#C0C0C0" width="80px" align="center" class="nero">
+			anno
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>08:30-10:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Medicina di Laboratorio (LINEA AZZURRA)&nbsp;(docente: DI RESTA CHIARA)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		3
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>08:30-10:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Medicina di Laboratorio (LINEA BIANCA)&nbsp;(docente: DI RESTA CHIARA)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		3
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>10:30-12:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Patologia (LINEA AZZURRA)&nbsp;(docente: KUKA MIRELA)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		3
+		</td>
+	</tr>
+
+	<tr bgcolor="#ffffff">
+		<td width="80px" bgcolor="#EFEFEF" align="center" class="nero">
+			<font color=#140081 size=1><b>10:30-12:30</font>
+		</td>
+		<td width="600px" bgcolor="#EFEFEF" class="nero">
+			Lezione:&nbsp;Patologia (LINEA BIANCA)&nbsp;(docente: KUKA MIRELA)
+		</td>
+		<td width="250px" align="center" bgcolor="#EFEFEF" class="nero">
+		Corso di Laurea magistrale in Medicina e Chirurgia
+		</td>
+		<td width="80px" align="center" bgcolor="#EFEFEF" class="nero">
+		3
+		</td>
+	</tr>
+
+</table>
+
+	</div>
+	</head>
+	</div>
+	
+</body>
+
+<script type="text/javascript" src="/_Incapsula_Resource?SWJIYLWA=719d34d31c8e3a6e6fffd425f7e032f3&ns=2&cb=1732859410" async></script></body>
+</html>

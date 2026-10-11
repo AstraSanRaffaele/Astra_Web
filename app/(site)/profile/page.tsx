@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import ProfileCalendarCard from "@/components/university-calendar/profile-calendar-card";
 import {
   FACULTY_OPTIONS as facultyOptions,
   GRADUATION_YEAR_OPTIONS as graduationYearOptions,
@@ -423,6 +424,8 @@ export default function ProfilePage() {
 
           {/* ── RIGHT: SIDEBAR ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
+            <ProfileCalendarCard profile={profile} />
 
             {/* Account overview */}
             <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "2rem", padding: "2rem", boxShadow: "0 2px 20px rgba(8,16,42,.04)" }}>

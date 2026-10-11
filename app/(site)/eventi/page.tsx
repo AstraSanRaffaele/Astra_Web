@@ -69,20 +69,24 @@ export default function EventiPage() {
 
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState<"prossimi" | "tutti" | "passati">("prossimi");
   const [view, setView] = useState<"list" | "grid">("grid");
 
   useEffect(() => {
+    let active = true;
     async function load() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("events")
-        .select("*")
-        .order("event_date", { ascending: true });
+        .select("*");
 
-      setEvents(data || []);
+      if (!active) return;
+      setEvents((data || []).sort((a, b) => getEventDate(a).getTime() - getEventDate(b).getTime()));
+      setLoadError(Boolean(error));
       setLoading(false);
     }
     load();
+    return () => { active = false; };
   }, [supabase]);
 
   const upcoming = useMemo(() => events.filter(e => !isPast(getEventDate(e))), [events]);
@@ -90,7 +94,7 @@ export default function EventiPage() {
 
   const filtered = useMemo(() => {
     if (filter === "prossimi") return events.filter(e => !isPast(getEventDate(e)));
-    if (filter === "passati") return events.filter(e => isPast(getEventDate(e)));
+    if (filter === "passati") return events.filter(e => isPast(getEventDate(e))).reverse();
     return events;
   }, [events, filter]);
 
@@ -121,8 +125,7 @@ export default function EventiPage() {
           box-shadow: 0 2px 12px rgba(8,16,42,.04);
         }
         .ev-row:hover { transform: translateY(-3px); box-shadow: 0 14px 36px rgba(8,16,42,.1); border-color: rgba(8,16,42,.14); }
-        .ev-row.past { opacity: .55; }
-        .ev-row.past:hover { opacity: .8; }
+        .ev-row.past { background: #fdfdfc; }
 
         .ev-arrow {
           width: 34px; height: 34px; border-radius: 50%;
@@ -145,8 +148,7 @@ export default function EventiPage() {
           box-shadow: 0 2px 12px rgba(8,16,42,.04);
         }
         .ev-card:hover { transform: translateY(-5px); box-shadow: 0 20px 48px rgba(8,16,42,.11); border-color: rgba(8,16,42,.14); }
-        .ev-card.past { opacity: .6; }
-        .ev-card.past:hover { opacity: .85; }
+        .ev-card.past { background: #fdfdfc; }
 
         /* ── FILTER + VIEW ── */
         .filter-pill {
@@ -202,12 +204,38 @@ export default function EventiPage() {
           z-index: 1;
         }
 
-                @media (max-width: 760px) {
+        .ev-section-heading { display:flex; align-items:end; justify-content:space-between; gap:1rem; margin:1.4rem 0 1.4rem; border-top:1px solid rgba(8,16,42,.13); padding-top:1.4rem; }
+        .ev-section-heading h2 { font-family:'Cormorant Garamond',serif; font-size:clamp(2rem,4vw,3rem); font-weight:700; line-height:1; letter-spacing:-.035em; }
+        .ev-section-heading h2 span { color:#2E4080; }
+        .ev-section-heading > span { color:#6B7280; font-size:.85rem; padding-bottom:.25rem; }
+        .ev-toolbar { padding:1rem; background:#fff; border:1px solid rgba(8,16,42,.08); border-radius:1.2rem; }
+        .filter-count { margin-left:.55rem; opacity:.58; font-size:.75rem; }
+        .filter-pill { min-height:38px; }
+        .view-btn { width:38px; height:38px; justify-content:center; }
+        .next-visual { width:32%; min-width:230px; position:relative; overflow:hidden; background:#24366b; }
+        .next-visual img { width:100%; height:100%; object-fit:cover; display:block; }
+        .next-visual::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,#08102A 0%,transparent 45%); pointer-events:none; }
+        .ev-card .ev-cover { height:210px !important; }
+        .ev-card:hover img, .ev-row:hover img { transform:scale(1.04); }
+        .ev-card img, .ev-row img { transition:transform .35s ease; }
+        .ev-card:focus-visible, .ev-row:focus-visible, .next-card:focus-visible, .filter-pill:focus-visible, .view-btn:focus-visible { outline:3px solid #6278bf; outline-offset:3px; }
+        .ev-error { background:#fff; border:1px solid rgba(8,16,42,.1); border-radius:1.5rem; padding:3rem 1.5rem; text-align:center; grid-column:1/-1; }
+        .ev-error h3 { font-size:1.1rem; margin-bottom:.5rem; }
+        .ev-error p { color:#6B7280; font-size:.9rem; }
+        .ev-error button { margin-top:1.3rem; border:0; background:#08102A; color:#fff; border-radius:999px; padding:.7rem 1.3rem; font-weight:700; cursor:pointer; }
+
+        @media (max-width: 760px) {
           .ev-section { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
           .ev-hero    { padding: 8rem 1.25rem 2.5rem !important; }
+          .ev-hero h1 { font-size:clamp(3rem,12vw,4.2rem) !important; }
+          .ev-section-heading { align-items:flex-start; flex-direction:column; gap:.5rem; }
+          .ev-toolbar { padding:.75rem; }
+          .filter-pill { padding:.4rem .7rem; }
           .ev-row     { gap: 1rem; padding: 1.1rem 1.25rem; }
-          .ev-date-box { display: none !important; }
+          .ev-date-box { width:44px !important; }
+          .ev-row .ev-arrow { display:none; }
           .next-card  { min-height: auto; border-radius: 1.5rem; }
+          .next-visual { display:none; }
           .next-card-inner {
             flex-direction: column;
             align-items: flex-start;
@@ -240,6 +268,7 @@ export default function EventiPage() {
           }
           .ev-grid    { grid-template-columns: 1fr !important; }
         }
+        @media (prefers-reduced-motion: reduce) { .ev-card, .ev-row, .next-card, .ev-card img, .ev-row img { transition:none; } .ev-eyebrow, .ev-h1, .ev-sub { animation:none; } }
       `}</style>
 
       <div style={{ minHeight: "100vh", background: "#F8F7F3", fontFamily: "'DM Sans', sans-serif", color: "#08102A" }}>
@@ -247,18 +276,18 @@ export default function EventiPage() {
         {/* ══ HERO ══ */}
         <section className="ev-hero" style={{ maxWidth: 1100, margin: "0 auto", padding: "9rem 3rem 2.5rem" }}>
           <p className="ev-eyebrow" style={{ fontSize: ".68rem", fontWeight: 700, letterSpacing: ".22em", textTransform: "uppercase", color: "#2E4080", marginBottom: "1.2rem" }}>
-            Eventi
+            La vita in ASTRA <span aria-hidden="true">/ Eventi</span>
           </p>
           <h1 className="ev-h1" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "clamp(3rem,6vw,5.5rem)", fontWeight: 700, lineHeight: .98, letterSpacing: "-.025em", marginBottom: "1.2rem" }}>
-            I prossimi<br />
-            <span style={{ color: "#2E4080" }}>incontri.</span>
+            Ci vediamo<br />
+            <span style={{ color: "#2E4080" }}>al prossimo evento.</span>
           </h1>
           <p className="ev-sub" style={{ fontSize: "1rem", color: "#6B7280", maxWidth: 420, lineHeight: 1.75 }}>
-            Eventi, workshop e momenti di comunità pensati per gli studenti della community.
+            Incontri, idee e nuove persone. Scopri cosa succede nella community e scegli il tuo prossimo appuntamento.
           </p>
           {!loading && events.length > 0 && (
             <div style={{ display: "flex", gap: "2.5rem", marginTop: "2.5rem", flexWrap: "wrap" }}>
-              {[[String(upcoming.length), "Prossimi eventi"], [String(events.length), "Totale eventi"]].map(([n, l]) => (
+              {[[String(upcoming.length), "In arrivo"], [String(events.length), "Eventi nella community"]].map(([n, l]) => (
                 <div key={l}>
                   <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "3rem", fontWeight: 700, color: "#08102A", lineHeight: 1, letterSpacing: "-.04em", display: "block" }}>{n}</span>
                   <span style={{ fontSize: ".68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".18em", color: "#6B7280" }}>{l}</span>
@@ -363,6 +392,7 @@ export default function EventiPage() {
                     </div>
                   </div>
                 </div>
+                {(next.cover_image || next.locandina) && <div className="next-visual"><img src={next.cover_image || next.locandina || ""} alt="" /></div>}
               </Link>
             </section>
           );
@@ -370,22 +400,27 @@ export default function EventiPage() {
 
         {/* ══ FILTER + VIEW TOGGLE + LIST/GRID ══ */}
         <section className="ev-section" style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 3rem 6rem" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", gap: "1rem", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+          <div className="ev-section-heading">
+            <h2>Esplora gli eventi<span>.</span></h2>
+            <span>Trova un’occasione per incontrarci</span>
+          </div>
+          <div className="ev-toolbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", gap: "1rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }} role="group" aria-label="Filtra eventi">
               {(["prossimi", "tutti", "passati"] as const).map((f) => (
-                <button key={f} className={`filter-pill${filter === f ? " active" : ""}`} onClick={() => setFilter(f)}>
-                  {f === "prossimi" ? "Prossimi" : f === "tutti" ? "Tutti" : "Passati"}
+                <button key={f} type="button" aria-pressed={filter === f} className={`filter-pill${filter === f ? " active" : ""}`} onClick={() => setFilter(f)}>
+                  {f === "prossimi" ? "In arrivo" : f === "tutti" ? "Tutti" : "Passati"}
+                  <span className="filter-count">{f === "prossimi" ? upcoming.length : f === "tutti" ? events.length : events.length - upcoming.length}</span>
                 </button>
               ))}
             </div>
 
-            <div style={{ display: "flex", gap: ".4rem" }}>
-              <button className={`view-btn${view === "list" ? " active" : ""}`} onClick={() => setView("list")} title="Vista lista">
+            <div style={{ display: "flex", gap: ".4rem" }} role="group" aria-label="Visualizzazione eventi">
+              <button type="button" aria-label="Vista lista" aria-pressed={view === "list"} className={`view-btn${view === "list" ? " active" : ""}`} onClick={() => setView("list")} title="Vista lista">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 4h10M3 8h10M3 12h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
               </button>
-              <button className={`view-btn${view === "grid" ? " active" : ""}`} onClick={() => setView("grid")} title="Vista griglia">
+              <button type="button" aria-label="Vista griglia" aria-pressed={view === "grid"} className={`view-btn${view === "grid" ? " active" : ""}`} onClick={() => setView("grid")} title="Vista griglia">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4"/>
                   <rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4"/>
@@ -401,6 +436,8 @@ export default function EventiPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : loadError ? (
+                <LoadError />
               ) : filtered.length === 0 ? (
                 <EmptyState />
               ) : filtered.map((e) => {
@@ -429,7 +466,7 @@ export default function EventiPage() {
                           </h2>
                           {past && <Chip>Passato</Chip>}
                           {!past && (
-                            <Chip color={iscrizioniEsterne ? "blue" : "gray"}>
+                            <Chip color={iscrizioniEsterne ? "blue" : iscrizioniAperte ? "green" : "gray"}>
                               {iscrizioniEsterne
                                 ? "Iscrizioni esterne"
                                 : iscrizioniAperte
@@ -474,6 +511,8 @@ export default function EventiPage() {
             <div className="ev-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1.25rem" }}>
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+              ) : loadError ? (
+                <LoadError />
               ) : filtered.length === 0 ? (
                 <div style={{ gridColumn: "1/-1" }}><EmptyState /></div>
               ) : filtered.map((e) => {
@@ -485,7 +524,7 @@ export default function EventiPage() {
 
                 return (
                   <Link key={e.id} href={`/eventi/${e.id}`} className={`ev-card${past ? " past" : ""}`}>
-                    <div style={{ position: "relative", height: 180, background: cover ? "transparent" : "#08102A", flexShrink: 0, overflow: "hidden" }}>
+                    <div className="ev-cover" style={{ position: "relative", height: 180, background: cover ? "transparent" : "#08102A", flexShrink: 0, overflow: "hidden" }}>
                       {cover ? (
                         <img src={cover} alt={e.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                       ) : (
@@ -504,7 +543,7 @@ export default function EventiPage() {
                       <div style={{ position: "absolute", top: "1rem", right: "1rem", display: "flex", flexDirection: "column", gap: ".45rem", alignItems: "flex-end" }}>
                         {past && <Chip>Passato</Chip>}
                         {!past && (
-                          <Chip color={iscrizioniEsterne ? "blue" : "gray"}>
+                          <Chip color={iscrizioniEsterne ? "blue" : iscrizioniAperte ? "green" : "gray"}>
                             {iscrizioniEsterne
                               ? "Iscrizioni esterne"
                               : iscrizioniAperte
@@ -549,7 +588,7 @@ export default function EventiPage() {
                       </div>
 
                       {e.description && (
-                        <p style={{ margin: 0, fontSize: ".82rem", color: "#9ca3af", lineHeight: 1.55, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        <p style={{ margin: 0, fontSize: ".82rem", color: "#6B7280", lineHeight: 1.55, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                           {e.description}
                         </p>
                       )}
@@ -575,19 +614,19 @@ export default function EventiPage() {
 }
 
 // ── Small components ──────────────────────────────────────────────
-function Chip({ children, color = "gray" }: { children: React.ReactNode; color?: "gray" | "blue" }) {
+function Chip({ children, color = "gray" }: { children: React.ReactNode; color?: "gray" | "blue" | "green" }) {
   return (
     <span style={{
       fontSize: ".62rem",
       fontWeight: 700,
       letterSpacing: ".06em",
       textTransform: "uppercase",
-      background: color === "blue" ? "rgba(46,64,128,.08)" : "rgba(8,16,42,.06)",
-      color: color === "blue" ? "#2E4080" : "#6B7280",
+      background: color === "blue" ? "rgba(46,64,128,.08)" : color === "green" ? "rgba(22,101,52,.1)" : "rgba(8,16,42,.06)",
+      color: color === "blue" ? "#2E4080" : color === "green" ? "#166534" : "#6B7280",
       padding: ".22rem .65rem",
       borderRadius: "999px",
       whiteSpace: "nowrap",
-      border: color === "blue" ? "1px solid rgba(46,64,128,.12)" : "1px solid rgba(8,16,42,.08)",
+      border: color === "blue" ? "1px solid rgba(46,64,128,.12)" : color === "green" ? "1px solid rgba(22,101,52,.18)" : "1px solid rgba(8,16,42,.08)",
       backdropFilter: "blur(6px)",
     }}>
       {children}
@@ -597,10 +636,14 @@ function Chip({ children, color = "gray" }: { children: React.ReactNode; color?:
 
 function EmptyState() {
   return (
-    <div style={{ textAlign: "center", padding: "4rem 2rem", color: "#6B7280" }}>
+    <div style={{ textAlign: "center", padding: "4rem 2rem", color: "#6B7280", background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "1.5rem" }}>
       <p style={{ fontSize: "2rem", marginBottom: "1rem" }}>📅</p>
       <p style={{ fontWeight: 600, color: "#08102A", marginBottom: ".5rem" }}>Nessun evento trovato</p>
-      <p style={{ fontSize: ".9rem" }}>Prova a cambiare il filtro.</p>
+      <p style={{ fontSize: ".9rem" }}>Torna presto o prova a cambiare il filtro.</p>
     </div>
   );
+}
+
+function LoadError() {
+  return <div className="ev-error"><h3>Non riusciamo a caricare gli eventi</h3><p>Riprova tra qualche momento.</p><button type="button" onClick={() => window.location.reload()}>Ricarica la pagina</button></div>;
 }

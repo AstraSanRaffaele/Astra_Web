@@ -15,6 +15,7 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
   const [status, setStatus] = useState<RsvpStatus>("loading");
   const [postiOccupati, setPostiOccupati] = useState<number>(0);
   const [busy, setBusy] = useState(false);
+  const [guest, setGuest] = useState(false);
   const [msg, setMsg] = useState("");
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -35,7 +36,8 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
   useEffect(() => {
     async function loadStatus() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setStatus("none"); return; }
+      if (!user) { setGuest(true); setStatus("none"); return; }
+      setGuest(false);
 
       // Current user's RSVP
       const { data: myRsvp } = await supabase
@@ -66,6 +68,10 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
   }, [eventId, maxPosti, supabase]);
 
   async function handleConfirm() {
+    if (guest) {
+      window.location.href = `/login?next=${encodeURIComponent(`/eventi/${eventId}`)}`;
+      return;
+    }
     setBusy(true);
     setMsg("");
 
@@ -157,7 +163,7 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       {/* Posti counter */}
-      {maxPosti != null && (
+      {maxPosti != null && !guest && (
         <div style={{ background: "rgba(255,255,255,.07)", borderRadius: "1.2rem", padding: "1rem 1.2rem", border: "1px solid rgba(255,255,255,.1)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".5rem" }}>
             <span style={{ fontSize: ".75rem", fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "rgb(8, 16, 42)" }}>
@@ -246,7 +252,7 @@ export default function RsvpButton({ eventId, maxPosti }: Props) {
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                 <path d="M7.5 1v13M1 7.5h13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
-              Iscriviti all&apos;evento
+              {guest ? "Accedi per iscriverti" : "Iscriviti all’evento"}
             </>
           )}
         </button>
