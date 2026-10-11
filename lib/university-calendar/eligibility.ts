@@ -17,6 +17,6 @@ export function isMedicineCalendarProfile(profile?: CalendarProfile | null) {
 }
 
 export function canUseCalendar(profile?: CalendarProfile | null) {
-  return Boolean(profile && !profile.locked &&
-    (profile.role === "admin" || (PUBLIC_CALENDAR_ENABLED && isMedicineCalendarProfile(profile))));
+  return Boolean(profile &&
+    (profile.role === "admin" || (PUBLIC_CALENDAR_ENABLED && !profile.locked && isMedicineCalendarProfile(profile))));
 }

@@ -3,8 +3,8 @@
 ## Accesso e uso
 
 La sezione `/profile/calendario-universita` si apre dal pulsante nella scheda calendario
-sotto la panoramica account. Per ora tutti gli account confermati con profilo non
-bloccato e ruolo `admin` possono usarla, indipendentemente dall’indirizzo email o dal
+sotto la panoramica account. Per ora tutti gli account confermati con profilo esistente
+e ruolo `admin` possono usarla, indipendentemente dall’indirizzo email o dal
 corso salvato nel profilo. Lo stesso controllo si applica alle API.
 
 1. Scegli Medicina e Chirurgia e anno. La lettura parte dal giorno corrente in Italia.
@@ -28,7 +28,8 @@ proprio intervallo di scaricamento; su Mac va scelto nelle impostazioni dell’a
 
 ## Pagina utenti e lancio
 
-La pagina richiede un account confermato e un profilo esistente non bloccato.
+La pagina richiede un account confermato e un profilo esistente. Il valore `locked`
+non impedisce l’accesso agli admin, coerentemente con le altre sezioni amministrative.
 Il pulsante **Crea il tuo calendario** è attivo per tutti gli admin. Gli utenti ordinari
 iscritti a Medicina e Chirurgia vedono la scheda con il pulsante disabilitato e
 **Prossimamente**; gli altri utenti ordinari non vedono la scheda.
@@ -57,7 +58,7 @@ esclusivamente come variabile server, senza prefisso `NEXT_PUBLIC_`.
 
 1. Nel SQL Editor del progetto Supabase collegato, con ruolo `postgres`, incollare
    il codice SQL completo fornito in chat. Le query non sono salvate nella repo.
-   Gli account admin devono essere confermati, con profilo presente e non bloccato.
+   Gli account admin devono essere confermati, con profilo presente e ruolo `admin`.
    Se esistono più calendari per un account, il codice si interrompe senza cancellarli:
    occorre scegliere quale conservare prima di applicare il limite di uno.
 2. Pubblicare il codice su Vercel. Al primo avvio gli aggiornamenti sono disattivati.

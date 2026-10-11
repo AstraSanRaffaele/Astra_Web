@@ -76,7 +76,7 @@ test("personal calendar preview uses the saved admin role, not email or a claime
   assert.deepEqual(await check({ ...user, email: "another-admin@example.com" }, admin), { id: "student", isAdmin: true });
   assert.equal(await check(user, { ...medicine, id: "student", locked: false }), null);
   assert.equal(await check({ ...user, role: "admin" }, { ...medicine, id: "student", locked: false }), null);
-  assert.equal(await check(user, { ...admin, locked: true }), null);
+  assert.deepEqual(await check(user, { ...admin, locked: true }), { id: "student", isAdmin: true });
   assert.equal(await check({ ...user, email_confirmed_at: null }, admin), null);
   assert.equal(await check(user, admin, false, { message: "profile lookup failed" }), null);
   assert.deepEqual(await check(user, { ...medicine, id: "student", locked: false }, true), { id: "student", isAdmin: false });
