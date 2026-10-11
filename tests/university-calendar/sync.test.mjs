@@ -64,31 +64,26 @@ test("no due calendar triggers no source reads", async () => {
   assert.equal(writes.length, 0);
 });
 
-test("owner authorization requires the confirmed owner email and existing admin role", async () => {
-  async function check(user, role) {
-    const server = load("server", { "server-only": {}, "@/lib/admin-users-server": {}, "@/lib/supabase/server": { createClient: async () => ({ auth: { getUser: async () => ({ data: { user }, error: null }) }, from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role }, error: null }) }) }) }) }) } });
-    return server.getCalendarOwner();
-  }
-  const owner = { id: "owner", email: "scopeledoardo@gmail.com", email_confirmed_at: "2026-10-11" };
-  assert.deepEqual(await check(owner, "admin"), { id: "owner" });
-  assert.equal(await check({ ...owner, email: "other@example.com" }, "admin"), null);
-  assert.equal(await check({ ...owner, email_confirmed_at: null }, "admin"), null);
-  assert.equal(await check(owner, "user"), null);
-  assert.equal(await check(null, "admin"), null);
-});
-
-test("personal calendar access requires a confirmed account and an unlocked existing profile", async () => {
-  async function check(user, profile) {
-    const server = load("server", { "server-only": {}, "@/lib/admin-users-server": {}, "@/lib/supabase/server": { createClient: async () => ({ auth: { getUser: async () => ({ data: { user }, error: null }) }, from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: profile, error: null }) }) }) }) }) } });
+test("personal calendar preview uses the saved admin role, not email or a claimed browser role", async () => {
+  async function check(user, profile, enabled = false, profileError = null) {
+    const server = load("server", { "server-only": {}, "./config": { PUBLIC_CALENDAR_ENABLED: enabled }, "@/lib/admin-users-server": {}, "@/lib/supabase/server": { createClient: async () => ({ auth: { getUser: async () => ({ data: { user }, error: null }) }, from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: profile, error: profileError }) }) }) }) }) } });
     return server.getCalendarUser();
   }
   const user = { id: "student", email_confirmed_at: "2026-10-11" };
-  const medicine = { facolta: "medicina", corso_di_laurea: "medicina_e_chirurgia" };
-  assert.deepEqual(await check(user, { ...medicine, id: "student", locked: false }), { id: "student" });
+  const medicine = { facolta: "medicina", corso_di_laurea: "medicina_e_chirurgia", role: "user" };
+  const admin = { id: "student", facolta: "psicologia", corso_di_laurea: "psicologia", role: "admin", locked: false };
+  assert.deepEqual(await check({ ...user, email: "any-admin@example.com" }, admin), { id: "student", isAdmin: true });
+  assert.deepEqual(await check({ ...user, email: "another-admin@example.com" }, admin), { id: "student", isAdmin: true });
+  assert.equal(await check(user, { ...medicine, id: "student", locked: false }), null);
+  assert.equal(await check({ ...user, role: "admin" }, { ...medicine, id: "student", locked: false }), null);
+  assert.equal(await check(user, { ...admin, locked: true }), null);
+  assert.equal(await check({ ...user, email_confirmed_at: null }, admin), null);
+  assert.equal(await check(user, admin, false, { message: "profile lookup failed" }), null);
+  assert.deepEqual(await check(user, { ...medicine, id: "student", locked: false }, true), { id: "student", isAdmin: false });
   assert.equal(await check(user, { ...medicine, id: "student", locked: true }), null);
   assert.equal(await check(user, null), null);
-  assert.equal(await check(user, { ...medicine, id: "student", locked: false, corso_di_laurea: "fisioterapia" }), null);
-  assert.equal(await check(user, { ...medicine, id: "student", locked: false, facolta: "psicologia" }), null);
+  assert.equal(await check(user, { ...medicine, id: "student", locked: false, corso_di_laurea: "fisioterapia" }, true), null);
+  assert.equal(await check(user, { ...medicine, id: "student", locked: false, facolta: "psicologia" }, true), null);
   assert.equal(await check({ ...user, email_confirmed_at: null }, { ...medicine, id: "student", locked: false }), null);
   assert.equal(await check(null, null), null);
 });

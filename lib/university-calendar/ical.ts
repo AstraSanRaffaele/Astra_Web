@@ -29,7 +29,7 @@ export function createCalendar(record: CalendarRecord): string {
     const occurrence = occurrences.get(identity) ?? 0;
     occurrences.set(identity, occurrence + 1);
     const uid = createHash("sha256").update(`${identity}:${occurrence}`).digest("hex");
-    const description = [event.teacher && `Docente: ${event.teacher}`, `Anno: ${event.year}`, event.line && `Linea: ${event.line}`, event.onlineUrl && `Lezione online: ${event.onlineUrl}`, event.mapUrl && `Come raggiungere l'aula: ${event.mapUrl}`, "Fonte: https://orario.unisr.it/"].filter(Boolean).join("\n");
+    const description = [event.teacher && `Docente: ${event.teacher}`, `Anno: ${event.year}`, event.line && `Linea: ${event.line}`, `Aula: ${event.room}`, `Edificio: ${event.building}`, event.onlineUrl && `Lezione online: ${event.onlineUrl}`, event.mapUrl && `Come raggiungere l'aula: ${event.mapUrl}`, "Fonte: https://orario.unisr.it/"].filter(Boolean).join("\n");
     lines.push("BEGIN:VEVENT", `UID:${uid}@astrasanraffaele.it`, `DTSTAMP:${stamp}`, `LAST-MODIFIED:${stamp}`, `DTSTART;TZID=Europe/Rome:${dateTime(event, "start")}`, `DTEND;TZID=Europe/Rome:${dateTime(event, "end")}`, `SUMMARY:${escapeText(event.title)}`, `LOCATION:${escapeText(`${event.building} · ${event.room}`)}`, `DESCRIPTION:${escapeText(description)}`, "URL:https://orario.unisr.it/", "STATUS:CONFIRMED", "TRANSP:OPAQUE", "END:VEVENT");
   }
   lines.push("END:VCALENDAR");

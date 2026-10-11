@@ -82,7 +82,8 @@ export function deduplicateLessons(events: Lesson[]): Lesson[] {
 
 export async function fetchDay(course: CourseKey, year: number, date: string): Promise<Lesson[]> {
   const definition = COURSES.find((item) => item.key === course);
-  if (!definition || !Number.isInteger(year) || year < 1 || year > 6 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Filtri non validi.");
+  // UniSR uses zero for all years; preview uses it to discover every course line.
+  if (!definition || !Number.isInteger(year) || year < 0 || year > 6 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Filtri non validi.");
   const [y, m, d] = date.split("-");
   const events: Lesson[] = [];
   // Consult both official course records: UniSR separates cohorts across otherwise identical labels.

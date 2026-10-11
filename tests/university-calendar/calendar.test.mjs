@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import load from "./load.mjs";
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const { parseTimetable, deduplicateLessons, fetchDay } = load("source");
-const { selectLessons, subjectKey, validateSettings, daysBetween } = load("types");
+const { selectLessons, subjectKey, validateSettings, daysBetween, availableLines } = load("types");
 const { createCalendar, foldLine } = load("ical");
 const fixture = (name) => new TextDecoder("windows-1252").decode(fs.readFileSync(path.join(directory, "fixtures", `${name}.html`)));
 const current = fixture("current"), legacy = fixture("legacy");
@@ -25,6 +25,34 @@ test("real UniSR cohorts expose years, lines, rooms, teachers and unassigned act
   assert.equal(pediatrics.building, "BORROMINI");
   assert.ok(pediatrics.mapUrl.startsWith("https://unisr.2guide.cloud/"));
   assert.ok(pediatrics.onlineUrl.startsWith("https://teams.microsoft.com/"));
+});
+
+test("line choices include every official color for the selected year and accept newly published colors", () => {
+  assert.deepEqual(availableLines(events), ["AZZURRA", "BIANCA", "GIALLA", "ROSSA", "VERDE", "VIOLA"]);
+  assert.deepEqual(availableLines(events, 4), ["AZZURRA", "BIANCA", "ROSSA", "VERDE", "VIOLA"]);
+  assert.deepEqual(availableLines(events, 6), ["BIANCA", "GIALLA", "VERDE"]);
+  for (const year of [4, 6]) {
+    for (const line of availableLines(events, year)) {
+      const selected = selectLessons(events, { ...settings, year, line });
+      assert.ok(selected.length > 0);
+      assert.ok(selected.every((lesson) => lesson.year === year && lesson.line === line));
+    }
+  }
+  const changed = parseTimetable(legacy.replaceAll("LINEA ROSSA", "LINEA ARANCIONE"), "2026-10-12", "10115", 0);
+  assert.ok(availableLines(changed, 4).includes("ARANCIONE"));
+});
+
+test("the all-years HTTP selection discovers lines without mixing years in the final calendar", async (context) => {
+  const calls = [];
+  context.mock.method(global, "fetch", async (_url, options) => {
+    calls.push(options);
+    const html = options.body.get("CDS_ID") === "10115" ? legacy : current;
+    return new Response(Uint8Array.from([...html].map((char) => char.charCodeAt(0))), { headers: { "Content-Type": "text/html; charset=windows-1252" } });
+  });
+  const allYears = await fetchDay("medicina", 0, "2026-10-12");
+  assert.ok(calls.every((call) => call.body.get("ANNO_CORSO") === "0" && call.body.get("lezioni") === "ok" && !call.body.has("esami")));
+  assert.deepEqual(availableLines(allYears), ["AZZURRA", "BIANCA", "GIALLA", "ROSSA", "VERDE", "VIOLA"]);
+  assert.ok(selectLessons(allYears, settings).every((lesson) => lesson.year === 4 && lesson.line === "BIANCA"));
 });
 
 test("only selected year and line are included, with explicit opt-in for unassigned lessons", () => {
@@ -59,7 +87,9 @@ test("input validates real dates and accepts an entire semester across year and 
   assert.equal(validateSettings(settings).course, "medicina");
   assert.equal(daysBetween("2026-09-01", "2027-01-31").length, 153);
   assert.equal(daysBetween("2026-10-24", "2026-10-26").length, 3);
-  for (const invalid of [{ year: 7 }, { course: "psicologia" }, { semester_start: "2026-02-30" }, { semester_end: "2026-01-01" }, { semester_end: "2027-09-01" }, { included_subjects: [8] }]) assert.throws(() => validateSettings({ ...settings, ...invalid }));
+  assert.equal(daysBetween("2026-10-11", "2027-06-15").length, 248);
+  assert.equal(daysBetween("2027-06-16", "2028-06-15").length, 366);
+  for (const invalid of [{ year: 7 }, { course: "psicologia" }, { semester_start: "2026-02-30" }, { semester_end: "2026-01-01" }, { semester_end: "2027-09-02" }, { included_subjects: [8] }]) assert.throws(() => validateSettings({ ...settings, ...invalid }));
 });
 
 test("ICS is UTF-8, CRLF folded, escaped, and uses Europe/Rome including daylight saving", () => {
@@ -74,6 +104,8 @@ test("ICS is UTF-8, CRLF folded, escaped, and uses Europe/Rome including dayligh
   assert.ok(unfolded.includes("TZOFFSETTO:+0100"));
   assert.ok(unfolded.includes("SUMMARY:Lezione à\\;virgola\\,\\\\\\n🎓"));
   assert.ok(unfolded.includes("REFRESH-INTERVAL;VALUE=DURATION:PT3H"));
+  assert.ok(unfolded.includes(`LOCATION:${lesson.building} · ${lesson.room}`));
+  assert.ok(unfolded.includes(`Aula: ${lesson.room}\\nEdificio: ${lesson.building}`));
   assert.equal(foldLine("à".repeat(90)).replace(/\r\n /g, ""), "à".repeat(90));
 });
 
@@ -83,6 +115,8 @@ test("same-day time and room changes keep UID; removed lessons disappear from th
   const moved = unfold(createCalendar(record([{ ...lesson, start: "18:00", end: "20:00", room: "NUOVA" }])));
   assert.equal(first.match(/UID:(.+)/)[1], moved.match(/UID:(.+)/)[1]);
   assert.ok(moved.includes("T180000"));
+  assert.ok(moved.includes(`LOCATION:${lesson.building} · NUOVA`));
+  assert.ok(moved.includes("Aula: NUOVA"));
   assert.ok(!createCalendar(record([])).includes("BEGIN:VEVENT"));
 });
 

@@ -425,8 +425,6 @@ export default function ProfilePage() {
           {/* ── RIGHT: SIDEBAR ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
 
-            <ProfileCalendarCard profile={profile} />
-
             {/* Account overview */}
             <div style={{ background: "#fff", border: "1px solid rgba(8,16,42,.08)", borderRadius: "2rem", padding: "2rem", boxShadow: "0 2px 20px rgba(8,16,42,.04)" }}>
               <p style={{ fontSize: ".65rem", fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: "#2E4080", margin: "0 0 .4rem" }}>Panoramica</p>
@@ -451,6 +449,8 @@ export default function ProfilePage() {
                 ))}
               </div>
             </div>
+
+            <ProfileCalendarCard profile={profile} />
 
             {/* Corso di laurea card */}
             {corsoDiLaurea && (

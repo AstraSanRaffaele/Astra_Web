@@ -3,25 +3,15 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/admin-users-server";
 import { fetchDay, deduplicateLessons } from "./source";
-import { isMedicineCalendarProfile } from "./eligibility";
+import { canUseCalendar } from "./eligibility";
 import { daysBetween, selectLessons, unassignedSubjects, type CalendarRecord, type CalendarView } from "./types";
-
-export const CALENDAR_OWNER_EMAIL = "scopeledoardo@gmail.com";
-
-export async function getCalendarOwner() {
-  const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user || !user.email_confirmed_at || user.email?.toLowerCase() !== CALENDAR_OWNER_EMAIL) return null;
-  const { data: profile, error: profileError } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  return !profileError && profile?.role === "admin" ? { id: user.id } : null;
-}
 
 export async function getCalendarUser() {
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user || !user.email_confirmed_at) return null;
-  const { data: profile, error: profileError } = await supabase.from("profiles").select("id,locked,facolta,corso_di_laurea").eq("id", user.id).maybeSingle();
-  return !profileError && profile && !profile.locked && isMedicineCalendarProfile(profile) ? { id: user.id } : null;
+  const { data: profile, error: profileError } = await supabase.from("profiles").select("id,role,locked,facolta,corso_di_laurea").eq("id", user.id).maybeSingle();
+  return !profileError && profile && canUseCalendar(profile) ? { id: user.id, isAdmin: profile.role === "admin" } : null;
 }
 
 export function newFeedToken() { return randomBytes(32).toString("base64url"); }

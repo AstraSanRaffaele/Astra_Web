@@ -75,10 +75,14 @@ export function unassignedSubjects(events: Lesson[], year: number) {
   return [...subjects.values()].sort((a, b) => a.title.localeCompare(b.title, "it"));
 }
 
+export function availableLines(events: Lesson[], year?: number): string[] {
+  return [...new Set(events.flatMap((event) => (year === undefined || event.year === year) && event.line ? [event.line] : []))].sort((a, b) => a.localeCompare(b, "it"));
+}
+
 export function daysBetween(start: string, end: string): string[] {
   const first = Date.parse(`${start}T12:00:00Z`);
   const last = Date.parse(`${end}T12:00:00Z`);
-  if (!Number.isFinite(first) || !Number.isFinite(last) || first > last || (last - first) / 86400000 > 213) throw new Error("Scegli un semestre di massimo 214 giorni.");
+  if (!Number.isFinite(first) || !Number.isFinite(last) || first > last || (last - first) / 86400000 > 365) throw new Error("Il periodo del calendario non può superare un anno.");
   return Array.from({ length: Math.round((last - first) / 86400000) + 1 }, (_, index) => new Date(first + index * 86400000).toISOString().slice(0, 10));
 }
 

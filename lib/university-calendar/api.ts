@@ -1,23 +1,23 @@
 import "server-only";
-import { PUBLIC_CALENDAR_ENABLED, PUBLIC_CALENDAR_LIMIT } from "./config";
+import { PUBLIC_CALENDAR_LIMIT } from "./config";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/admin-users-server";
-import { calendarView, getCalendarOwner, getCalendarUser, newFeedToken, processSyncBatch, serviceError } from "./server";
-import { COURSES, daysBetween, isCalendarDate, unassignedSubjects, validateSettings, type CalendarRecord, type CourseKey } from "./types";
+import { calendarView, getCalendarUser, newFeedToken, processSyncBatch, serviceError } from "./server";
+import { COURSES, availableLines, daysBetween, unassignedSubjects, validateSettings, type CalendarRecord, type CourseKey } from "./types";
 import { fetchDay, deduplicateLessons } from "./source";
+import { calendarPeriod } from "./period";
 
-type Audience = "admin" | "user";
-
-async function calendarActor(audience: Audience) {
-  if (audience === "admin") return getCalendarOwner();
-  if (!PUBLIC_CALENDAR_ENABLED) return null;
-  return getCalendarUser();
-}
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const noStore = { "Cache-Control": "private, no-store" };
 
-export async function listCalendars(request: NextRequest, audience: Audience) {
-  const owner = await calendarActor(audience);
+function automaticSettings(input: unknown) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Impostazioni non valide.");
+  const period = calendarPeriod();
+  return validateSettings({ ...input, semester_start: period.start, semester_end: period.end });
+}
+
+export async function listCalendars(request: NextRequest) {
+  const owner = await getCalendarUser();
   if (!owner) return NextResponse.json({ error: "Non autorizzato." }, { status: 403, headers: noStore });
   try {
     const supabase = createAdminClient();
@@ -29,8 +29,8 @@ export async function listCalendars(request: NextRequest, audience: Audience) {
   } catch (error) { return NextResponse.json({ error: serviceError(error) }, { status: 503, headers: noStore }); }
 }
 
-export async function mutateCalendar(request: NextRequest, audience: Audience) {
-  const owner = await calendarActor(audience);
+export async function mutateCalendar(request: NextRequest) {
+  const owner = await getCalendarUser();
   if (!owner) return NextResponse.json({ error: "Non autorizzato." }, { status: 403, headers: noStore });
   if (request.headers.get("origin") && request.headers.get("origin") !== request.nextUrl.origin) return NextResponse.json({ error: "Richiesta non autorizzata." }, { status: 403 });
   if (!request.headers.get("content-type")?.startsWith("application/json")) return NextResponse.json({ error: "Richiesta non valida." }, { status: 400 });
@@ -42,7 +42,7 @@ export async function mutateCalendar(request: NextRequest, audience: Audience) {
     const supabase = createAdminClient();
     if (body.action === "create") {
       let settings;
-      try { settings = validateSettings(body.settings); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impostazioni non valide." }, { status: 400 }); }
+      try { settings = automaticSettings(body.settings); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impostazioni non valide." }, { status: 400 }); }
       const { data: createdId, error: createError } = await supabase.rpc("create_university_calendar", {
         requested_id: id, requested_owner: owner.id, requested_token: newFeedToken(), settings,
         maximum_calendars: PUBLIC_CALENDAR_LIMIT,
@@ -56,7 +56,7 @@ export async function mutateCalendar(request: NextRequest, audience: Audience) {
       const { data: current, error } = await supabase.from("university_calendars").select("*").eq("id", id).eq("owner_id", owner.id).maybeSingle();
       if (error) throw error;
       if (!current) return NextResponse.json({ error: "Calendario non trovato." }, { status: 404 });
-      if (audience === "user" && body.action === "sync") {
+      if (!owner.isAdmin && body.action === "sync") {
         const recent = current.sync_started_at || current.last_synced_at;
         if (current.sync_cursor !== null || (recent && Date.now() - Date.parse(recent) < 5 * 60000)) return NextResponse.json({ error: "Attendi qualche minuto prima di aggiornare di nuovo." }, { status: 429, headers: noStore });
       }
@@ -66,7 +66,7 @@ export async function mutateCalendar(request: NextRequest, audience: Audience) {
         let patch: Record<string, unknown>;
         if (body.action === "settings") {
           let settings;
-          try { settings = validateSettings(body.settings); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impostazioni non valide." }, { status: 400 }); }
+          try { settings = automaticSettings(body.settings); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impostazioni non valide." }, { status: 400 }); }
           patch = { ...settings, enabled: true, source_events: [], last_synced_at: null, next_sync_at: new Date().toISOString(), retry_at: null, sync_error: null, sync_cursor: 0, staging_events: [], sync_started_at: new Date().toISOString(), lease_token: null, leased_until: null };
         }
         else if (body.action === "rotate") patch = { token: newFeedToken() };
@@ -86,22 +86,25 @@ export async function mutateCalendar(request: NextRequest, audience: Audience) {
   } catch (error) { return NextResponse.json({ error: serviceError(error) }, { status: 503, headers: noStore }); }
 }
 
-export async function previewCalendar(request: NextRequest, audience: Audience) {
-  if (!(await calendarActor(audience))) return NextResponse.json({ error: "Non autorizzato." }, { status: 403, headers: noStore });
+export async function previewCalendar(request: NextRequest) {
+  if (!(await getCalendarUser())) return NextResponse.json({ error: "Non autorizzato." }, { status: 403, headers: noStore });
   if (request.headers.get("origin") && request.headers.get("origin") !== request.nextUrl.origin) return NextResponse.json({ error: "Richiesta non autorizzata." }, { status: 403 });
   if (!request.headers.get("content-type")?.startsWith("application/json")) return NextResponse.json({ error: "Richiesta non valida." }, { status: 400 });
   let body;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Richiesta non valida." }, { status: 400 }); }
-  const year = Number(body?.year), course = body?.course as CourseKey, date = body?.date;
-  if (!COURSES.some((item) => item.key === course) || !Number.isInteger(year) || year < 1 || year > 6 || !isCalendarDate(date)) return NextResponse.json({ error: "Scegli corso, anno e una data valida." }, { status: 400 });
+  const year = Number(body?.year), course = body?.course as CourseKey;
+  if (!COURSES.some((item) => item.key === course) || !Number.isInteger(year) || year < 1 || year > 6) return NextResponse.json({ error: "Scegli un corso e un anno validi." }, { status: 400 });
   try {
+    const period = calendarPeriod();
+    const date = period.start;
     const parsed = new Date(`${date}T12:00:00Z`);
-    const end = new Date(parsed.getTime() + 6 * 86400000).toISOString().slice(0, 10);
+    const end = [period.end, new Date(parsed.getTime() + 6 * 86400000).toISOString().slice(0, 10)].sort()[0];
     const dates = daysBetween(date, end);
     const events = [];
-    for (let index = 0; index < dates.length; index += 3) events.push(...(await Promise.all(dates.slice(index, index + 3).map((day) => fetchDay(course, year, day)))).flat());
-    const lessons = deduplicateLessons(events);
-    const lines = [...new Set(lessons.flatMap((lesson) => lesson.line ? [lesson.line] : []))].sort();
-    return NextResponse.json({ lessons, lines, subjects: unassignedSubjects(lessons, year), start: date, end }, { headers: { "Cache-Control": "private, no-store" } });
+    for (let index = 0; index < dates.length; index += 3) events.push(...(await Promise.all(dates.slice(index, index + 3).map((day) => fetchDay(course, 0, day)))).flat());
+    const allLessons = deduplicateLessons(events);
+    const lessons = allLessons.filter((lesson) => lesson.year === year);
+    const lines = availableLines(allLessons);
+    return NextResponse.json({ lessons, lines, subjects: unassignedSubjects(lessons, year), start: date, end, period }, { headers: noStore });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impossibile leggere gli orari UniSR." }, { status: 502, headers: { "Cache-Control": "private, no-store" } }); }
 }

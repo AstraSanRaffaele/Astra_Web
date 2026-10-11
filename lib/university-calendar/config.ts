@@ -1,5 +1,5 @@
-// Enable only when the public service is ready to launch. The profile button and
-// the user APIs share this switch, so a direct request cannot bypass the launch.
+// Admins can already access the calendar from their profile. This switch opens
+// the same page and APIs to eligible Medicine students when the service launches.
 export const PUBLIC_CALENDAR_ENABLED = false;
 export const PUBLIC_CALENDAR_LIMIT = 1;
 export const PUBLIC_CALENDAR_PATH = "/profile/calendario-universita";
