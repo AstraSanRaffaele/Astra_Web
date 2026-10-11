@@ -3,9 +3,9 @@ import { PUBLIC_CALENDAR_LIMIT } from "./config";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/admin-users-server";
 import { calendarView, getCalendarUser, newFeedToken, processSyncBatch, serviceError } from "./server";
-import { COURSES, availableLines, daysBetween, unassignedSubjects, validateSettings, type CalendarRecord, type CourseKey } from "./types";
-import { fetchDay, deduplicateLessons } from "./source";
-import { calendarPeriod } from "./period";
+import { COURSES, availableLines, unassignedSubjects, validateSettings, type CalendarRecord, type CourseKey } from "./types";
+import { calendarExpired, calendarPeriod, calendarSeasonOpen } from "./period";
+import { ensureSharedSource, previewCovered, readSharedSource } from "./shared";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const noStore = { "Cache-Control": "private, no-store" };
@@ -25,7 +25,9 @@ export async function listCalendars(request: NextRequest) {
     if (error) throw error;
     const { data: config, error: configError } = await supabase.from("university_calendar_sync_config").select("enabled,last_dispatch_at").eq("id", true).maybeSingle();
     if (configError) throw configError;
-    return NextResponse.json({ calendars: (data as CalendarRecord[]).map((record) => calendarView(record, request.nextUrl.origin)), scheduler: { enabled: Boolean(config?.enabled) } }, { headers: noStore });
+    const records = (data as CalendarRecord[]).filter((record) => !calendarExpired(record.semester_end));
+    const calendars = await Promise.all(records.map(async (record) => calendarView(record, request.nextUrl.origin, await readSharedSource(record.course, record.year))));
+    return NextResponse.json({ calendars, scheduler: { enabled: calendarSeasonOpen() && Boolean(config?.enabled) } }, { headers: noStore });
   } catch (error) { return NextResponse.json({ error: serviceError(error) }, { status: 503, headers: noStore }); }
 }
 
@@ -38,6 +40,7 @@ export async function mutateCalendar(request: NextRequest) {
   try { body = await request.json(); if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error(); } catch { return NextResponse.json({ error: "Richiesta non valida." }, { status: 400 }); }
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return NextResponse.json({ error: "Calendario non valido." }, { status: 400 });
+  if (!calendarSeasonOpen()) return NextResponse.json({ error: "Il calendario è in pausa estiva. Potrai creare il nuovo calendario dal 1° settembre." }, { status: 403, headers: noStore });
   try {
     const supabase = createAdminClient();
     if (body.action === "create") {
@@ -51,27 +54,23 @@ export async function mutateCalendar(request: NextRequest) {
       if (createError?.code === "23505") return NextResponse.json({ error: "Identificativo del calendario non disponibile. Riprova." }, { status: 409, headers: noStore });
       if (createError) throw createError;
       if (createdId !== id) throw new Error("Impossibile creare il calendario.");
-      await processSyncBatch(id);
     } else {
       const { data: current, error } = await supabase.from("university_calendars").select("*").eq("id", id).eq("owner_id", owner.id).maybeSingle();
       if (error) throw error;
-      if (!current) return NextResponse.json({ error: "Calendario non trovato." }, { status: 404 });
-      if (!owner.isAdmin && body.action === "sync") {
-        const recent = current.sync_started_at || current.last_synced_at;
-        if (current.sync_cursor !== null || (recent && Date.now() - Date.parse(recent) < 5 * 60000)) return NextResponse.json({ error: "Attendi qualche minuto prima di aggiornare di nuovo." }, { status: 429, headers: noStore });
-      }
-      if (body.action === "continue") {
-        await processSyncBatch(id);
+      if (!current || calendarExpired(current.semester_end)) return NextResponse.json({ error: "Calendario non trovato." }, { status: 404 });
+      if (body.action === "continue" || body.action === "sync") {
+        // Personal requests never restart a shared import or bypass fixed times.
+        await readSharedSource(current.course, current.year);
       } else {
         let patch: Record<string, unknown>;
         if (body.action === "settings") {
           let settings;
           try { settings = automaticSettings(body.settings); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impostazioni non valide." }, { status: 400 }); }
-          patch = { ...settings, enabled: true, source_events: [], last_synced_at: null, next_sync_at: new Date().toISOString(), retry_at: null, sync_error: null, sync_cursor: 0, staging_events: [], sync_started_at: new Date().toISOString(), lease_token: null, leased_until: null };
+          const changedSource = settings.course !== current.course || settings.year !== current.year;
+          patch = { ...settings, enabled: true, ...(changedSource ? { source_events: [], last_synced_at: null } : {}), sync_cursor: null, staging_events: [], retry_at: null, sync_error: null, lease_token: null, leased_until: null };
         }
         else if (body.action === "rotate") patch = { token: newFeedToken() };
         else if (body.action === "toggle" && typeof body.enabled === "boolean") patch = { enabled: body.enabled };
-        else if (body.action === "sync") patch = { next_sync_at: new Date().toISOString(), retry_at: null, sync_cursor: 0, staging_events: [], sync_started_at: new Date().toISOString(), lease_token: null, leased_until: null };
         else if (body.action === "subjects" && Array.isArray(body.included_subjects)) {
           let settings;
           try { settings = validateSettings({ ...current, included_subjects: body.included_subjects }); } catch { return NextResponse.json({ error: "Selezione non valida." }, { status: 400 }); }
@@ -79,7 +78,6 @@ export async function mutateCalendar(request: NextRequest) {
         } else return NextResponse.json({ error: "Azione non valida." }, { status: 400 });
         const { error: updateError } = await supabase.from("university_calendars").update(patch).eq("id", id).eq("owner_id", owner.id);
         if (updateError) throw updateError;
-        if (body.action === "sync" || body.action === "settings") await processSyncBatch(id);
       }
     }
     return NextResponse.json({ ok: true }, { headers: noStore });
@@ -94,17 +92,23 @@ export async function previewCalendar(request: NextRequest) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Richiesta non valida." }, { status: 400 }); }
   const year = Number(body?.year), course = body?.course as CourseKey;
   if (!COURSES.some((item) => item.key === course) || !Number.isInteger(year) || year < 1 || year > 6) return NextResponse.json({ error: "Scegli un corso e un anno validi." }, { status: 400 });
+  if (!calendarSeasonOpen()) return NextResponse.json({ error: "Il calendario è in pausa estiva. La lettura degli orari riprenderà dal 1° settembre." }, { status: 403, headers: noStore });
   try {
     const period = calendarPeriod();
     const date = period.start;
     const parsed = new Date(`${date}T12:00:00Z`);
     const end = [period.end, new Date(parsed.getTime() + 6 * 86400000).toISOString().slice(0, 10)].sort()[0];
-    const dates = daysBetween(date, end);
-    const events = [];
-    for (let index = 0; index < dates.length; index += 3) events.push(...(await Promise.all(dates.slice(index, index + 3).map((day) => fetchDay(course, 0, day)))).flat());
-    const allLessons = deduplicateLessons(events);
+    await ensureSharedSource(course, period.start, period.end);
+    let source = await readSharedSource(course, 0, date, end);
+    if (!previewCovered(source, date, end)) {
+      await processSyncBatch(course);
+      source = await readSharedSource(course, 0, date, end);
+    }
+    if (!previewCovered(source, date, end) && source?.sync_error) throw new Error("La lettura UniSR è stata interrotta. Riproviamo automaticamente tra qualche minuto.");
+    if (!previewCovered(source, date, end)) return NextResponse.json({ pending: true }, { status: 202, headers: { ...noStore, "Retry-After": "3" } });
+    const allLessons = source!.events;
     const lessons = allLessons.filter((lesson) => lesson.year === year);
-    const lines = availableLines(allLessons);
+    const lines = source!.lines.length ? source!.lines : availableLines(allLessons);
     return NextResponse.json({ lessons, lines, subjects: unassignedSubjects(lessons, year), start: date, end, period }, { headers: noStore });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impossibile leggere gli orari UniSR." }, { status: 502, headers: { "Cache-Control": "private, no-store" } }); }
 }

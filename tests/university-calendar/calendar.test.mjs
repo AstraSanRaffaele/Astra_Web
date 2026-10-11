@@ -8,6 +8,7 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const { parseTimetable, deduplicateLessons, fetchDay } = load("source");
 const { selectLessons, subjectKey, validateSettings, daysBetween, availableLines } = load("types");
 const { createCalendar, foldLine } = load("ical");
+const { subjectColors, subjectColorKey } = load("subject-colors");
 const fixture = (name) => new TextDecoder("windows-1252").decode(fs.readFileSync(path.join(directory, "fixtures", `${name}.html`)));
 const current = fixture("current"), legacy = fixture("legacy");
 const events = [...parseTimetable(current, "2026-10-12", "10311", 0), ...parseTimetable(legacy, "2026-10-12", "10115", 0)];
@@ -103,7 +104,7 @@ test("ICS is UTF-8, CRLF folded, escaped, and uses Europe/Rome including dayligh
   assert.ok(unfolded.includes("TZOFFSETTO:+0200"));
   assert.ok(unfolded.includes("TZOFFSETTO:+0100"));
   assert.ok(unfolded.includes("SUMMARY:Lezione à\\;virgola\\,\\\\\\n🎓"));
-  assert.ok(unfolded.includes("REFRESH-INTERVAL;VALUE=DURATION:PT3H"));
+  assert.ok(unfolded.includes("REFRESH-INTERVAL;VALUE=DURATION:PT4H"));
   assert.ok(unfolded.includes(`LOCATION:${lesson.building} · ${lesson.room}`));
   assert.ok(unfolded.includes(`Aula: ${lesson.room}\\nEdificio: ${lesson.building}`));
   assert.equal(foldLine("à".repeat(90)).replace(/\r\n /g, ""), "à".repeat(90));
@@ -118,6 +119,27 @@ test("same-day time and room changes keep UID; removed lessons disappear from th
   assert.ok(moved.includes(`LOCATION:${lesson.building} · NUOVA`));
   assert.ok(moved.includes("Aula: NUOVA"));
   assert.ok(!createCalendar(record([])).includes("BEGIN:VEVENT"));
+});
+
+test("subject colors group the same subject across teachers, avoid duplicates and do not depend on row order", () => {
+  const titles = [...new Set(events.map((event) => event.title)), ...Array.from({ length: 100 }, (_, i) => `Materia aggiuntiva ${i}`)];
+  const colors = subjectColors(titles);
+  assert.equal(new Set([...colors.values()].map((color) => color.hex)).size, colors.size);
+  assert.deepEqual(subjectColors([...titles].reverse()), colors);
+  assert.equal(subjectColorKey("  ANATOMIA   Patologica "), subjectColorKey("Anatomia Patologica"));
+  assert.equal(subjectColors(["  ANATOMIA   Patologica ", "Anatomia Patologica"]).size, 1);
+});
+
+test("one full calendar includes all allowed subjects and leaves colors to Apple and Google", () => {
+  const selected = selectLessons(events, settings);
+  const lesson = selected[0];
+  const restricted = [{ ...lesson, year: 5 }, { ...lesson, line: "ROSSA" }, { ...lesson, line: null }];
+  const full = unfold(createCalendar(record([...selected, ...restricted])));
+  assert.equal((full.match(/BEGIN:VEVENT/g) ?? []).length, selected.length);
+  assert.ok(full.includes(`X-WR-CALNAME:${settings.name}`));
+  assert.ok(!full.includes("COLOR:") && !full.includes("CATEGORIES:"));
+  assert.ok(full.includes("REFRESH-INTERVAL;VALUE=DURATION:PT4H"));
+  assert.ok(full.includes(`LOCATION:${lesson.building} · ${lesson.room}`));
 });
 
 test("the HTTP reader submits lesson-only filters to both official course IDs and decodes Italian accents", async (context) => {
