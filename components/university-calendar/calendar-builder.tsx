@@ -282,7 +282,6 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
             </article>;
           })}</div>}
       </section>
-      <aside className={styles.note}><ShieldCheck size={20} /><div><strong>Un link personale per tutto il semestre.</strong><p>Conserva il link: chi lo possiede può leggere le lezioni selezionate. ASTRA avvia gli aggiornamenti condivisi alle 08:00, 12:00 e 18:00 italiane, quando il servizio è attivo. Durante la lettura resta disponibile l’ultima versione completa. Calendario Apple e Google Calendar gestiscono i tempi di ricezione delle modifiche. Su Mac puoi scegliere la frequenza nelle impostazioni dell’abbonamento. Dopo il 15 giugno il calendario viene eliminato da ASTRA e il link smette di funzionare; l’abbonamento nelle app va rimosso dall’app stessa. Dal 1° settembre, creando il nuovo calendario, gli aggiornamenti si riattivano automaticamente.</p></div></aside>
     </div>
   </main>;
 }
