@@ -18,8 +18,8 @@ export default function SubscriptionGuide({ id, open, onClose }: { id: string; o
     panel.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, [open]);
 
-  return <section id={id} ref={panel} hidden={!open} className={styles.guide} aria-labelledby={`${id}-title`} onKeyDown={(event) => {
-    if (event.key === "Escape") { event.stopPropagation(); onClose(); }
+  return <section id={id} ref={panel} className={`${styles.guide} ${!open ? styles.mobileCollapsed : ""}`} aria-labelledby={`${id}-title`} onKeyDown={(event) => {
+    if (event.key === "Escape" && window.matchMedia("(max-width: 820px)").matches) { event.stopPropagation(); onClose(); }
   }}>
     <div className={styles.heading}>
       <div><span className={styles.eyebrow}><BookOpen size={14} aria-hidden="true" /> Guida all’abbonamento</span><h3 id={`${id}-title`} ref={heading} tabIndex={-1}>Come aggiungere il calendario</h3><p>Scegli dove vuoi vedere le tue lezioni.</p></div>
@@ -44,11 +44,13 @@ export default function SubscriptionGuide({ id, open, onClose }: { id: string; o
 
     {platform === "ios" && <div className={styles.content}>
       <ol className={styles.steps}>
-        <li><strong>Apri il link con Calendario Apple</strong><p>Premi <b>Calendario Apple</b> nella tua scheda. Se non si apre, copia il link e vai in <b>Calendario → Calendari → Aggiungi calendario → Aggiungi calendario con iscrizione</b>.</p></li>
-        <li><strong>Aggiungi l’iscrizione</strong><p>Incolla il link e prosegui con <b>Trova</b> o <b>Iscriviti</b>, in base alla versione del sistema. Scegli <b>iCloud</b> come account, se disponibile, e conferma con <b>Fine</b> o <b>Aggiungi</b>.</p></li>
-        <li><strong>Controlla la frequenza disponibile</strong><p>Apri <b>Impostazioni → App → Calendario → Account Calendario → Scarica nuovi dati</b>. Se l’account usa <b>Scarica</b>, cerca la frequenza nella sezione Scarica della stessa schermata. Nelle versioni precedenti, Calendario si trova direttamente in Impostazioni.</p></li>
+        <li><strong>Copia il link e apri Calendario</strong><p>Nella tua scheda ASTRA, tocca <b>Copia link</b>. Poi apri l’app <b>Calendario</b>.</p></li>
+        <li><strong>Apri l’elenco Calendari</strong><p>Tocca il pulsante <b>Calendari</b>. Su iPhone lo trovi in basso: nella vista annuale è l’icona a forma di piccolo calendario, accanto alla casella delle entrate.</p></li>
+        <li><strong>Scegli “Aggiungi calendario con iscrizione”</strong><p>Scorri fino in fondo all’elenco e tocca <b>Aggiungi calendario</b>. Nel menu che si apre, scegli <b>Aggiungi calendario con iscrizione</b>.</p></li>
+        <li><strong>Incolla il link e scegli iCloud</strong><p>Incolla il link nel campo dell’indirizzo. Puoi personalizzare <b>Nome evento</b>, per esempio con “Lezioni UniSR”. Tocca <b>Account</b> e scegli <b>iCloud</b> per ritrovare il calendario sugli altri dispositivi Apple con lo stesso account.</p></li>
+        <li><strong>Salva con la spunta in alto a destra</strong><p>Quando compare l’anteprima delle lezioni, tocca la <b>spunta rossa ✓</b> in alto a destra. Nell’elenco Calendari, verifica che il tuo calendario sia selezionato e riporti <b>Iscrizione effettuata</b>.</p></li>
       </ol>
-      <div className={styles.frequency}><Clock3 size={18} aria-hidden="true" /><div><strong>{CALENDAR_APP_REFRESH_HOURS} ore, se il dispositivo lo consente</strong><p>Se c’è un intervallo selezionabile, scegli {CALENDAR_APP_REFRESH_HOURS} ore o quello più vicino sotto le {CALENDAR_APP_REFRESH_HOURS} ore. Se non compare per l’iscrizione, l’aggiornamento è gestito dal sistema.</p><small>La frequenza di scaricamento può riguardare anche altri account del dispositivo.</small></div></div>
+      <div className={styles.frequency}><Clock3 size={18} aria-hidden="true" /><div><strong>{CALENDAR_APP_REFRESH_HOURS} ore, se il dispositivo lo consente</strong><p>La frequenza si controlla separatamente in <b>Impostazioni → App → Calendario → Account Calendario → Scarica nuovi dati</b>. Se l’account usa <b>Scarica</b>, cerca la frequenza nella sezione Scarica.</p><p>Se c’è un intervallo selezionabile, scegli {CALENDAR_APP_REFRESH_HOURS} ore o quello più vicino sotto le {CALENDAR_APP_REFRESH_HOURS} ore. Se non compare per l’iscrizione, l’aggiornamento è gestito dal sistema.</p><small>La frequenza di scaricamento può riguardare anche altri account del dispositivo. Nelle versioni precedenti, Calendario si trova direttamente in Impostazioni.</small></div></div>
       <div className={styles.sources}><a className={styles.support} href="https://support.apple.com/it-it/102301" target="_blank" rel="noreferrer">Aggiungere il calendario <ExternalLink size={13} aria-hidden="true" /></a><a className={styles.support} href="https://support.apple.com/it-it/guide/iphone/iphc37be2016/ios" target="_blank" rel="noreferrer">Impostazioni Apple <ExternalLink size={13} aria-hidden="true" /></a></div>
     </div>}
 
@@ -62,6 +64,5 @@ export default function SubscriptionGuide({ id, open, onClose }: { id: string; o
       <a className={styles.support} href="https://support.google.com/calendar/answer/37100?hl=it" target="_blank" rel="noreferrer">Istruzioni Google <ExternalLink size={13} aria-hidden="true" /></a>
     </div>}
 
-    <p className={styles.footer}>ASTRA legge UniSR dal lunedì al venerdì alle <b>08:00, 12:00 e 18:00</b>, in orario italiano. La ricezione nelle app segue i loro tempi. Usa l’abbonamento al link: l’importazione di un file salva solo una copia degli eventi.</p>
   </section>;
 }

@@ -41,12 +41,11 @@ può leggerlo. Disattivare il calendario sospende il link; rigenerarlo revoca qu
 precedente e richiede un nuovo abbonamento su Apple o Google. Entrambi gestiscono il
 proprio intervallo di scaricamento; su Mac va scelto nelle impostazioni dell’abbonamento.
 
-Quando il calendario appena creato ha un link utilizzabile, si apre la guida
-**Come aggiungerlo**, affiancata alla scheda del calendario su desktop e sotto
-la scheda su mobile. Su desktop è richiamabile con il pulsante; su mobile con
-la frase «Per aggiungerlo, segui la guida», in cui «segui la guida» è evidenziato
-come link. Comprende Mac, iPhone/iPad e Google Calendar.
-La prima apertura automatica attende la pubblicazione dell’importazione completa;
+Quando il calendario ha un link utilizzabile, la guida è sempre visibile a destra
+della scheda su desktop, senza pulsanti di apertura o chiusura. Su mobile resta
+sotto la scheda, richiamabile dalla frase «Per aggiungerlo, segui la guida», in cui
+«segui la guida» è evidenziato come link. Comprende Mac, iPhone/iPad e Google Calendar.
+La prima apertura automatica su mobile attende la pubblicazione dell’importazione completa;
 resta in attesa anche dopo un ricaricamento della pagina nello stesso browser.
 Un indicatore locale per ID calendario memorizza `pending` oppure `seen`, senza
 salvare il link o il token. Se lo spazio locale è bloccato, la guida funziona comunque
@@ -59,6 +58,12 @@ dell’account, solo se disponibile, specificando che può riguardare altri acco
 Google gestisce autonomamente la frequenza degli abbonamenti da URL: la guida
 non offre un’impostazione fittizia e non promette aggiornamenti entro 6 ore.
 Le istruzioni rimandano alla documentazione Apple e Google consultata il 27 ottobre 2026.
+La procedura iPhone segue anche gli screenshot forniti dall’utente: copia del link,
+icona Calendari in basso, aggiunta dal fondo dell’elenco, voce con iscrizione,
+campo Nome evento, scelta di Account → iCloud e conferma con la spunta rossa
+in alto a destra. La verifica finale richiede la dicitura «Iscrizione effettuata»
+e il calendario selezionato. La frequenza resta descritta separatamente dalle
+operazioni mostrate nella schermata di iscrizione.
 
 ## Colori e scadenza
 

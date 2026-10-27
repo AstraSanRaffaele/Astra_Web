@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { ArrowLeft, BookOpen, CalendarDays, Check, ChevronDown, Copy, ExternalLink, LoaderCircle, Plus, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, Copy, ExternalLink, LoaderCircle, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 import { COURSES, courseHasLines, selectLessons, type CalendarView, type CourseKey, type Lesson } from "../_lib/types";
 import { GOOGLE_CALENDAR_SUBSCRIPTION_URL } from "../_lib/config";
 import { calendarPeriod, calendarRefreshOpen, calendarSeasonOpen } from "../_lib/period";
@@ -307,11 +307,11 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
                 {calendar.last_synced_at && calendar.enabled ? <div className={styles.subscription}>
                   <label>Link per Apple e Google Calendar<input readOnly value={calendar.feedUrl} onFocus={(event) => event.currentTarget.select()} /></label>
                   {subscriptionActions(calendar.id, calendar.feedUrl)}
-                  <div className={styles.guideAccess}><span className={styles.guidePrompt}>Per aggiungerlo, </span><button id={`calendar-guide-trigger-${calendar.id}`} className={`${styles.secondary} ${styles.guideButton}`} type="button" aria-expanded={openGuideId === calendar.id} aria-controls={`calendar-guide-${calendar.id}`} onClick={() => {
+                  <p className={styles.guideAccess}>Per aggiungerlo, <button id={`calendar-guide-trigger-${calendar.id}`} className={styles.guideButton} type="button" aria-expanded={openGuideId === calendar.id} aria-controls={`calendar-guide-${calendar.id}`} onClick={() => {
                     seenGuideIds.current.add(calendar.id);
                     markSubscriptionGuideSeen(calendar.id, guideStorage());
                     setOpenGuideId((current) => current === calendar.id ? null : calendar.id);
-                  }}><BookOpen size={15} aria-hidden="true" className={styles.guideDecoration} /><span className={styles.guideDesktopLabel}>Come aggiungerlo</span><span className={styles.guideMobileLabel}>segui la guida</span><ChevronDown size={14} aria-hidden="true" className={`${styles.guideDecoration} ${openGuideId === calendar.id ? styles.guideChevronOpen : ""}`} /></button><span className={styles.guidePrompt}>.</span></div>
+                  }}>segui la guida</button>.</p>
                 </div> : <p className={styles.hint}>{calendar.enabled ? "Il link sarà disponibile dopo la lettura dell’intero semestre." : "Il link è sospeso. Riattiva il calendario per utilizzarlo."}</p>}
                 <SavedSubjects key={`${calendar.id}-${JSON.stringify(calendar.included_subjects)}`} calendar={calendar} busy={busy} save={safeMutate} colors={colors} />
                 <div className={styles.actions}><button className={styles.textButton} disabled={busy || !calendar.enabled || calendar.sync_cursor !== null} onClick={() => void safeMutate({ action: "sync", id: calendar.id })} type="button"><RefreshCw size={14} /> Verifica aggiornamenti</button><button className={styles.textButton} disabled={busy} onClick={() => void safeMutate({ action: "toggle", id: calendar.id, enabled: !calendar.enabled })} type="button">{calendar.enabled ? "Disattiva" : "Riattiva"}</button>
