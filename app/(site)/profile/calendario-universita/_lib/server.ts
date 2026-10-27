@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/admin-users-server";
 import { fetchDay, deduplicateLessons } from "./source";
 import { canUseCalendar } from "./eligibility";
-import { calendarExpired, calendarSeasonOpen } from "./period";
-import { daysBetween, selectLessons, unassignedSubjects, type CalendarRecord, type CalendarView } from "./types";
+import { calendarExpired, calendarRefreshOpen, calendarSeasonOpen } from "./period";
+import { courseHasLines, daysBetween, selectLessons, unassignedSubjects, type CalendarRecord, type CalendarView } from "./types";
 import { applySharedSource, type SharedSource, type SourceJob } from "./shared";
 
 export async function getCalendarUser() {
@@ -29,11 +29,12 @@ export function calendarView(original: CalendarRecord, origin: string, source: S
   void staging_events; void lease_token; void leased_until; void owner_id;
   const feedUrl = `${origin}/api/calendars/university/${token}`;
   const selected = selectLessons(source_events, record);
-  return { ...safe, feedUrl, eventCount: selected.length, totalDays: daysBetween(source?.semester_start ?? record.semester_start, record.semester_end).length, subjects: unassignedSubjects(source_events, record.year) };
+  return { ...safe, feedUrl, eventCount: selected.length, totalDays: daysBetween(source?.semester_start ?? record.semester_start, record.semester_end).length, subjects: courseHasLines(record.course) ? unassignedSubjects(source_events, record.year) : [] };
 }
 
 export async function processSyncBatch(course?: string) {
   if (!calendarSeasonOpen()) return { processed: false, paused: true };
+  if (!calendarRefreshOpen()) return { processed: false, paused: true, weekend: true };
   const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("claim_university_calendar_source", { requested_course: course ?? null });
   if (error) throw error;
@@ -51,14 +52,16 @@ export async function processSyncBatch(course?: string) {
       // An import started before Italian midnight must not launch more reads after expiry.
       if (calendarExpired(record.semester_end)) return { processed: false, expired: true };
       if (!calendarSeasonOpen()) return { processed: false, paused: true };
+      if (!calendarRefreshOpen()) return { processed: false, paused: true, weekend: true };
       const batchDates = dates.slice(nextCursor, Math.min(nextCursor + 4, dates.length, cursor + 24));
-      // One read includes every year and line: at most three course workers run.
-      const results = await Promise.all(batchDates.map((date) => fetchDay(record.course, 0, date)));
+      // One shared read includes every year and any lines of this course.
+      const results = await Promise.all(batchDates.map((date) => fetchDay(record.course, 0, date, () => !calendarExpired(record.semester_end) && calendarRefreshOpen())));
       collected.push(...results.flat());
       nextCursor += batchDates.length;
     }
     if (calendarExpired(record.semester_end)) return { processed: false, expired: true };
     if (!calendarSeasonOpen()) return { processed: false, paused: true };
+    if (!calendarRefreshOpen()) return { processed: false, paused: true, weekend: true };
     const complete = nextCursor === dates.length;
     const { data: updated, error: updateError } = await supabase.rpc("save_university_calendar_source", {
       requested_course: record.course, requested_lease: record.lease_token,
@@ -70,6 +73,7 @@ export async function processSyncBatch(course?: string) {
   } catch (cause) {
     if (calendarExpired(record.semester_end)) return { processed: false, expired: true };
     if (!calendarSeasonOpen()) return { processed: false, paused: true };
+    if (!calendarRefreshOpen()) return { processed: false, paused: true, weekend: true };
     // A failed read never replaces the last complete calendar or erases its events.
     const message = cause instanceof Error ? cause.message : "Impossibile leggere gli orari UniSR.";
     const { data: saved, error: updateError } = await supabase.rpc("save_university_calendar_source", {

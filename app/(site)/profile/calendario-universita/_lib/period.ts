@@ -12,6 +12,11 @@ export function calendarSeasonOpen(now = new Date()) {
   return monthDay <= "06-15" || monthDay >= "09-01";
 }
 
+export function calendarRefreshOpen(now = new Date()) {
+  const day = new Date(`${calendarToday(now)}T12:00:00Z`).getUTCDay();
+  return day !== 0 && day !== 6 && calendarSeasonOpen(now);
+}
+
 export function calendarPeriod(now = new Date()) {
   const start = calendarToday(now);
   const year = Number(start.slice(0, 4));

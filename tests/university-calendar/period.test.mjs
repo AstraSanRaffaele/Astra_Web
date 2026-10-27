@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import load from "./load.mjs";
 
-const { calendarPeriod, calendarExpired, calendarSeasonOpen } = load("period");
+const { calendarPeriod, calendarExpired, calendarRefreshOpen, calendarSeasonOpen } = load("period");
 const { daysBetween } = load("types");
 
 test("the calendar runs from today in Rome to the next June 15 without manual semester dates", () => {
@@ -44,4 +44,20 @@ test("calendar creation and synchronization follow the Italian September 1 to Ju
     ["2027-12-31T22:00:00Z", true],
   ]) assert.equal(calendarSeasonOpen(new Date(time)), open, time);
   assert.deepEqual(calendarPeriod(new Date("2027-08-31T22:00:00Z")), { start: "2027-09-01", end: "2028-06-15" });
+});
+
+test("refreshes stop for the entire Italian weekend across both daylight-saving changes", () => {
+  for (const [time, open] of [
+    ["2026-10-23T21:59:59.999Z", true],
+    ["2026-10-23T22:00:00Z", false],
+    ["2026-10-25T00:30:00Z", false],
+    ["2026-10-25T01:30:00Z", false],
+    ["2026-10-25T22:59:59.999Z", false],
+    ["2026-10-25T23:00:00Z", true],
+    ["2027-03-26T22:59:59.999Z", true],
+    ["2027-03-26T23:00:00Z", false],
+    ["2027-03-28T21:59:59.999Z", false],
+    ["2027-03-28T22:00:00Z", true],
+    ["2027-07-05T10:00:00Z", false],
+  ]) assert.equal(calendarRefreshOpen(new Date(time)), open, time);
 });

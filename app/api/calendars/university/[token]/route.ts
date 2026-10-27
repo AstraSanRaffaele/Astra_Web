@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/admin-users-server";
-import { createCalendar } from "@/lib/university-calendar/ical";
-import { calendarExpired } from "@/lib/university-calendar/period";
-import type { CalendarRecord } from "@/lib/university-calendar/types";
-import { applySharedSource, readSharedSource } from "@/lib/university-calendar/shared";
+import { createCalendar } from "@/app/(site)/profile/calendario-universita/_lib/ical";
+import { calendarExpired } from "@/app/(site)/profile/calendario-universita/_lib/period";
+import type { CalendarRecord } from "@/app/(site)/profile/calendario-universita/_lib/types";
+import { applySharedSource, readSharedSource } from "@/app/(site)/profile/calendario-universita/_lib/shared";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

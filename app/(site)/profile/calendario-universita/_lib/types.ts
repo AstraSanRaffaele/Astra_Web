@@ -1,10 +1,15 @@
-export type CourseKey = "medicina" | "medicina-2" | "medicina-3";
+export type CourseKey = "medicina" | "medicina-2" | "medicina-3" | "imdp";
 
-export const COURSES: { key: CourseKey; label: string; sourceIds: string[] }[] = [
-  { key: "medicina", label: "Medicina e Chirurgia", sourceIds: ["10115", "10311"] },
-  { key: "medicina-2", label: "Medicina e Chirurgia 2", sourceIds: ["10284", "10325"] },
-  { key: "medicina-3", label: "Medicina e Chirurgia 3", sourceIds: ["10285", "10324"] },
+export const COURSES: { key: CourseKey; label: string; sourceIds: string[]; hasLines: boolean }[] = [
+  { key: "medicina", label: "Medicina e Chirurgia", sourceIds: ["10115", "10311"], hasLines: true },
+  { key: "medicina-2", label: "Medicina e Chirurgia 2", sourceIds: ["10284", "10325"], hasLines: true },
+  { key: "medicina-3", label: "Medicina e Chirurgia 3", sourceIds: ["10285", "10324"], hasLines: true },
+  { key: "imdp", label: "International MD Program (IMDP)", sourceIds: ["10124", "10321"], hasLines: false },
 ];
+
+export function courseHasLines(course: CourseKey): boolean {
+  return COURSES.find((item) => item.key === course)?.hasLines ?? true;
+}
 
 export type Lesson = {
   date: string;
@@ -61,8 +66,9 @@ export function subjectKey(lesson: Lesson): string {
 
 export function selectLessons(events: Lesson[], settings: CalendarSettings): Lesson[] {
   const included = new Set(settings.included_subjects);
+  const hasLines = courseHasLines(settings.course);
   return events.filter((event) => event.year === settings.year && event.date >= settings.semester_start && event.date <= settings.semester_end &&
-    (event.line === settings.line || (event.line === null && included.has(subjectKey(event)))));
+    (!hasLines || event.line === settings.line || (event.line === null && included.has(subjectKey(event)))));
 }
 
 export function unassignedSubjects(events: Lesson[], year: number) {
@@ -92,15 +98,17 @@ export function validateSettings(input: unknown): CalendarSettings {
   const course = COURSES.find((item) => item.key === data.course);
   const year = Number(data.year);
   const name = typeof data.name === "string" ? data.name.trim() : "";
-  const line = typeof data.line === "string" ? data.line.trim().toUpperCase() : "";
+  // Keep the existing required database field canonical for courses without lines.
+  const line = course?.hasLines === false ? "COMUNE" : typeof data.line === "string" ? data.line.trim().toUpperCase() : "";
   if (!course || !Number.isInteger(year) || year < 1 || year > 6 || !name || name.length > 100 || !/^[A-ZÀ-Ü][A-ZÀ-Ü 0-9-]{0,39}$/.test(line)) throw new Error("Controlla nome, corso, anno e linea.");
   for (const field of ["semester_start", "semester_end"] as const) {
     const date = data[field];
     if (!isCalendarDate(date)) throw new Error("Date del semestre non valide.");
   }
   daysBetween(data.semester_start as string, data.semester_end as string);
-  if (!Array.isArray(data.included_subjects) || data.included_subjects.length > 200 || data.included_subjects.some((item) => typeof item !== "string" || item.length > 600)) throw new Error("Selezione delle attività non valida.");
-  return { name, course: course.key, year, line, semester_start: data.semester_start as string, semester_end: data.semester_end as string, included_subjects: [...new Set(data.included_subjects)] as string[] };
+  const subjects = course.hasLines ? data.included_subjects : [];
+  if (!Array.isArray(subjects) || subjects.length > 200 || subjects.some((item) => typeof item !== "string" || item.length > 600)) throw new Error("Selezione delle attività non valida.");
+  return { name, course: course.key, year, line, semester_start: data.semester_start as string, semester_end: data.semester_end as string, included_subjects: [...new Set(subjects)] as string[] };
 }
 
 export function isCalendarDate(value: unknown): value is string {

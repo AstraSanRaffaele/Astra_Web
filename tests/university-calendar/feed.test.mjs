@@ -15,11 +15,11 @@ function harness(data = record, now = "2026-10-11T12:00:00Z", source = null) {
     return query;
   } };
   const period = load("period");
-  const route = load("../../app/api/calendars/university/[token]/route", {
+  const route = load("@/app/api/calendars/university/[token]/route", {
     "@/lib/admin-users-server": { createAdminClient: () => client },
-    "@/lib/university-calendar/ical": load("ical"),
-    "@/lib/university-calendar/shared": { readSharedSource: async () => source, applySharedSource: load("shared", { "server-only": {}, "@/lib/admin-users-server": {} }).applySharedSource },
-    "@/lib/university-calendar/period": { calendarExpired: (end) => period.calendarExpired(end, new Date(now)) },
+    "@/app/(site)/profile/calendario-universita/_lib/ical": load("ical"),
+    "@/app/(site)/profile/calendario-universita/_lib/shared": { readSharedSource: async () => source, applySharedSource: load("shared", { "server-only": {}, "@/lib/admin-users-server": {} }).applySharedSource },
+    "@/app/(site)/profile/calendario-universita/_lib/period": { calendarExpired: (end) => period.calendarExpired(end, new Date(now)) },
   });
   const get = (query = "", etag, suppliedToken = token) => route.GET(new NextRequest(`https://astra.test/api/calendars/university/${suppliedToken}${query}`, etag ? { headers: { "If-None-Match": etag } } : undefined), { params: Promise.resolve({ token: suppliedToken }) });
   return { get, reads };
@@ -37,6 +37,21 @@ test("one subscription exposes all allowed subjects with rooms and privacy contr
   assert.ok(body.includes("SUMMARY:Pediatria"));
   assert.ok(!body.includes("COLOR:") && !body.includes("SUMMARY:Elettivo"));
   assert.deepEqual(h.reads[0].filters, [["token", token], ["enabled", true]]);
+});
+
+test("IMDP feeds use the shared year snapshot and include line-free lessons without individual opt-in", async () => {
+  const imdp = { ...record, course: "imdp", line: "COMUNE", included_subjects: [], source_events: [], last_synced_at: null };
+  const source = { course: "imdp", semester_start: imdp.semester_start, semester_end: imdp.semester_end, ready: true, events: [{ ...lesson, title: "Neurology", line: null }, { ...lesson, title: "Radiology", line: null }, { ...lesson, title: "Medical Physics", line: null, year: 1 }], last_synced_at: "2026-10-11T16:00:00Z", sync_cursor: null };
+  const response = await harness(imdp, "2026-10-11T16:00:00Z", source).get();
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.equal((body.match(/BEGIN:VEVENT/g) ?? []).length, 2);
+  assert.match(body, /SUMMARY:Neurology/);
+  assert.match(body, /LOCATION:CANOVA · CA101/);
+  assert.doesNotMatch(body, /SUMMARY:Medical Physics|Linea:/);
+  const view = load("server", { "server-only": {}, "@/lib/supabase/server": {}, "@/lib/admin-users-server": {} }).calendarView(imdp, "https://astra.test", source);
+  assert.equal(view.eventCount, 2);
+  assert.deepEqual(view.subjects, []);
 });
 
 test("unchanged calendars return 304 and cancelled lessons change the full feed ETag", async () => {

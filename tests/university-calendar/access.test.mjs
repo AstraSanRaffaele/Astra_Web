@@ -14,7 +14,7 @@ function request(body, origin = "https://astra.test") {
 
 const defaultPeriod = { start: "2026-10-11", end: "2027-06-15" };
 
-function harness({ enabled = true, user = { id: "user-a", isAdmin: false }, createError = null, scheduler = true, period = defaultPeriod, sourceLessons = [], cacheReady = true, cacheCursor = 0, syncPublishes = false, cacheError = null } = {}) {
+function harness({ enabled = true, user = { id: "user-a", isAdmin: false }, createError = null, scheduler = true, period = defaultPeriod, sourceLessons = [], cacheReady = true, cacheCursor = 0, syncPublishes = false, cacheError = null, refreshOpen = true } = {}) {
   const rows = [structuredClone(record), { ...structuredClone(record), id: otherId, owner_id: "user-b", token: "B".repeat(43) }];
   const writes = [], reads = [], syncs = [], rpcCalls = [], sourceReads = [], ensures = [];
   const client = {
@@ -39,15 +39,18 @@ function harness({ enabled = true, user = { id: "user-a", isAdmin: false }, crea
     async rpc(name, args) { rpcCalls.push({ name, args }); return { data: createError ? null : args.requested_id, error: createError }; },
   };
   const actualView = load("server", { "server-only": {}, "@/lib/supabase/server": {}, "@/lib/admin-users-server": {} }).calendarView;
-  const api = load("api", {
+  const routeMocks = {
     "server-only": {}, "./config": { PUBLIC_CALENDAR_ENABLED: enabled, PUBLIC_CALENDAR_LIMIT: 1 },
     "@/lib/admin-users-server": { createAdminClient: () => client },
     "./server": { getCalendarUser: async () => user && (user.isAdmin || enabled) ? user : null, calendarView: actualView,
       newFeedToken: () => "C".repeat(43), processSyncBatch: async (id) => { syncs.push(id); if (syncPublishes) cacheReady = true; }, serviceError: () => "Servizio non disponibile" },
     "./shared": { ensureSharedSource: async (...args) => { ensures.push(args); }, readSharedSource: async (...args) => { sourceReads.push(args); return { course: args[0], semester_start: period.start, semester_end: period.end, ready: cacheReady, sync_cursor: cacheCursor, sync_error: cacheError, last_synced_at: "2026-10-11T12:00:00Z", events: sourceLessons.filter((lesson) => (args[1] === 0 || lesson.year === args[1]) && (!args[2] || lesson.date >= args[2]) && (!args[3] || lesson.date <= args[3])), lines: load("types").availableLines(sourceLessons) }; }, previewCovered: load("shared", { "server-only": {}, "@/lib/admin-users-server": {} }).previewCovered },
     "./source": { fetchDay: async (...args) => { sourceReads.push(args); return sourceLessons.filter((lesson) => (args[1] === 0 || lesson.year === args[1]) && lesson.date === args[2]); }, deduplicateLessons: (items) => items },
-    "./period": { calendarPeriod: () => period, calendarExpired: (end) => end < period.start, calendarSeasonOpen: () => load("period").calendarSeasonOpen(new Date(`${period.start}T12:00:00Z`)) },
-  });
+    "./period": { calendarPeriod: () => period, calendarExpired: (end) => end < period.start, calendarSeasonOpen: () => load("period").calendarSeasonOpen(new Date(`${period.start}T12:00:00Z`)), calendarRefreshOpen: () => refreshOpen },
+  };
+  const personal = load("@/app/api/university-calendar/route", routeMocks);
+  const preview = load("@/app/api/university-calendar/preview/route", routeMocks);
+  const api = { listCalendars: personal.GET, mutateCalendar: personal.POST, previewCalendar: preview.POST };
   return { api, rows, reads, writes, syncs, rpcCalls, sourceReads, ensures };
 }
 
@@ -189,6 +192,35 @@ test("preview includes lines from all years while lessons remain limited to the 
   assert.equal(body.lessons.length, 5);
 });
 
+test("IMDP preview returns the selected year with no line or optional-activity selection", async () => {
+  const lesson = { date: "2026-10-12", year: 3, line: null, title: "Pathologic Anatomy", teacher: "Docente", room: "BO402", building: "BORROMINI" };
+  const h = harness({ sourceLessons: [lesson, { ...lesson, year: 1, title: "Medical Physics" }] });
+  const response = await h.api.previewCalendar(request({ course: "imdp", year: 3 }));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.lessons, [lesson]);
+  assert.deepEqual(body.lines, []);
+  assert.deepEqual(body.subjects, []);
+  assert.deepEqual(h.ensures, [["imdp", defaultPeriod.start, defaultPeriod.end]]);
+});
+
+test("IMDP creation and course changes canonicalize line-free settings and keep the existing token", async () => {
+  const h = harness();
+  const imdp = { name: "Lezioni IMDP", course: "imdp", year: 3 };
+  assert.equal((await h.api.mutateCalendar(request({ action: "create", id: ownId, settings: imdp }))).status, 200);
+  assert.equal(h.rpcCalls[0].args.settings.course, "imdp");
+  assert.equal(h.rpcCalls[0].args.settings.line, "COMUNE");
+  assert.deepEqual(h.rpcCalls[0].args.settings.included_subjects, []);
+  const token = h.rows[0].token;
+  assert.equal((await h.api.mutateCalendar(request({ action: "settings", id: ownId, settings: { ...imdp, line: "ROSSA", included_subjects: ["stale"] } }))).status, 200);
+  assert.equal(h.rows[0].token, token);
+  assert.equal(h.rows[0].line, "COMUNE");
+  assert.deepEqual(h.rows[0].included_subjects, []);
+  assert.equal((await h.api.mutateCalendar(request({ action: "settings", id: ownId, settings }))).status, 200);
+  assert.equal(h.rows[0].token, token);
+  assert.equal(h.rows[0].line, "BIANCA");
+});
+
 test("preview does not read past June 15 and accepts requests without a date", async () => {
   const period = { start: "2027-06-14", end: "2027-06-15" };
   const h = harness({ period });
@@ -261,4 +293,17 @@ test("a failed shared preview reports an error rather than confirming zero lesso
   const response = await h.api.previewCalendar(request({ course: "medicina", year: 4 }));
   assert.equal(response.status, 502);
   assert.ok((await response.json()).error.includes("interrotta"));
+});
+
+test("weekend previews serve cached lessons but never initialize or warm a source", async () => {
+  const cold = harness({ refreshOpen: false, cacheReady: false });
+  const response = await cold.api.previewCalendar(request({ course: "imdp", year: 3 }));
+  assert.equal(response.status, 503);
+  assert.match((await response.json()).error, /lunedì dalle 08:00/);
+  assert.deepEqual(cold.ensures, []);
+  assert.deepEqual(cold.syncs, []);
+  const warm = harness({ refreshOpen: false, cacheReady: true });
+  assert.equal((await warm.api.previewCalendar(request({ course: "medicina", year: 4 }))).status, 200);
+  assert.deepEqual(warm.ensures, []);
+  assert.deepEqual(warm.syncs, []);
 });

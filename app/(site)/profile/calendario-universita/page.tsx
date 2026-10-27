@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCalendarUser } from "@/lib/university-calendar/server";
-import { PUBLIC_CALENDAR_PATH } from "@/lib/university-calendar/config";
-import CalendarBuilder from "@/components/university-calendar/calendar-builder";
+import { getCalendarUser } from "./_lib/server";
+import { PUBLIC_CALENDAR_PATH } from "./_lib/config";
+import CalendarBuilder from "./_components/calendar-builder";
 
 export const metadata: Metadata = {
   title: "Il tuo calendario universitario | ASTRA",

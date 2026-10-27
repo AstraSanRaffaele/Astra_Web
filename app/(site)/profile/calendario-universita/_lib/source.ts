@@ -80,7 +80,7 @@ export function deduplicateLessons(events: Lesson[]): Lesson[] {
   return [...unique.values()].sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start) || a.title.localeCompare(b.title));
 }
 
-export async function fetchDay(course: CourseKey, year: number, date: string): Promise<Lesson[]> {
+export async function fetchDay(course: CourseKey, year: number, date: string, canRead: () => boolean = () => true): Promise<Lesson[]> {
   const definition = COURSES.find((item) => item.key === course);
   // UniSR uses zero for all years; preview uses it to discover every course line.
   if (!definition || !Number.isInteger(year) || year < 0 || year > 6 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Filtri non validi.");
@@ -88,6 +88,7 @@ export async function fetchDay(course: CourseKey, year: number, date: string): P
   const events: Lesson[] = [];
   // Consult both official course records: UniSR separates cohorts across otherwise identical labels.
   for (const sourceId of definition.sourceIds) {
+    if (!canRead()) throw new Error("La lettura degli orari è in pausa.");
     const response = await fetch(SOURCE, {
       method: "POST", cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8000),
       headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "ASTRA University Calendar/1.0 (+https://www.astrasanraffaele.it)" },

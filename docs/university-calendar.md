@@ -1,5 +1,17 @@
 # Calendario universitario UniSR
 
+## Organizzazione dei file
+
+La sezione è raccolta in `app/(site)/profile/calendario-universita/`:
+`page.tsx` contiene la pagina, `_components/` i componenti e i loro stili,
+`_lib/` la configurazione, i filtri e le funzioni condivise del calendario.
+Le cartelle con prefisso `_` non creano percorsi pubblici.
+
+I gestori HTTP sono nei rispettivi `route.ts` sotto `app/api/`:
+`university-calendar/` per lettura e modifica, `university-calendar/preview/`
+per l’anteprima, `calendar-sync/` per il worker e `calendars/university/[token]/`
+per gli abbonamenti. URL, token e configurazione Supabase restano gli stessi.
+
 ## Accesso e uso
 
 La sezione `/profile/calendario-universita` si apre dal pulsante nella scheda calendario
@@ -7,13 +19,16 @@ sotto la panoramica account. Per ora tutti gli account confermati con profilo es
 e ruolo `admin` possono usarla, indipendentemente dall’indirizzo email o dal
 corso salvato nel profilo. Lo stesso controllo si applica alle API.
 
-1. Scegli Medicina e Chirurgia e anno. La lettura parte dal giorno corrente in Italia.
+1. Scegli Medicina e Chirurgia oppure International MD Program (IMDP) e anno.
+   La lettura parte dal giorno corrente in Italia.
 2. Leggi il portale UniSR, scegli una delle linee rilevate per il corso in tutti gli anni e le attività
-   senza linea da includere. L’anteprima mostra i prossimi sette giorni.
+   senza linea da includere. IMDP non prevede linee: tutte le lezioni dell’anno scelto
+   sono incluse automaticamente, senza selezionarle singolarmente.
+   L’anteprima mostra i prossimi sette giorni.
 3. Crea il calendario: il periodo va automaticamente da oggi al 15 giugno successivo
    (incluso), senza chiedere date. Se il 15 giugno è già passato, usa l’anno seguente.
-4. Attendi la prima lettura completa. Controlla anche le attività senza linea trovate
-   nelle altre settimane e salva la selezione.
+4. Attendi la prima lettura completa. Per Medicina in italiano, controlla anche le
+   attività senza linea trovate nelle altre settimane e salva la selezione.
 5. Per Apple, copia il link in **Calendario → File → Nuovo abbonamento calendario**
    su Mac, oppure usa il pulsante **Calendario Apple**.
 6. Per Google, da un computer premi **Google Calendar**: il pulsante copia lo stesso
@@ -45,7 +60,7 @@ Il job controlla ogni ora e cancella i record con `semester_end` precedente alla
 data corrente in Italia, incluse le sorgenti condivise, le sei annate e il progresso dell’importazione.
 Il job elimina inoltre la propria cronologia più vecchia di sette giorni.
 A mezzanotte del 16 giugno la condizione diventa vera anche se il giorno UTC
-è ancora il 15 giugno. Il job è indipendente dall’aggiornamento alle 08:00, 12:00 e 18:00:
+è ancora il 15 giugno. Il job è indipendente dall’aggiornamento feriale alle 08:00, 12:00 e 18:00:
 funziona anche con sincronizzazioni o calendari disattivati, senza chiamare Vercel.
 I calendari con scadenza al 15 giugno dell’anno successivo vengono conservati.
 Dal 16 giugno al 31 agosto inclusi il servizio è in pausa estiva. Il job di pulizia
@@ -78,9 +93,9 @@ remoto dell’utente.
 La pagina richiede un account confermato e un profilo esistente. Il valore `locked`
 non impedisce l’accesso agli admin, coerentemente con le altre sezioni amministrative.
 Il pulsante **Crea il tuo calendario** è attivo per tutti gli admin. Gli utenti ordinari
-iscritti a Medicina e Chirurgia vedono la scheda con il pulsante disabilitato e
+iscritti a Medicina e Chirurgia o IMDP vedono la scheda con il pulsante disabilitato e
 **Prossimamente**; gli altri utenti ordinari non vedono la scheda.
-Il flag condiviso `PUBLIC_CALENDAR_ENABLED` in `lib/university-calendar/config.ts`
+Il flag condiviso `PUBLIC_CALENDAR_ENABLED` in `app/(site)/profile/calendario-universita/_lib/config.ts`
 è `false`: impedisce anche letture, anteprime e creazioni degli utenti ordinari tramite
 richieste dirette. Gli admin usano la stessa pagina e le stesse API personali.
 La precedente pagina e le API dedicate sotto `/admin` sono state rimosse.
@@ -105,6 +120,8 @@ esclusivamente come variabile server, senza prefisso `NEXT_PUBLIC_`.
 
 1. Nel SQL Editor del progetto Supabase collegato, con ruolo `postgres`, incollare
    il codice SQL completo fornito in chat. Le query non sono salvate nella repo.
+   Per aggiungere IMDP a un’installazione esistente, eseguire anche il SQL in chat
+   che aggiunge `imdp` ai corsi ammessi nelle tre tabelle del calendario.
    Gli account admin devono essere confermati, con profilo presente e ruolo `admin`.
    Se esistono più calendari per un account, il codice si interrompe senza cancellarli:
    occorre scegliere quale conservare prima di applicare il limite di uno.
@@ -114,7 +131,7 @@ esclusivamente come variabile server, senza prefisso `NEXT_PUBLIC_`.
    dal 1° settembre la prima creazione abilita il servizio e il job automaticamente. Non abilita il lancio pubblico: il pulsante utenti
    resta disabilitato per gli utenti ordinari; gli admin possono accedere dal profilo.
 
-4. Accedere con un account admin, aprire il calendario dal profilo, leggere gli orari, scegliere anno e linea e
+4. Accedere con un account admin, aprire il calendario dal profilo, leggere gli orari, scegliere anno e, per Medicina, linea e
    creare il calendario. Attendere l’importazione completa e controllare il link con
    Calendario Apple o Google Calendar.
 5. Verificare in Supabase Cron che il job `astra-university-calendar` sia attivo,
@@ -145,12 +162,18 @@ corso vengono consultati perché UniSR suddivide le coorti in record con nomi ug
 La risposta è decodificata come Windows-1252, salvo un charset esplicito.
 Data, corso, struttura e completezza della risposta sono verificati prima dell’importazione.
 L’anteprima interroga `ANNO_CORSO=0` (tutti gli anni) per proporre tutte le linee
-pubblicate del corso nei prossimi sette giorni, mentre mostra solo le lezioni dell’anno
-scelto. La sincronizzazione del calendario continua a leggere soltanto quell’anno.
+pubblicate del corso, mentre mostra solo le lezioni dell’anno scelto nei prossimi sette giorni.
+Per IMDP si consultano `10124` e `10321`: nelle pagine ufficiali verificate il
+26, 28 e 30 ottobre 2026, la prima voce contiene gli anni 3–6, la seconda gli anni
+1–2. Nessuna delle lezioni verificate ha una linea. Il filtro personale IMDP usa
+solo l’anno e il periodo; non richiede l’opt-in delle attività prive di linea.
+Il campo obbligatorio `line` rimane internamente `COMUNE` per compatibilità con il
+database, senza comparire nella pagina o nel feed. `included_subjects` è vuoto per IMDP.
 
 Gli orari sono condivisi per corso, non importati per ogni persona. Le due voci
 ufficiali del corso vengono consultate con `ANNO_CORSO=0`: una lettura comprende
- tutti gli anni e tutte le linee. Esistono al massimo tre importazioni attive.
+ tutti gli anni e tutte le linee. Esistono al massimo quattro importazioni attive:
+le tre di Medicina in italiano e una per IMDP, condivisa da tutti i suoi studenti.
 `university_calendar_sources` conserva periodo, avanzamento, errori e lease;
 `university_calendar_source_years` contiene sei copie pubblicate, una per anno.
 I record personali conservano filtri e token, senza duplicare le lezioni. API e feed
@@ -159,9 +182,18 @@ Una prima anteprima può scaldare la cache per quel corso. Le anteprime simultan
 condividono la lease; una risposta 202 indica di attendere il blocco già in corso.
 
 La prima creazione prepara la sorgente e riattiva il servizio. Poi gli aggiornamenti
-partono alle **08:00, 12:00 e 18:00 Europe/Rome**, rispettando l’ora legale.
+partono **dal lunedì al venerdì alle 08:00, 12:00 e 18:00 Europe/Rome**,
+rispettando l’ora legale. Il sabato e la domenica non vengono avviate letture
+UniSR, nemmeno per una prima anteprima o per completare un’importazione.
+I feed e le anteprime già presenti nella cache continuano a funzionare.
+Se la cache non copre ancora l’anteprima richiesta, la pagina invita a riprovare lunedì.
+Il worker ricontrolla il giorno anche prima di ogni richiesta alle due coorti UniSR:
+una richiesta già inviata può terminare, ma dopo mezzanotte non parte la successiva
+e non viene pubblicato il blocco. Le lezioni con data nel weekend, se pubblicate,
+restano incluse nel calendario; è sospesa la lettura della sorgente, non il filtro degli eventi.
 `next_university_calendar_refresh` calcola il prossimo orario italiano. Il job controlla
-una volta al minuto e invia al massimo una richiesta per corso disponibile, solo
+una volta al minuto nei giorni feriali UTC; il controllo nel dispatcher usa sempre
+Europe/Rome e non invia richieste prima delle 08:00 italiane. Invia al massimo una richiesta per corso disponibile, solo
 se ci sono calendari attivi e lavoro dovuto. Un avvio puntuale non equivale a una
 pubblicazione istantanea: ogni importazione procede fino al 15 giugno in blocchi
 di massimo 24 giornate, quattro lette contemporaneamente, entro il budget della
@@ -174,7 +206,15 @@ I vecchi link mantengono i propri dati fino alla prima pubblicazione condivisa;
 solo allora vengono rimosse le copie personali precedenti. Un risultato vuoto
 confermato elimina correttamente le lezioni cancellate. Le richieste personali di
 verifica, le modifiche dei filtri e lo scaricamento ICS non rileggono UniSR.
-Il browser controlla il progresso iniziale ogni 15 secondi e non esegue worker.
+Il browser controlla il progresso iniziale ogni 15 secondi e non esegue worker;
+nel weekend il controllo automatico del progresso è sospeso.
+
+Il SQL completo in chat include l’abilitazione IMDP e la pausa del weekend.
+Conserva le implementazioni precedenti di claim, save e dispatcher sotto nomi
+`*_before_weekend_pause`, invocate solo dalle rispettive funzioni protette.
+Le implementazioni interne non sono eseguibili nemmeno da `service_role`;
+le funzioni pubbliche restano utilizzabili solo dal server autorizzato.
+Il job di pulizia e l’attivazione/disattivazione stagionale esistenti sono conservati.
 
 Il feed ICS conserva gli UID quando cambia l’aula o l’orario della stessa lezione.
 Le lezioni includono anno, linea, docente, aula, edificio e link originali. Usa

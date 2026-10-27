@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import ProfileCalendarCard from "@/components/university-calendar/profile-calendar-card";
+import ProfileCalendarCard from "./calendario-universita/_components/profile-calendar-card";
 import {
   FACULTY_OPTIONS as facultyOptions,
   GRADUATION_YEAR_OPTIONS as graduationYearOptions,

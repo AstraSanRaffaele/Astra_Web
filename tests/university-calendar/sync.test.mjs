@@ -6,14 +6,14 @@ import load from "./load.mjs";
 const lesson = { date: "2026-10-12", start: "09:00", end: "10:00", title: "Lezione conservata", teacher: "Docente", year: 4, line: "BIANCA", room: "CA101", building: "CANOVA", mapUrl: null, onlineUrl: null };
 const base = { id: "calendar", course: "medicina", year: 4, semester_start: "2026-10-12", semester_end: "2026-11-10", source_events: [lesson], staging_events: [], sync_cursor: 0, sync_started_at: "2026-10-11T12:00:00.000Z", lease_token: "lease" };
 
-function worker(record, fetchDay, accepted = true, expired = (end) => end < "2026-10-11", seasonOpen = () => true) {
+function worker(record, fetchDay, accepted = true, expired = (end) => end < "2026-10-11", seasonOpen = () => true, refreshOpen = seasonOpen) {
   const writes = [], claims = [];
   const client = { rpc: async (name, args) => {
     if (name === "claim_university_calendar_source") { claims.push({ name, args }); return { data: record ? [record] : [], error: null }; }
     assert.equal(name, "save_university_calendar_source");
     writes.push(args); return { data: accepted, error: null };
   } };
-  const server = load("server", { "server-only": {}, "@/lib/supabase/server": {}, "@/lib/admin-users-server": { createAdminClient: () => client }, "./source": { fetchDay, deduplicateLessons: load("source").deduplicateLessons }, "./period": { calendarExpired: expired, calendarSeasonOpen: seasonOpen } });
+  const server = load("server", { "server-only": {}, "@/lib/supabase/server": {}, "@/lib/admin-users-server": { createAdminClient: () => client }, "./source": { fetchDay, deduplicateLessons: load("source").deduplicateLessons }, "./period": { calendarExpired: expired, calendarSeasonOpen: seasonOpen, calendarRefreshOpen: refreshOpen } });
   return { run: server.processSyncBatch, writes, claims };
 }
 
@@ -30,6 +30,16 @@ test("one course batch reads all years, staging progress without publishing part
   assert.equal(writes[0].requested_lease, "lease");
   assert.deepEqual(claims[0].args, { requested_course: null });
   assert.ok(years.every((year) => year === 0));
+});
+
+test("IMDP uses one shared course import for every year without requiring lines", async () => {
+  const calls = [];
+  const { run, claims, writes } = worker({ ...base, course: "imdp", semester_end: base.semester_start }, async (...args) => { calls.push(args.slice(0, 3)); return [{ ...lesson, line: null }]; });
+  assert.equal((await run("imdp")).complete, true);
+  assert.deepEqual(claims[0].args, { requested_course: "imdp" });
+  assert.deepEqual(calls, [["imdp", 0, base.semester_start]]);
+  assert.equal(writes[0].requested_course, "imdp");
+  assert.equal(writes[0].events[0].line, null);
 });
 
 test("a source outage preserves events and cursor, releases the lease, and schedules a retry", async () => {
@@ -120,11 +130,11 @@ test("disabling the global service rejects queued automatic requests before a wo
   const token = "a".repeat(64);
   let started = 0;
   const config = { token, enabled: true };
-  const route = load("../../app/api/calendar-sync/route", {
+  const route = load("@/app/api/calendar-sync/route", {
     "@/lib/admin-users-server": { createAdminClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: config, error: null }) }) }) }) }) },
-    "@/lib/university-calendar/period": { calendarSeasonOpen: () => true },
-    "@/lib/university-calendar/types": load("types"),
-    "@/lib/university-calendar/server": { equalSecret: (actual, expected) => actual === expected, processSyncBatch: async () => { started++; return { processed: false }; } },
+    "@/app/(site)/profile/calendario-universita/_lib/period": { calendarSeasonOpen: () => true, calendarRefreshOpen: () => true },
+    "@/app/(site)/profile/calendario-universita/_lib/types": load("types"),
+    "@/app/(site)/profile/calendario-universita/_lib/server": { equalSecret: (actual, expected) => actual === expected, processSyncBatch: async () => { started++; return { processed: false }; } },
   });
   const request = () => new NextRequest("https://astra.test/api/calendar-sync", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ course: "medicina" }) });
   assert.equal((await route.POST(request())).status, 200);
@@ -147,4 +157,41 @@ test("a worker entering the summer pause does not start a second batch for a fut
   assert.deepEqual(await run(), { processed: false, paused: true });
   assert.equal(dates.length, 4);
   assert.deepEqual(writes, []);
+});
+
+test("weekend workers make no database claims or source requests", async () => {
+  const { run, claims, writes } = worker(base, () => { throw new Error("Must not read UniSR"); }, true, () => false, () => true, () => false);
+  assert.deepEqual(await run(), { processed: false, paused: true, weekend: true });
+  assert.deepEqual(claims, []);
+  assert.deepEqual(writes, []);
+});
+
+test("an import crossing into Saturday stops before its next batch and cannot publish", async () => {
+  const dates = [];
+  const { run, writes } = worker(base, async (_course, _year, date) => { dates.push(date); return []; }, true, () => false, () => true, () => dates.length === 0);
+  assert.deepEqual(await run(), { processed: false, paused: true, weekend: true });
+  assert.equal(dates.length, 4);
+  assert.deepEqual(writes, []);
+});
+
+test("a source error at the weekend boundary cannot enqueue retries or overwrite staged data", async () => {
+  let open = true;
+  const { run, writes } = worker(base, async () => { open = false; throw new Error("Request ended after midnight"); }, true, () => false, () => true, () => open);
+  assert.deepEqual(await run(), { processed: false, paused: true, weekend: true });
+  assert.deepEqual(writes, []);
+});
+
+test("queued automatic HTTP requests stop before starting a worker during the weekend", async () => {
+  const token = "a".repeat(64);
+  let started = false;
+  const route = load("@/app/api/calendar-sync/route", {
+    "@/lib/admin-users-server": { createAdminClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { token, enabled: true }, error: null }) }) }) }) }) },
+    "@/app/(site)/profile/calendario-universita/_lib/period": { calendarSeasonOpen: () => true, calendarRefreshOpen: () => false },
+    "@/app/(site)/profile/calendario-universita/_lib/server": { equalSecret: (actual, expected) => actual === expected, processSyncBatch: async () => { started = true; } },
+    "@/app/(site)/profile/calendario-universita/_lib/types": load("types"),
+  });
+  const response = await route.POST(new NextRequest("https://astra.test/api/calendar-sync", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ course: "imdp" }) }));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).weekend, true);
+  assert.equal(started, false);
 });

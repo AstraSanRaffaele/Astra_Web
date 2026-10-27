@@ -19,11 +19,23 @@ test("calendar eligibility accepts Medicine and Surgery values and legacy course
 });
 
 test("other medical faculty courses, unrelated faculties and missing degrees are not eligible", () => {
-  for (const course of ["fisioterapia", "ricerca_biotecnologica_in_medicina", "odontoiatria_e_protesi_dentaria", "international_medical_doctor_program", "", null]) {
+  for (const course of ["fisioterapia", "ricerca_biotecnologica_in_medicina", "odontoiatria_e_protesi_dentaria", "", null]) {
     assert.equal(isMedicineCalendarProfile({ ...medicine, corso_di_laurea: course }), false, String(course));
   }
   assert.equal(isMedicineCalendarProfile({ ...medicine, facolta: "psicologia" }), false);
   assert.equal(isMedicineCalendarProfile(null), false);
+});
+
+test("IMDP students are eligible by profile value and official labels, with the admin preview preserved", () => {
+  for (const course of ["international_medical_doctor_program", "International Medical Doctor Program", "IMDP", "International MD Program", "International MD Program (IMDP)", "International MD Program Corso di Laurea Magistrale in Medicina e Chirurgia"]) {
+    const profile = { ...medicine, corso_di_laurea: course, role: "user" };
+    assert.equal(isMedicineCalendarProfile(profile), true, course);
+    assert.equal(canUseCalendar(profile), false);
+    assert.equal(isMedicineCalendarProfile({ ...profile, facolta: "psicologia" }), false);
+    const launched = load("eligibility", { "./config": { PUBLIC_CALENDAR_ENABLED: true } }).canUseCalendar;
+    assert.equal(launched(profile), true);
+    assert.equal(launched({ ...profile, locked: true }), false);
+  }
 });
 
 test("the preview allows every admin, including a locked profile, while ordinary students await launch", () => {
@@ -40,12 +52,12 @@ test("the preview allows every admin, including a locked profile, while ordinary
 });
 
 test("the actual profile card links every admin to the calendar and keeps ordinary Medicine buttons disabled", () => {
-  const filename = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../components/university-calendar/profile-calendar-card.tsx");
+  const filename = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../app/(site)/profile/calendario-universita/_components/profile-calendar-card.tsx");
   const compiled = ts.transpileModule(fs.readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText;
   const realRequire = createRequire(import.meta.url);
   const compiledCard = { exports: {} };
-  const requireCard = (id) => id === "@/lib/university-calendar/eligibility" ? { isMedicineCalendarProfile, canUseCalendar }
-    : id === "@/lib/university-calendar/config" ? load("config")
+  const requireCard = (id) => id === "../_lib/eligibility" ? { isMedicineCalendarProfile, canUseCalendar }
+    : id === "../_lib/config" ? load("config")
     : id.endsWith(".module.css") ? { default: {} }
     : id === "next/link" ? { default: "a" } : realRequire(id);
   new Function("require", "module", "exports", compiled)(requireCard, compiledCard, compiledCard.exports);
@@ -54,6 +66,9 @@ test("the actual profile card links every admin to the calendar and keeps ordina
   assert.match(html, /<button[^>]*disabled=""/);
   assert.match(html, /Prossimamente/);
   assert.match(html, /Crea il tuo calendario/);
+  const imdp = renderToStaticMarkup(React.createElement(Card, { profile: { ...medicine, corso_di_laurea: "international_medical_doctor_program" } }));
+  assert.match(imdp, /<button[^>]*disabled=""/);
+  assert.match(imdp, /IMDP/);
   const admin = renderToStaticMarkup(React.createElement(Card, { profile: { role: "admin", facolta: "psicologia", corso_di_laurea: "psicologia" } }));
   assert.match(admin, /<a[^>]*href="\/profile\/calendario-universita"/);
   assert.match(admin, /Anteprima admin/);
