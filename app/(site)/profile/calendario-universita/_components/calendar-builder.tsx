@@ -1,18 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { ArrowLeft, CalendarDays, Check, Copy, ExternalLink, LoaderCircle, Plus, RefreshCw, ShieldCheck } from "lucide-react";
+import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { ArrowLeft, BookOpen, CalendarDays, Check, ChevronDown, Copy, ExternalLink, LoaderCircle, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 import { COURSES, courseHasLines, selectLessons, type CalendarView, type CourseKey, type Lesson } from "../_lib/types";
 import { GOOGLE_CALENDAR_SUBSCRIPTION_URL } from "../_lib/config";
 import { calendarPeriod, calendarRefreshOpen, calendarSeasonOpen } from "../_lib/period";
 import { subjectColorKey, subjectColors } from "../_lib/subject-colors";
+import { calendarReadyForGuide, markSubscriptionGuideSeen, queueSubscriptionGuide } from "../_lib/subscription-guide";
+import SubscriptionGuide from "./subscription-guide";
 import styles from "./calendar-builder.module.css";
 
 type Subject = { key: string; title: string; teacher: string };
 type Preview = { lessons: Lesson[]; lines: string[]; subjects: Subject[]; start: string; end: string; period: { start: string; end: string } };
 type CreatingCalendar = Pick<CalendarView, "name" | "course" | "year" | "line" | "semester_start" | "semester_end">;
 type CopyNotice = { calendarId: string; target: "link" | "google"; message: string; failed: boolean };
+
+function guideStorage() {
+  try { return window.localStorage; } catch { return null; }
+}
 
 function subjectStyle(title: string, colors: Map<string, string>): CSSProperties {
   return { "--subject-color": colors.get(subjectColorKey(title)) } as CSSProperties;
@@ -92,6 +98,9 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
   const [notice, setNotice] = useState("");
   const [creatingCalendar, setCreatingCalendar] = useState<CreatingCalendar | null>(null);
   const [copyNotice, setCopyNotice] = useState<CopyNotice | null>(null);
+  const [openGuideId, setOpenGuideId] = useState<string | null>(null);
+  const pendingGuideId = useRef<string | null>(null);
+  const seenGuideIds = useRef(new Set<string>());
   const mutationBusy = useRef(false);
   const previewSequence = useRef(0);
   const creationId = useRef<string | null>(null);
@@ -99,21 +108,31 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
   const seasonOpen = calendarSeasonOpen(new Date(`${today}T12:00:00Z`));
   const refreshOpen = calendarRefreshOpen(new Date(`${today}T12:00:00Z`));
 
+  const revealReadyGuide = useCallback((records: CalendarView[]) => {
+    const id = calendarReadyForGuide(records.filter((record) => !seenGuideIds.current.has(record.id)), pendingGuideId.current, guideStorage());
+    if (!id) return;
+    seenGuideIds.current.add(id);
+    pendingGuideId.current = null;
+    markSubscriptionGuideSeen(id, guideStorage());
+    setOpenGuideId(id);
+  }, []);
+
   const reload = useCallback(async () => {
     if (!enabled) return;
     const data = await request<{ calendars: CalendarView[]; scheduler: { enabled: boolean } | null }>(API);
     setCalendars(data.calendars);
     setScheduler(data.scheduler?.enabled ?? false);
-  }, [API, enabled]);
+    revealReadyGuide(data.calendars);
+  }, [API, enabled, revealReadyGuide]);
 
   useEffect(() => {
     if (!enabled) return;
     let active = true;
     request<{ calendars: CalendarView[]; scheduler: { enabled: boolean } | null }>(API).then((data) => {
-      if (active) { setCalendars(data.calendars); setScheduler(data.scheduler?.enabled ?? false); }
+      if (active) { setCalendars(data.calendars); setScheduler(data.scheduler?.enabled ?? false); revealReadyGuide(data.calendars); }
     }).catch((cause: Error) => { if (active) setError(cause.message); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [API, enabled]);
+  }, [API, enabled, revealReadyGuide]);
 
   // Poll to pick up scheduled progress and retry times without repeatedly fetching UniSR.
   useEffect(() => {
@@ -154,7 +173,15 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
     if (!seasonOpen) return;
     if (mutationBusy.current) { setError("Attendi il completamento della lettura in corso."); throw new Error("Lettura in corso."); }
     mutationBusy.current = true; setBusy(true); setError(""); setNotice(""); setCopyNotice(null);
-    try { await request(API, body); await reload(); setNotice(body.action === "sync" ? "Stai usando gli ultimi orari condivisi disponibili." : "Modifiche salvate."); }
+    try {
+      await request(API, body);
+      if (body.action === "create" && typeof body.id === "string") {
+        pendingGuideId.current = body.id;
+        queueSubscriptionGuide(body.id, guideStorage());
+      }
+      await reload();
+      setNotice(body.action === "sync" ? "Stai usando gli ultimi orari condivisi disponibili." : "Modifiche salvate.");
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Impossibile salvare."); throw cause; }
     finally { mutationBusy.current = false; setBusy(false); }
   }
@@ -270,7 +297,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
           {calendars.map((calendar) => {
             const creating = calendar.enabled && calendar.sync_cursor !== null && !calendar.last_synced_at;
             const percentage = calendar.totalDays > 0 ? Math.min(99, Math.max(0, Math.floor((calendar.sync_cursor ?? 0) / calendar.totalDays * 100))) : 0;
-            return <article className={`${styles.card} ${creating ? styles.calendarCreating : ""}`} key={calendar.id} aria-busy={creating || undefined}>
+            return <Fragment key={calendar.id}><article className={`${styles.card} ${creating ? styles.calendarCreating : ""}`} aria-busy={creating || undefined}>
               <div className={styles.calendarContent} inert={creating || undefined} aria-hidden={creating || undefined}>
                 <div className={styles.calendarHead}><div><h3>{calendar.name}</h3><p>{selectionLabel(calendar)}</p></div><span className={styles.badge}>{!calendar.enabled ? "Disattivato" : calendar.sync_cursor !== null ? "Importazione" : "Attivo"}</span></div>
                 <p className={styles.hint}>{dateLabel(calendar.semester_start)} – {dateLabel(calendar.semester_end)}<br />Si elimina automaticamente da ASTRA dopo il {dateLabel(calendar.semester_end)}.</p>
@@ -280,14 +307,23 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
                 {calendar.last_synced_at && calendar.enabled ? <div className={styles.subscription}>
                   <label>Link per Apple e Google Calendar<input readOnly value={calendar.feedUrl} onFocus={(event) => event.currentTarget.select()} /></label>
                   {subscriptionActions(calendar.id, calendar.feedUrl)}
-                  <p className={styles.hint}>Per Google Calendar, apri questa pagina da un computer: il pulsante copia il link e apre “Da URL”. Incollalo e scegli “Aggiungi calendario”.</p>
+                  <div className={styles.guideAccess}><span className={styles.guidePrompt}>Per aggiungerlo, </span><button id={`calendar-guide-trigger-${calendar.id}`} className={`${styles.secondary} ${styles.guideButton}`} type="button" aria-expanded={openGuideId === calendar.id} aria-controls={`calendar-guide-${calendar.id}`} onClick={() => {
+                    seenGuideIds.current.add(calendar.id);
+                    markSubscriptionGuideSeen(calendar.id, guideStorage());
+                    setOpenGuideId((current) => current === calendar.id ? null : calendar.id);
+                  }}><BookOpen size={15} aria-hidden="true" className={styles.guideDecoration} /><span className={styles.guideDesktopLabel}>Come aggiungerlo</span><span className={styles.guideMobileLabel}>segui la guida</span><ChevronDown size={14} aria-hidden="true" className={`${styles.guideDecoration} ${openGuideId === calendar.id ? styles.guideChevronOpen : ""}`} /></button><span className={styles.guidePrompt}>.</span></div>
                 </div> : <p className={styles.hint}>{calendar.enabled ? "Il link sarà disponibile dopo la lettura dell’intero semestre." : "Il link è sospeso. Riattiva il calendario per utilizzarlo."}</p>}
                 <SavedSubjects key={`${calendar.id}-${JSON.stringify(calendar.included_subjects)}`} calendar={calendar} busy={busy} save={safeMutate} colors={colors} />
                 <div className={styles.actions}><button className={styles.textButton} disabled={busy || !calendar.enabled || calendar.sync_cursor !== null} onClick={() => void safeMutate({ action: "sync", id: calendar.id })} type="button"><RefreshCw size={14} /> Verifica aggiornamenti</button><button className={styles.textButton} disabled={busy} onClick={() => void safeMutate({ action: "toggle", id: calendar.id, enabled: !calendar.enabled })} type="button">{calendar.enabled ? "Disattiva" : "Riattiva"}</button>
                   <button className={styles.textButton} disabled={busy} type="button" onClick={() => { if (window.confirm("Il vecchio link smetterà di funzionare. Dovrai sostituire l’abbonamento in Calendario Apple o Google Calendar. Generare un nuovo link?")) void safeMutate({ action: "rotate", id: calendar.id }); }}>Rigenera link</button></div>
               </div>
               {creating && <CalendarCreationOverlay percentage={percentage} error={calendar.sync_error} retryAt={calendar.retry_at} weekend={seasonOpen && !refreshOpen} />}
-            </article>;
+            </article>
+              {calendar.last_synced_at && calendar.enabled && <SubscriptionGuide id={`calendar-guide-${calendar.id}`} open={openGuideId === calendar.id} onClose={() => {
+                setOpenGuideId(null);
+                document.getElementById(`calendar-guide-trigger-${calendar.id}`)?.focus();
+              }} />}
+            </Fragment>;
           })}</div>}
       </section>
     </div>

@@ -104,7 +104,8 @@ test("ICS is UTF-8, CRLF folded, escaped, and uses Europe/Rome including dayligh
   assert.ok(unfolded.includes("TZOFFSETTO:+0200"));
   assert.ok(unfolded.includes("TZOFFSETTO:+0100"));
   assert.ok(unfolded.includes("SUMMARY:Lezione à\\;virgola\\,\\\\\\n🎓"));
-  assert.ok(unfolded.includes("REFRESH-INTERVAL;VALUE=DURATION:PT4H"));
+  assert.ok(unfolded.includes("REFRESH-INTERVAL;VALUE=DURATION:PT6H"));
+  assert.ok(unfolded.includes("X-PUBLISHED-TTL:PT6H"));
   assert.ok(unfolded.includes(`LOCATION:${lesson.building} · ${lesson.room}`));
   assert.ok(unfolded.includes(`Aula: ${lesson.room}\\nEdificio: ${lesson.building}`));
   assert.equal(foldLine("à".repeat(90)).replace(/\r\n /g, ""), "à".repeat(90));
@@ -138,7 +139,7 @@ test("one full calendar includes all allowed subjects and leaves colors to Apple
   assert.equal((full.match(/BEGIN:VEVENT/g) ?? []).length, selected.length);
   assert.ok(full.includes(`X-WR-CALNAME:${settings.name}`));
   assert.ok(!full.includes("COLOR:") && !full.includes("CATEGORIES:"));
-  assert.ok(full.includes("REFRESH-INTERVAL;VALUE=DURATION:PT4H"));
+  assert.ok(full.includes("REFRESH-INTERVAL;VALUE=DURATION:PT6H"));
   assert.ok(full.includes(`LOCATION:${lesson.building} · ${lesson.room}`));
 });
 

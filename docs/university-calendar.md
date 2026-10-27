@@ -41,6 +41,25 @@ può leggerlo. Disattivare il calendario sospende il link; rigenerarlo revoca qu
 precedente e richiede un nuovo abbonamento su Apple o Google. Entrambi gestiscono il
 proprio intervallo di scaricamento; su Mac va scelto nelle impostazioni dell’abbonamento.
 
+Quando il calendario appena creato ha un link utilizzabile, si apre la guida
+**Come aggiungerlo**, affiancata alla scheda del calendario su desktop e sotto
+la scheda su mobile. Su desktop è richiamabile con il pulsante; su mobile con
+la frase «Per aggiungerlo, segui la guida», in cui «segui la guida» è evidenziato
+come link. Comprende Mac, iPhone/iPad e Google Calendar.
+La prima apertura automatica attende la pubblicazione dell’importazione completa;
+resta in attesa anche dopo un ricaricamento della pagina nello stesso browser.
+Un indicatore locale per ID calendario memorizza `pending` oppure `seen`, senza
+salvare il link o il token. Se lo spazio locale è bloccato, la guida funziona comunque
+nella pagina corrente. Le modifiche dei filtri non riaprono la guida automaticamente.
+
+La frequenza consigliata nelle app è **6 ore**, oppure l’intervallo selezionabile
+più vicino e inferiore a 6 ore. Su Mac la guida indica il menu dell’aggiornamento
+automatico dell’abbonamento. Su iPhone/iPad indica la frequenza di scaricamento
+dell’account, solo se disponibile, specificando che può riguardare altri account.
+Google gestisce autonomamente la frequenza degli abbonamenti da URL: la guida
+non offre un’impostazione fittizia e non promette aggiornamenti entro 6 ore.
+Le istruzioni rimandano alla documentazione Apple e Google consultata il 27 ottobre 2026.
+
 ## Colori e scadenza
 
 I colori distinguono le materie solo nell’anteprima ASTRA e nelle attività senza linea,
@@ -218,8 +237,8 @@ Il job di pulizia e l’attivazione/disattivazione stagionale esistenti sono con
 
 Il feed ICS conserva gli UID quando cambia l’aula o l’orario della stessa lezione.
 Le lezioni includono anno, linea, docente, aula, edificio e link originali. Usa
-Europe/Rome e propone alle app un intervallo di consultazione di quattro ore,
-coerente con il più breve intervallo tra due avvii; Apple e Google scelgono comunque
+Europe/Rome e propone alle app un intervallo di consultazione di sei ore,
+tramite `REFRESH-INTERVAL` e `X-PUBLISHED-TTL`; Apple e Google scelgono comunque
 quando scaricare il link.
 
 Il periodo automatico può coprire fino a 366 giorni inclusi: il vincolo sulle date

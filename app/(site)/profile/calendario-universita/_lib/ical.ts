@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { selectLessons, type CalendarRecord, type Lesson } from "./types";
+import { CALENDAR_APP_REFRESH_HOURS } from "./config";
 
 function escapeText(value: string): string { return value.replace(/\\/g, "\\\\").replace(/\r\n|\r|\n/g, "\\n").replace(/;/g, "\\;").replace(/,/g, "\\,"); }
 
@@ -20,7 +21,7 @@ function dateTime(event: Lesson, field: "start" | "end") { return `${event.date.
 export function createCalendar(record: CalendarRecord): string {
   const stamp = new Date(record.last_synced_at!).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   const events = selectLessons(record.source_events, record).sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start) || a.title.localeCompare(b.title));
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ASTRA San Raffaele//Calendario UniSR//IT", "CALSCALE:GREGORIAN", `X-WR-CALNAME:${escapeText(record.name)}`, "X-WR-TIMEZONE:Europe/Rome", "REFRESH-INTERVAL;VALUE=DURATION:PT4H", "X-PUBLISHED-TTL:PT4H",
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ASTRA San Raffaele//Calendario UniSR//IT", "CALSCALE:GREGORIAN", `X-WR-CALNAME:${escapeText(record.name)}`, "X-WR-TIMEZONE:Europe/Rome", `REFRESH-INTERVAL;VALUE=DURATION:PT${CALENDAR_APP_REFRESH_HOURS}H`, `X-PUBLISHED-TTL:PT${CALENDAR_APP_REFRESH_HOURS}H`,
     "BEGIN:VTIMEZONE", "TZID:Europe/Rome", "BEGIN:STANDARD", "DTSTART:19701025T030000", "TZOFFSETFROM:+0200", "TZOFFSETTO:+0100", "TZNAME:CET", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU", "END:STANDARD", "BEGIN:DAYLIGHT", "DTSTART:19700329T020000", "TZOFFSETFROM:+0100", "TZOFFSETTO:+0200", "TZNAME:CEST", "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU", "END:DAYLIGHT", "END:VTIMEZONE"];
   const occurrences = new Map<string, number>();
   for (const event of events) {
