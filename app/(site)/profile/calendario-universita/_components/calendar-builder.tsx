@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { ArrowLeft, CalendarDays, Check, Copy, ExternalLink, LoaderCircle, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 import { COURSES, courseHasLines, selectLessons, type CalendarView, type CourseKey, type Lesson } from "../_lib/types";
-import { GOOGLE_CALENDAR_SUBSCRIPTION_URL } from "../_lib/config";
+import { GOOGLE_CALENDAR_SUBSCRIPTION_URL, PUBLIC_CALENDAR_ENABLED } from "../_lib/config";
 import { calendarPeriod, calendarRefreshOpen, calendarSeasonOpen } from "../_lib/period";
 import { subjectColorKey, subjectColors } from "../_lib/subject-colors";
 import { calendarReadyForGuide, markSubscriptionGuideSeen, queueSubscriptionGuide } from "../_lib/subscription-guide";
@@ -223,7 +223,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
       <header className={styles.hero}>
         <div><span className={styles.tag}>ASTRA · Il tuo calendario universitario</span><h1>Il semestre, <em>nel tuo calendario.</em></h1><p>Seleziona il corso, l’anno e, se prevista, la linea. ASTRA legge gli orari ufficiali e prepara un abbonamento per Calendario Apple e Google Calendar.</p></div>
         <div className={styles.heroIcon}><CalendarDays size={44} strokeWidth={1.3} /></div>
-        <span className={styles.private}><ShieldCheck size={15} /> {isAdmin ? "Anteprima riservata agli admin" : "I tuoi corsi, il tuo link personale"}</span>
+        <span className={styles.private}><ShieldCheck size={15} /> {isAdmin && !PUBLIC_CALENDAR_ENABLED ? "Anteprima riservata agli admin" : "I tuoi corsi, il tuo link personale"}</span>
       </header>
 
       {enabled && seasonOpen && <div className={`${styles.syncNotice} ${scheduler === false ? styles.syncInactive : ""}`} role="status">

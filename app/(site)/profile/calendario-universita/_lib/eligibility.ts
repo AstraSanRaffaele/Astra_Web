@@ -6,7 +6,6 @@ export type CalendarProfile = {
   facolta?: string | null;
   corso_di_laurea?: string | null;
   role?: string | null;
-  locked?: boolean | null;
 };
 
 export function isMedicineCalendarProfile(profile?: CalendarProfile | null) {
@@ -20,5 +19,5 @@ export function isMedicineCalendarProfile(profile?: CalendarProfile | null) {
 
 export function canUseCalendar(profile?: CalendarProfile | null) {
   return Boolean(profile &&
-    (profile.role === "admin" || (PUBLIC_CALENDAR_ENABLED && !profile.locked && isMedicineCalendarProfile(profile))));
+    (profile.role === "admin" || (PUBLIC_CALENDAR_ENABLED && isMedicineCalendarProfile(profile))));
 }

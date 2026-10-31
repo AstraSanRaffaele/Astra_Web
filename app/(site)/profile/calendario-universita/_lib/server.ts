@@ -12,7 +12,7 @@ export async function getCalendarUser() {
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user || !user.email_confirmed_at) return null;
-  const { data: profile, error: profileError } = await supabase.from("profiles").select("id,role,locked,facolta,corso_di_laurea").eq("id", user.id).maybeSingle();
+  const { data: profile, error: profileError } = await supabase.from("profiles").select("id,role,facolta,corso_di_laurea").eq("id", user.id).maybeSingle();
   return !profileError && profile && canUseCalendar(profile) ? { id: user.id, isAdmin: profile.role === "admin" } : null;
 }
 

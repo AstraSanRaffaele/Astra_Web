@@ -74,8 +74,8 @@ test("no due calendar triggers no source reads", async () => {
   assert.equal(writes.length, 0);
 });
 
-test("personal calendar preview uses the saved admin role, not email or a claimed browser role", async () => {
-  async function check(user, profile, enabled = false, profileError = null) {
+test("public calendar access uses the confirmed account and saved profile, not email or a claimed browser role", async () => {
+  async function check(user, profile, enabled = load("config").PUBLIC_CALENDAR_ENABLED, profileError = null) {
     const server = load("server", { "server-only": {}, "./config": { PUBLIC_CALENDAR_ENABLED: enabled }, "@/lib/admin-users-server": {}, "@/lib/supabase/server": { createClient: async () => ({ auth: { getUser: async () => ({ data: { user }, error: null }) }, from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: profile, error: profileError }) }) }) }) }) } });
     return server.getCalendarUser();
   }
@@ -84,13 +84,16 @@ test("personal calendar preview uses the saved admin role, not email or a claime
   const admin = { id: "student", facolta: "psicologia", corso_di_laurea: "psicologia", role: "admin", locked: false };
   assert.deepEqual(await check({ ...user, email: "any-admin@example.com" }, admin), { id: "student", isAdmin: true });
   assert.deepEqual(await check({ ...user, email: "another-admin@example.com" }, admin), { id: "student", isAdmin: true });
-  assert.equal(await check(user, { ...medicine, id: "student", locked: false }), null);
-  assert.equal(await check({ ...user, role: "admin" }, { ...medicine, id: "student", locked: false }), null);
+  assert.deepEqual(await check(user, { ...medicine, id: "student", locked: false }), { id: "student", isAdmin: false });
+  assert.deepEqual(await check(user, { ...medicine, id: "student", corso_di_laurea: "international_medical_doctor_program", locked: false }), { id: "student", isAdmin: false });
+  assert.deepEqual(await check({ ...user, role: "admin" }, { ...medicine, id: "student", locked: false }), { id: "student", isAdmin: false });
+  assert.equal(await check(user, { ...medicine, id: "student", locked: false }, false), null);
+  assert.equal(await check({ ...user, role: "admin" }, { ...medicine, id: "student", locked: false }, false), null);
   assert.deepEqual(await check(user, { ...admin, locked: true }), { id: "student", isAdmin: true });
   assert.equal(await check({ ...user, email_confirmed_at: null }, admin), null);
   assert.equal(await check(user, admin, false, { message: "profile lookup failed" }), null);
   assert.deepEqual(await check(user, { ...medicine, id: "student", locked: false }, true), { id: "student", isAdmin: false });
-  assert.equal(await check(user, { ...medicine, id: "student", locked: true }), null);
+  assert.deepEqual(await check(user, { ...medicine, id: "student", locked: true }), { id: "student", isAdmin: false });
   assert.equal(await check(user, null), null);
   assert.equal(await check(user, { ...medicine, id: "student", locked: false, corso_di_laurea: "fisioterapia" }, true), null);
   assert.equal(await check(user, { ...medicine, id: "student", locked: false, facolta: "psicologia" }, true), null);

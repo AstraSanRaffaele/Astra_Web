@@ -26,32 +26,37 @@ test("other medical faculty courses, unrelated faculties and missing degrees are
   assert.equal(isMedicineCalendarProfile(null), false);
 });
 
-test("IMDP students are eligible by profile value and official labels, with the admin preview preserved", () => {
+test("IMDP students can use the public calendar by profile value and official labels", () => {
   for (const course of ["international_medical_doctor_program", "International Medical Doctor Program", "IMDP", "International MD Program", "International MD Program (IMDP)", "International MD Program Corso di Laurea Magistrale in Medicina e Chirurgia"]) {
     const profile = { ...medicine, corso_di_laurea: course, role: "user" };
     assert.equal(isMedicineCalendarProfile(profile), true, course);
-    assert.equal(canUseCalendar(profile), false);
+    assert.equal(canUseCalendar(profile), true);
     assert.equal(isMedicineCalendarProfile({ ...profile, facolta: "psicologia" }), false);
-    const launched = load("eligibility", { "./config": { PUBLIC_CALENDAR_ENABLED: true } }).canUseCalendar;
-    assert.equal(launched(profile), true);
-    assert.equal(launched({ ...profile, locked: true }), false);
+    assert.equal(canUseCalendar({ ...profile, locked: true }), true);
   }
 });
 
-test("the preview allows every admin, including a locked profile, while ordinary students await launch", () => {
+test("the public calendar allows Medicine students and admins while preserving account and course restrictions", () => {
   assert.equal(canUseCalendar({ role: "admin", facolta: "psicologia", corso_di_laurea: "psicologia", locked: false }), true);
-  assert.equal(canUseCalendar({ ...medicine, role: "user" }), false);
-  assert.equal(canUseCalendar({ ...medicine, role: "ADMIN" }), false);
+  assert.equal(canUseCalendar({ ...medicine, role: "user" }), true);
+  assert.equal(canUseCalendar({ role: "ADMIN", facolta: "psicologia", corso_di_laurea: "psicologia" }), false);
   assert.equal(canUseCalendar({ ...medicine, role: "admin", locked: true }), true);
   assert.equal(canUseCalendar({ role: "admin", facolta: "psicologia", corso_di_laurea: "psicologia", locked: true }), true);
   assert.equal(canUseCalendar(null), false);
-  const launched = load("eligibility", { "./config": { PUBLIC_CALENDAR_ENABLED: true } }).canUseCalendar;
-  assert.equal(launched({ ...medicine, role: "user", locked: false }), true);
-  assert.equal(launched({ ...medicine, role: "user", locked: true }), false);
-  assert.equal(launched({ ...medicine, role: "user", corso_di_laurea: "fisioterapia" }), false);
+  assert.equal(canUseCalendar({ ...medicine, role: "user", locked: false }), true);
+  assert.equal(canUseCalendar({ ...medicine, role: "user", locked: true }), true);
+  assert.equal(canUseCalendar({ ...medicine, role: "user", corso_di_laurea: "fisioterapia" }), false);
 });
 
-test("the actual profile card links every admin to the calendar and keeps ordinary Medicine buttons disabled", () => {
+test("closing the public switch still restricts students without removing admin access", () => {
+  const closed = load("eligibility", { "./config": { PUBLIC_CALENDAR_ENABLED: false } }).canUseCalendar;
+  assert.equal(closed({ ...medicine, role: "user", locked: false }), false);
+  assert.equal(closed({ ...medicine, corso_di_laurea: "international_medical_doctor_program", role: "user" }), false);
+  assert.equal(closed({ role: "admin", facolta: "psicologia", corso_di_laurea: "psicologia" }), true);
+  assert.equal(closed(null), false);
+});
+
+test("the actual profile card opens the calendar for Medicine, IMDP and admins without preview labels", () => {
   const filename = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../app/(site)/profile/calendario-universita/_components/profile-calendar-card.tsx");
   const compiled = ts.transpileModule(fs.readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText;
   const realRequire = createRequire(import.meta.url);
@@ -63,21 +68,29 @@ test("the actual profile card links every admin to the calendar and keeps ordina
   new Function("require", "module", "exports", compiled)(requireCard, compiledCard, compiledCard.exports);
   const Card = compiledCard.exports.default;
   const html = renderToStaticMarkup(React.createElement(Card, { profile: medicine }));
-  assert.match(html, /<button[^>]*disabled=""/);
-  assert.match(html, /Prossimamente/);
+  assert.match(html, /<a[^>]*href="\/profile\/calendario-universita"/);
+  assert.match(html, /Per i tuoi studi/);
+  assert.doesNotMatch(html, /Prossimamente|Anteprima admin|disabled/);
   assert.match(html, /Crea il tuo calendario/);
   const imdp = renderToStaticMarkup(React.createElement(Card, { profile: { ...medicine, corso_di_laurea: "international_medical_doctor_program" } }));
-  assert.match(imdp, /<button[^>]*disabled=""/);
+  assert.match(imdp, /<a[^>]*href="\/profile\/calendario-universita"/);
+  assert.doesNotMatch(imdp, /Prossimamente|disabled/);
   assert.match(imdp, /IMDP/);
   const admin = renderToStaticMarkup(React.createElement(Card, { profile: { role: "admin", facolta: "psicologia", corso_di_laurea: "psicologia" } }));
   assert.match(admin, /<a[^>]*href="\/profile\/calendario-universita"/);
-  assert.match(admin, /Anteprima admin/);
+  assert.match(admin, /Per i tuoi studi/);
+  assert.doesNotMatch(admin, /Anteprima admin/);
   assert.doesNotMatch(admin, /disabled/);
   const locked = renderToStaticMarkup(React.createElement(Card, { profile: { ...medicine, role: "admin", locked: true } }));
   assert.match(locked, /<a[^>]*href="\/profile\/calendario-universita"/);
-  assert.match(locked, /Anteprima admin/);
+  assert.match(locked, /Per i tuoi studi/);
   assert.doesNotMatch(locked, /disabled/);
   assert.doesNotMatch(locked, /Prossimamente/);
+  for (const corso_di_laurea of ["medicina_e_chirurgia", "international_medical_doctor_program"]) {
+    const student = renderToStaticMarkup(React.createElement(Card, { profile: { ...medicine, corso_di_laurea, role: "user", locked: true } }));
+    assert.match(student, /<a[^>]*href="\/profile\/calendario-universita"/);
+    assert.doesNotMatch(student, /Prossimamente|disabled/);
+  }
   assert.equal(renderToStaticMarkup(React.createElement(Card, { profile: { ...medicine, corso_di_laurea: "fisioterapia" } })), "");
   assert.equal(renderToStaticMarkup(React.createElement(Card, { profile: null })), "");
 });

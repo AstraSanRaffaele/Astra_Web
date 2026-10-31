@@ -15,9 +15,10 @@ per gli abbonamenti. URL, token e configurazione Supabase restano gli stessi.
 ## Accesso e uso
 
 La sezione `/profile/calendario-universita` si apre dal pulsante nella scheda calendario
-sotto la panoramica account. Per ora tutti gli account confermati con profilo esistente
-e ruolo `admin` possono usarla, indipendentemente dall’indirizzo email o dal
-corso salvato nel profilo. Lo stesso controllo si applica alle API.
+sotto la panoramica account. Tutti gli account confermati con profilo esistente,
+iscrizione a Medicina e Chirurgia o IMDP possono usarla.
+Gli admin mantengono l’accesso indipendentemente dall’indirizzo email e dal corso
+salvato nel profilo. Lo stesso controllo si applica alle API.
 
 1. Scegli Medicina e Chirurgia oppure International MD Program (IMDP) e anno.
    La lettura parte dal giorno corrente in Italia.
@@ -105,7 +106,7 @@ La riattivazione funziona anche se il browser viene chiuso dopo la creazione.
 Non parte al solo cambio di data: senza nuovi calendari il job resta fermo.
 Il trigger respinge inserimenti estivi anche se non passano dalle API e richiede
 la configurazione e il job già predisposti; un errore annulla l’intera creazione.
-Il trigger non cambia l’accesso agli utenti: per ora restano abilitati solo gli admin.
+Il trigger non cambia l’accesso agli utenti, verificato dalla pagina e dalle API.
 
 L’eliminazione libera il limite di un calendario per account; un nuovo calendario
 avrà un nuovo link. Gli abbonamenti e gli eventi eventualmente conservati dalle
@@ -114,17 +115,18 @@ remoto dell’utente.
 
 ## Pagina utenti e lancio
 
-La pagina richiede un account confermato e un profilo esistente. Il valore `locked`
-non impedisce l’accesso agli admin, coerentemente con le altre sezioni amministrative.
-Il pulsante **Crea il tuo calendario** è attivo per tutti gli admin. Gli utenti ordinari
-iscritti a Medicina e Chirurgia o IMDP vedono la scheda con il pulsante disabilitato e
-**Prossimamente**; gli altri utenti ordinari non vedono la scheda.
+La pagina richiede un account confermato e un profilo esistente. Il campo `locked`
+non viene letto né usato per decidere l’accesso, per nessun utente.
+Il pulsante **Crea il tuo calendario** è attivo per tutti gli admin e per gli utenti
+ordinari iscritti a Medicina e Chirurgia o IMDP.
+Gli altri utenti ordinari non vedono la scheda.
 Il flag condiviso `PUBLIC_CALENDAR_ENABLED` in `app/(site)/profile/calendario-universita/_lib/config.ts`
-è `false`: impedisce anche letture, anteprime e creazioni degli utenti ordinari tramite
-richieste dirette. Gli admin usano la stessa pagina e le stesse API personali.
+è `true`: abilita pagina, letture, anteprime e creazioni per gli studenti idonei,
+comprese le richieste dirette. Gli admin usano la stessa pagina e le stesse API personali,
+senza etichette di anteprima riservata.
 La precedente pagina e le API dedicate sotto `/admin` sono state rimosse.
 
-Quando il servizio sarà abilitato, ogni utente vedrà e gestirà soltanto i calendari
+Ogni utente vede e gestisce soltanto i calendari
 associati al proprio account. Il server ricava il proprietario dalla sessione e filtra
 ogni lettura e modifica per `owner_id`; nessun identificativo inviato dal browser può
 cambiare proprietario. È previsto un solo calendario per account, anche per l’admin. Le verifiche manuali leggono la copia condivisa e non avviano nuove letture UniSR. La creazione usa una funzione SQL con limite e
@@ -146,16 +148,17 @@ esclusivamente come variabile server, senza prefisso `NEXT_PUBLIC_`.
    il codice SQL completo fornito in chat. Le query non sono salvate nella repo.
    Per aggiungere IMDP a un’installazione esistente, eseguire anche il SQL in chat
    che aggiunge `imdp` ai corsi ammessi nelle tre tabelle del calendario.
-   Gli account admin devono essere confermati, con profilo presente e ruolo `admin`.
+   Gli account devono essere confermati e avere un profilo presente: Medicina/IMDP
+   per gli studenti, oppure ruolo `admin`.
    Se esistono più calendari per un account, il codice si interrompe senza cancellarli:
    occorre scegliere quale conservare prima di applicare il limite di uno.
 2. Pubblicare il codice su Vercel. Installare anche il trigger per la riattivazione
    alla creazione e il job di pulizia annuale forniti in chat.
 3. Verificare il dominio `site_url` della configurazione prima di creare calendari:
-   dal 1° settembre la prima creazione abilita il servizio e il job automaticamente. Non abilita il lancio pubblico: il pulsante utenti
-   resta disabilitato per gli utenti ordinari; gli admin possono accedere dal profilo.
+   dal 1° settembre la prima creazione abilita il servizio e il job automaticamente.
+   L’accesso degli studenti è già abilitato dal flag pubblico nel codice.
 
-4. Accedere con un account admin, aprire il calendario dal profilo, leggere gli orari, scegliere anno e, per Medicina, linea e
+4. Accedere con un account Medicina/IMDP confermato, aprire il calendario dal profilo, leggere gli orari, scegliere anno e, per Medicina, linea e
    creare il calendario. Attendere l’importazione completa e controllare il link con
    Calendario Apple o Google Calendar.
 5. Verificare in Supabase Cron che il job `astra-university-calendar` sia attivo,
@@ -176,7 +179,7 @@ Solo il server con `service_role` le consulta dopo l’autorizzazione, oppure me
 il token casuale del singolo abbonamento. Il dispatcher usa un segreto casuale separato,
 conservato in una tabella non accessibile ai client. Non servono nuove chiavi pubbliche.
 L’autorizzazione e il limite per utente sono già predisposti. Il lancio pubblico
-resta disabilitato; prima di abilitarlo verificare la capacità della sincronizzazione e il carico dei feed pubblici.
+è abilitato nel codice; monitorare la capacità della sincronizzazione e il carico dei feed dopo la pubblicazione.
 
 ## Lettura e aggiornamenti
 
@@ -253,15 +256,15 @@ Il periodo automatico può coprire fino a 366 giorni inclusi: il vincolo sulle d
 del database deve consentire una differenza massima di 365 giorni, tramite la query
 fornita in chat.
 
-Prima del lancio pubblico verificare il carico dei feed e i tempi effettivi delle importazioni condivise. Il limite personale
+Monitorare il carico dei feed e i tempi effettivi delle importazioni condivise. Il limite personale
 di creazione è già applicato nella funzione SQL.
 
 ## Verifiche
 
 `npm run test:calendar` verifica i dati reali UniSR salvati come fixture, i filtri,
 l’esclusione degli esami, il formato ICS, gli UID e la conservazione del feed durante
-import parziali/falliti. Comprende anche l’accesso degli admin, il lancio futuro per gli studenti,
-il blocco del lancio e l’isolamento dei calendari tra utenti.
+import parziali/falliti. Comprende anche l’accesso pubblico di Medicina/IMDP, gli admin,
+la chiusura del flag pubblico e l’isolamento dei calendari tra utenti.
 Controllare inoltre TypeScript, lint della sezione e build di produzione.
 Le query del database, il job e l’abbonamento Apple richiedono una verifica sul servizio effettivo.
 
