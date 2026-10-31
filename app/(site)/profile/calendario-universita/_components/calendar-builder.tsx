@@ -326,6 +326,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
             </Fragment>;
           })}</div>}
       </section>
+      <p className={styles.credits}>Creato da Edoardo Scopel con la collaborazione di Francesco Cerri e Filippo Genoni.</p>
     </div>
   </main>;
 }

@@ -107,8 +107,19 @@ test("ICS is UTF-8, CRLF folded, escaped, and uses Europe/Rome including dayligh
   assert.ok(unfolded.includes("REFRESH-INTERVAL;VALUE=DURATION:PT6H"));
   assert.ok(unfolded.includes("X-PUBLISHED-TTL:PT6H"));
   assert.ok(unfolded.includes(`LOCATION:${lesson.building} · ${lesson.room}`));
-  assert.ok(unfolded.includes(`Aula: ${lesson.room}\\nEdificio: ${lesson.building}`));
+  assert.ok(unfolded.includes(`Aula: ${lesson.room}\\nFonte: https://orario.unisr.it/`));
   assert.equal(foldLine("à".repeat(90)).replace(/\r\n /g, ""), "à".repeat(90));
+});
+
+test("calendar descriptions keep teaching details and omit building, Teams, directions and website credits", () => {
+  const lesson = selectLessons(events, settings).find((event) => event.onlineUrl && event.mapUrl);
+  assert.ok(lesson, "real fixture contains a lesson with both original links");
+  const ics = unfold(createCalendar(record([lesson])));
+  const description = ics.split("\r\n").find((line) => line.startsWith("DESCRIPTION:"));
+  assert.equal(description, `DESCRIPTION:Docente: ${lesson.teacher}\\nAnno: ${lesson.year}\\nLinea: ${lesson.line}\\nAula: ${lesson.room}\\nFonte: https://orario.unisr.it/`);
+  assert.ok(ics.includes(`LOCATION:${lesson.building} · ${lesson.room}`));
+  assert.ok(!description.includes(lesson.building));
+  assert.doesNotMatch(ics, /Edificio:|Lezione online:|Come raggiungere|teams\.microsoft\.com|unisr\.2guide\.cloud|Edoardo Scopel|Francesco Cerri|Filippo Genoni/);
 });
 
 test("same-day time and room changes keep UID; removed lessons disappear from the full feed", () => {

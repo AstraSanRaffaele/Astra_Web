@@ -1,5 +1,6 @@
 .page { min-height: 85vh; background: radial-gradient(ellipse at 90% 0, #dee7ff 0, transparent 45%), linear-gradient(145deg, #f4f7ff, #edf2fc); color: #142346; padding: 48px 24px 80px; font-family: 'DM Sans', sans-serif; }
 .shell { max-width: 1180px; margin: 0 auto; }
+.credits { margin: 28px 0 0; color: #68758d; font-size: 11px; font-weight: 400; line-height: 1.7; text-align: center; }
 .back { display: inline-flex; align-items: center; gap: 8px; color: #475b88; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 24px; }
 .hero { background: linear-gradient(120deg, #0e1f6b, #2743b4); color: #fff; border-radius: 26px; padding: 38px 40px 30px; position: relative; overflow: hidden; display: flex; align-items: center; flex-wrap: wrap; gap: 28px; box-shadow: 0 16px 40px #112e6e18; margin-bottom: 28px; }
 .hero > div:first-child { flex: 1; }

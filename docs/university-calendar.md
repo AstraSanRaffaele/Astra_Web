@@ -241,8 +241,11 @@ le funzioni pubbliche restano utilizzabili solo dal server autorizzato.
 Il job di pulizia e l’attivazione/disattivazione stagionale esistenti sono conservati.
 
 Il feed ICS conserva gli UID quando cambia l’aula o l’orario della stessa lezione.
-Le lezioni includono anno, linea, docente, aula, edificio e link originali. Usa
-Europe/Rome e propone alle app un intervallo di consultazione di sei ore,
+La descrizione include docente, anno, linea (se prevista), aula e fonte UniSR;
+non contiene edificio, link Teams/lezione online o indicazioni per raggiungere l’aula.
+Il campo luogo conserva edificio e aula. Il credito a Edoardo Scopel, Francesco Cerri
+e Filippo Genoni compare in piccolo solo in fondo alla pagina ASTRA, mai nel feed.
+Il calendario usa Europe/Rome e propone alle app un intervallo di consultazione di sei ore,
 tramite `REFRESH-INTERVAL` e `X-PUBLISHED-TTL`; Apple e Google scelgono comunque
 quando scaricare il link.
 
