@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/components/ui/navbar";
 
 type FreshersStatusResponse = {
@@ -145,6 +146,78 @@ export default function Home() {
         .hero-ctas    { animation: fadeUp .7s .85s cubic-bezier(.4,0,.2,1) both; }
         .hero-stats   { animation: fadeUp .7s 1.05s cubic-bezier(.4,0,.2,1) both; }
         .hero-line    { animation: fadeIn .8s .3s ease both; }
+
+        .home-intro { --home-gutter: clamp(1.25rem, 2vw, 2rem); min-height: 100svh; display: flex; flex-direction: column; position: relative; isolation: isolate; overflow: hidden; }
+        .hero-section { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: clamp(6rem, 11svh, 8rem) var(--home-gutter) clamp(1.25rem, 3svh, 2.5rem); position: relative; z-index: 1; overflow: hidden; }
+        .home-intro .freshers-home-banner { margin: calc(70px + 1rem) var(--home-gutter) 0 !important; }
+        .home-intro.has-freshers-banner .hero-section { padding-top: clamp(1.5rem, 4svh, 3rem); }
+        .hero-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: clamp(1rem, 3vw, 3.5rem); width: 100%; }
+        .hero-heading { position: relative; z-index: 1; grid-column: 1; grid-row: 1; min-width: 0; }
+        .hero-heading .eyebrow { margin-bottom: clamp(.75rem, 1.8svh, 1.25rem); }
+        .hero-h1 { font-size: clamp(3.4rem, min(7.2vw, 11svh), 7.5rem); }
+        .hero-support { position: relative; z-index: 1; grid-column: 1; grid-row: 2; min-width: 0; }
+        .hero-line { width: 100%; max-width: 520px; height: 1px; background: linear-gradient(90deg, rgba(8,16,42,.18), transparent); margin: clamp(1rem, 2.5svh, 1.75rem) 0; }
+        .hero-sub { font-size: clamp(1rem, 1.25vw, 1.1rem); line-height: 1.65; color: var(--mist); max-width: 520px; font-weight: 400; }
+        .hero-ctas { display: flex; align-items: stretch; gap: .85rem; margin-top: clamp(1.25rem, 3svh, 1.75rem); flex-wrap: wrap; }
+        .hero-ctas a { display: inline-flex; justify-content: center; align-items: center; min-height: 44px; padding: .8rem 1.65rem; font-size: .88rem; }
+        .hero-ctas svg { flex-shrink: 0; }
+        .hero-stats { display: flex; gap: clamp(2rem, 5vw, 4rem); margin-top: clamp(1.5rem, 3.5svh, 2.25rem); flex-wrap: wrap; }
+        .hero-stat { display: flex; flex-direction: column; gap: .25rem; }
+        .hero-stat-value { font-size: clamp(2.8rem, 6.5svh, 3.75rem); font-weight: 700; color: var(--ink); line-height: 1; letter-spacing: -.04em; }
+        .hero-stat-label { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .16em; color: var(--mist); }
+        .hero-art { position: absolute; z-index: 0; top: calc(70px + 1.25rem); right: 0; bottom: 3.25rem; width: 64%; margin: 0; overflow: hidden; pointer-events: none; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%); mask-image: linear-gradient(90deg, transparent, #000 18%); animation: fadeIn 1.1s .3s ease both; }
+        .hero-art img { display: block; width: 100%; height: 108%; object-fit: contain; object-position: right top; }
+        .hero-marquee { position: relative; z-index: 1; flex-shrink: 0; display: flex; align-items: center; min-height: 3.25rem; overflow: hidden; border-top: 1px solid rgba(8,16,42,.07); border-bottom: 1px solid rgba(8,16,42,.07); padding: 1rem 0; background: var(--ink); }
+        @media (min-width: 901px) {
+          .home-intro .freshers-home-banner { width: calc(50% - var(--home-gutter)); align-self: flex-start; padding: .85rem 1rem; border-radius: 1.25rem; }
+          .home-intro .freshers-home-banner-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem; }
+          .home-intro .freshers-home-banner-btns { flex-direction: column; gap: .4rem; }
+          .home-intro .freshers-home-banner h2 { font-size: clamp(1.2rem, 1.8vw, 1.6rem); }
+          .home-intro .freshers-home-banner p { font-size: .75rem; line-height: 1.55; margin-top: .4rem; }
+          .home-intro .freshers-home-banner .freshers-home-banner-kicker { font-size: .58rem; line-height: 1.4; margin: 0 0 .35rem; }
+          .home-intro .freshers-home-banner-btn { display: inline-flex; align-items: center; min-height: 40px; padding: .6rem 1rem; font-size: .75rem; }
+          .home-intro.has-freshers-banner .hero-section { padding-top: 1rem; padding-bottom: 1rem; }
+          .home-intro.has-freshers-banner .hero-h1 { font-size: clamp(3.2rem, min(6.4vw, 9.4svh), 6.5rem); }
+          .home-intro.has-freshers-banner .hero-heading .eyebrow { margin-bottom: .6rem; }
+          .home-intro.has-freshers-banner .hero-line { margin: .5rem 0; }
+          .home-intro.has-freshers-banner .hero-sub { font-size: 1rem; line-height: 1.55; }
+          .home-intro.has-freshers-banner .hero-ctas { margin-top: .75rem; }
+          .home-intro.has-freshers-banner .hero-stats { margin-top: .85rem; }
+          .home-intro.has-freshers-banner .hero-stat-value { font-size: clamp(2.3rem, 5svh, 3.3rem); }
+        }
+        @media (max-width: 1100px) and (min-width: 901px) { .hero-ctas { gap: .65rem; } .hero-ctas a { padding-left: 1.25rem; padding-right: 1.25rem; } .home-intro .freshers-home-banner-inner { display: flex; flex-direction: column; align-items: flex-start; gap: .65rem; } .home-intro .freshers-home-banner-btns { flex-direction: row; gap: .65rem; } }
+        @media (max-width: 900px) {
+          .hero-layout { grid-template-columns: 1fr; }
+          .hero-heading { grid-row: 1; }
+          .hero-art { display: none; }
+          .hero-support { grid-row: 2; }
+          .hero-h1 { font-size: clamp(3.2rem, min(9vw, 8.6svh), 5.5rem); }
+          .hero-stats { gap: 2.5rem; }
+        }
+        @media (max-width: 600px) {
+          .hero-h1 { font-size: clamp(2.65rem, min(12.2vw, 7.8svh), 4.25rem); }
+          .hero-ctas { flex-direction: column; gap: .7rem; }
+          .hero-stats { justify-content: space-between; gap: 1rem; max-width: 360px; }
+        }
+        @media (max-height: 800px) {
+          .hero-section { padding-top: 5.5rem; padding-bottom: 1.25rem; }
+          .hero-heading .eyebrow { margin-bottom: .65rem; }
+          .hero-h1 { font-size: clamp(3rem, min(7.2vw, 11svh), 6.5rem); }
+          .hero-line { margin: .85rem 0; }
+          .hero-sub { font-size: 1rem; line-height: 1.6; }
+          .hero-ctas { margin-top: 1rem; }
+          .hero-stats { margin-top: 1.25rem; }
+          .hero-stat-value { font-size: clamp(2.5rem, 6svh, 3.25rem); }
+        }
+        @media (max-width: 900px) and (max-height: 800px) { .hero-h1 { font-size: clamp(2.65rem, min(9vw, 7.8svh), 4.5rem); } }
+        @media (max-width: 600px) and (max-height: 740px) {
+          .hero-h1 { font-size: clamp(2.35rem, min(12.2vw, 6.5svh), 3.5rem); }
+          .hero-sub { font-size: .9rem; }
+          .hero-ctas { display: grid; grid-template-columns: 1.2fr 1fr; gap: .6rem; }
+          .hero-ctas a { padding: .65rem .55rem; font-size: .75rem; }
+          .hero-stat-value { font-size: 2.5rem; }
+        }
+        @media (prefers-reduced-motion: reduce) { .hero-eyebrow, .hero-h1, .hero-sub, .hero-ctas, .hero-stats, .hero-line, .hero-art { animation: none; opacity: 1 !important; } }
 
         @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .marquee-inner { animation: marquee 28s linear infinite; }
@@ -368,20 +441,16 @@ export default function Home() {
           .chips-grid     { grid-template-columns: 1fr 1fr !important; }
           .contacts-grid  { grid-template-columns: 1fr !important; }
           .facolta-grid   { grid-template-columns: 1fr !important; gap: 3rem !important; }
-          .hero-section   { padding: 8rem 1.5rem 5rem !important; }
           .page-section   { padding: 5rem 1.5rem !important; }
           .page-pad       { padding: 0 1.5rem 4rem !important; }
           .cta-inner      { padding: 4rem 2rem !important; flex-direction: column !important; align-items: flex-start !important; }
           .contacts-box   { padding: 3rem 1.5rem !important; }
           .contacts-inner-grid { grid-template-columns: 1fr !important; gap: 3rem !important; }
-          .hero-stats     { gap: 2.5rem !important; }
           .freshers-home-banner { margin: 6rem 1.5rem -4.5rem !important; }
           .freshers-home-banner-inner { flex-direction: column !important; align-items: flex-start !important; gap: 1rem !important; }
         }
         @media (max-width: 600px) {
           .chips-grid  { grid-template-columns: 1fr !important; }
-          .hero-ctas   { flex-direction: column !important; }
-          .hero-ctas a { text-align: center !important; }
           .freshers-home-banner { margin: 5.5rem 1rem -4rem !important; padding: 1.2rem !important; border-radius: 1.5rem !important; }
           .freshers-home-banner-btns { flex-direction: column !important; width: 100% !important; }
           .freshers-home-banner-btn { display: flex !important; justify-content: center !important; width: 100% !important; }
@@ -399,144 +468,131 @@ export default function Home() {
 
         <Navbar />
 
-        {showFreshersBanner && (
-          <section className="freshers-home-banner">
-            <div className="freshers-home-banner-inner">
-              <div>
-                <p className="freshers-home-banner-kicker">Università “Vita-Salute” San Raffaele</p>
-                <h2 className="display">Welcome Matricole 2026</h2>
-                <p>
-                  Tutto ciò che ti serve per partire con il piede giusto: scegli il tuo corso, orientati tra i servizi ASTRA per te, accedi al gruppo WhatsApp ufficiale e scopri i prossimi passi del tuo percorso!
+        <div className={`home-intro${showFreshersBanner ? " has-freshers-banner" : ""}`}>
+          {showFreshersBanner && (
+            <section className="freshers-home-banner">
+              <div className="freshers-home-banner-inner">
+                <div>
+                  <p className="freshers-home-banner-kicker">Università “Vita-Salute” San Raffaele</p>
+                  <h2 className="display">Welcome Matricole 2026</h2>
+                  <p>
+                    Tutto ciò che ti serve per partire con il piede giusto: scegli il tuo corso, orientati tra i servizi ASTRA per te, accedi al gruppo WhatsApp ufficiale e scopri i prossimi passi del tuo percorso!
+                  </p>
+                </div>
+
+                <div className="freshers-home-banner-btns">
+                  <Link href="/matricole" className="freshers-home-banner-btn">
+                    Scopri di più
+                  </Link>
+                  <Link href="/matricole#guida" className="freshers-home-banner-btn freshers-home-banner-btn--ghost">
+                    Guida rapida
+                  </Link>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ══ HERO ══ */}
+          <section className="hero-section">
+            {/* Ambient glow */}
+            <div style={{
+              position: "absolute",
+              width: 700,
+              height: 700,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(26,43,92,.07) 0%, transparent 70%)",
+              top: `calc(${mouseY}% - 350px)`,
+              left: `calc(${mouseX}% - 350px)`,
+              pointerEvents: "none",
+              transition: "top 1.4s cubic-bezier(.4,0,.2,1), left 1.4s cubic-bezier(.4,0,.2,1)",
+            }} />
+
+            <div className="hero-layout">
+              <div className="hero-heading">
+                <p className="eyebrow hero-eyebrow" style={{ opacity: 0 }}>
+                  Studenti x Studenti
                 </p>
+
+                <h1
+                  className="display hero-h1"
+                  style={{
+                    lineHeight: .94,
+                    fontWeight: 700,
+                    letterSpacing: "-.025em",
+                    color: "var(--ink)",
+                    opacity: 0,
+                  }}
+                >
+                  Il futuro degli<br />
+                  <span style={{ color: "var(--ink-soft)" }}>studenti</span><br />
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "1rem" }}>
+                    parte da{" "}
+                    <span style={{
+                      background: "var(--ink)",
+                      color: "var(--cream)",
+                      padding: ".05em .3em",
+                      borderRadius: "14px",
+                      lineHeight: 1.08,
+                    }}>qui</span>
+                  </span>
+                </h1>
               </div>
 
-              <div className="freshers-home-banner-btns">
-                <Link href="/matricole" className="freshers-home-banner-btn">
-                  Scopri di più
-                </Link>
-                <Link href="/matricole#guida" className="freshers-home-banner-btn freshers-home-banner-btn--ghost">
-                  Guida rapida
-                </Link>
+              <div className="hero-support">
+                <div className="hero-line" style={{ opacity: 0 }} />
+
+                <p className="hero-sub" style={{ opacity: 0 }}>
+                  Siamo un team di studenti dell&apos;Università &quot;Vita-Salute&quot; San Raffaele. Rappresentiamo,
+                  connettiamo e ispiriamo chi studia Medicina, Psicologia e Filosofia
+                  a Milano.
+                </p>
+
+                <div className="hero-ctas" style={{ opacity: 0 }}>
+                  <a href="/convenzioni" className="btn-primary">
+                    Le nostre convenzioni
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </a>
+                  <a href="#about" className="btn-outline">Scopri chi siamo</a>
+                </div>
+
+                <div className="hero-stats" style={{ opacity: 0 }}>
+                  {stats.map(([n, l]) => (
+                    <div key={l} className="hero-stat">
+                      <span className="display hero-stat-value">
+                        {n}
+                      </span>
+                      <span className="hero-stat-label">{l}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </section>
-        )}
 
-        {/* ══ HERO ══ */}
-        <section
-          className="hero-section"
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "flex-start",
-            padding: "10rem 3rem 7rem",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          {/* Ambient glow */}
-          <div style={{
-            position: "absolute",
-            width: 700,
-            height: 700,
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(26,43,92,.07) 0%, transparent 70%)",
-            top: `calc(${mouseY}% - 350px)`,
-            left: `calc(${mouseX}% - 350px)`,
-            pointerEvents: "none",
-            transition: "top 1.4s cubic-bezier(.4,0,.2,1), left 1.4s cubic-bezier(.4,0,.2,1)",
-          }} />
+          <figure className="hero-art">
+            <Image
+              src="/san-raffaele-hero-motion.webp"
+              alt="Il San Raffaele, con studenti in movimento davanti all’ingresso"
+              width={1222}
+              height={1287}
+              sizes="(max-width: 900px) 100vw, 64vw"
+              loading="eager"
+              fetchPriority="high"
+            />
+          </figure>
 
-          {/* Geometric rings */}
-          <div style={{ position: "absolute", top: "7%", right: "4%", width: 360, height: 360, borderRadius: "50%", border: "1px solid rgba(8,16,42,.05)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", top: "11%", right: "8%", width: 220, height: 220, borderRadius: "50%", border: "1px solid rgba(8,16,42,.04)", pointerEvents: "none" }} />
-
-          {/* Dot grid */}
-          <div style={{ position: "absolute", bottom: "10%", right: "6%", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, pointerEvents: "none", opacity: .18 }}>
-            {Array.from({ length: 25 }).map((_, i) => (
-              <div key={i} style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--ink-mid)" }} />
-            ))}
-          </div>
-
-          <div style={{ position: "relative", zIndex: 1, maxWidth: 900 }}>
-            <p className="eyebrow hero-eyebrow" style={{ opacity: 0 }}>
-              Studenti x Studenti
-            </p>
-
-            <h1
-              className="display hero-h1"
-              style={{
-                fontSize: "clamp(4rem, 9vw, 8.5rem)",
-                lineHeight: .94,
-                fontWeight: 700,
-                letterSpacing: "-.025em",
-                color: "var(--ink)",
-                opacity: 0,
-              }}
-            >
-              Il futuro degli<br />
-              <span style={{ color: "var(--ink-soft)" }}>studenti</span><br />
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "1rem" }}>
-                parte da{" "}
-                <span style={{
-                  background: "var(--ink)",
-                  color: "var(--cream)",
-                  padding: ".05em .3em",
-                  borderRadius: "14px",
-                  lineHeight: 1.08,
-                }}>qui</span>
-              </span>
-            </h1>
-
-            <div className="hero-line" style={{
-              width: "100%",
-              maxWidth: 520,
-              height: 1,
-              background: "linear-gradient(90deg, rgba(8,16,42,.18) 0%, transparent 100%)",
-              margin: "2.6rem 0",
-              opacity: 0,
-            }} />
-
-            <p className="hero-sub" style={{ fontSize: "1.1rem", lineHeight: 1.9, color: "var(--mist)", maxWidth: 480, fontWeight: 400, opacity: 0 }}>
-              Siamo un team di studenti dell&apos;Università &quot;Vita-Salute&quot; San Raffaele. Rappresentiamo,
-              connettiamo e ispiriamo chi studia Medicina, Psicologia e Filosofia
-              a Milano.
-            </p>
-
-            <div className="hero-ctas" style={{ display: "flex", gap: "1rem", marginTop: "2.5rem", opacity: 0, flexWrap: "wrap" }}>
-              <a href="/convenzioni" className="btn-primary">
-                Le nostre convenzioni
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </a>
-              <a href="#about" className="btn-outline">Scopri chi siamo</a>
-            </div>
-
-            <div className="hero-stats" style={{ display: "flex", gap: "5rem", marginTop: "5.5rem", opacity: 0, flexWrap: "wrap" }}>
-              {stats.map(([n, l]) => (
-                <div key={l} style={{ display: "flex", flexDirection: "column", gap: ".25rem" }}>
-                  <span className="display" style={{ fontSize: "4.5rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1, letterSpacing: "-.04em" }}>
-                    {n}
-                  </span>
-                  <span style={{ fontSize: ".7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".18em", color: "var(--mist)" }}>{l}</span>
-                </div>
+          {/* ══ MARQUEE ══ */}
+          <div className="hero-marquee" aria-hidden="true">
+            <div className="marquee-inner" style={{ display: "flex", gap: "3.5rem", whiteSpace: "nowrap", width: "max-content" }}>
+              {[...marqueeItems, ...marqueeItems, ...marqueeItems].map((item, i) => (
+                <span key={i} style={{ fontSize: ".68rem", fontWeight: 600, letterSpacing: ".22em", textTransform: "uppercase", color: "rgba(255,255,255,.45)", display: "flex", alignItems: "center", gap: "1.2rem" }}>
+                  <span style={{ width: 4, height: 4, borderRadius: "50%", background: "rgba(255,255,255,.4)", flexShrink: 0, display: "inline-block" }} />
+                  {item}
+                </span>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* ══ MARQUEE ══ */}
-        <div style={{ overflow: "hidden", borderTop: "1px solid rgba(8,16,42,.07)", borderBottom: "1px solid rgba(8,16,42,.07)", padding: "1.2rem 0", background: "var(--ink)" }} aria-hidden="true">
-          <div className="marquee-inner" style={{ display: "flex", gap: "3.5rem", whiteSpace: "nowrap", width: "max-content" }}>
-            {[...marqueeItems, ...marqueeItems, ...marqueeItems].map((item, i) => (
-              <span key={i} style={{ fontSize: ".68rem", fontWeight: 600, letterSpacing: ".22em", textTransform: "uppercase", color: "rgba(255,255,255,.45)", display: "flex", alignItems: "center", gap: "1.2rem" }}>
-                <span style={{ width: 4, height: 4, borderRadius: "50%", background: "rgba(255,255,255,.4)", flexShrink: 0, display: "inline-block" }} />
-                {item}
-              </span>
-            ))}
           </div>
         </div>
 
@@ -802,7 +858,6 @@ export default function Home() {
             </div>
           </Reveal>
         </section>
-
       </div>
     </>
   );
