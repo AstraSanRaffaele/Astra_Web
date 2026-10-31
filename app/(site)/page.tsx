@@ -147,14 +147,18 @@ export default function Home() {
         .hero-stats   { animation: fadeUp .7s 1.05s cubic-bezier(.4,0,.2,1) both; }
         .hero-line    { animation: fadeIn .8s .3s ease both; }
 
-        .home-intro { --home-gutter: clamp(1.25rem, 2vw, 2rem); min-height: 100svh; display: flex; flex-direction: column; position: relative; isolation: isolate; overflow: hidden; }
+        .home-intro { --home-gutter: clamp(1.25rem, 2vw, 2rem); min-height: 100svh; display: flex; flex-direction: column; position: relative; isolation: isolate; overflow: hidden; background: linear-gradient(115deg, #f8f7f3 15%, #eff2f7 52%, #e4ebf5); }
         .hero-section { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: clamp(6rem, 11svh, 8rem) var(--home-gutter) clamp(1.25rem, 3svh, 2.5rem); position: relative; z-index: 1; overflow: hidden; }
         .home-intro .freshers-home-banner { margin: calc(70px + 1rem) var(--home-gutter) 0 !important; }
         .home-intro.has-freshers-banner .hero-section { padding-top: clamp(1.5rem, 4svh, 3rem); }
         .hero-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: clamp(1rem, 3vw, 3.5rem); width: 100%; }
-        .hero-heading { position: relative; z-index: 1; grid-column: 1; grid-row: 1; min-width: 0; }
+        .hero-heading { position: relative; z-index: 1; grid-column: 1 / -1; grid-row: 1; min-width: 0; }
         .hero-heading .eyebrow { margin-bottom: clamp(.75rem, 1.8svh, 1.25rem); }
-        .hero-h1 { font-size: clamp(3.4rem, min(7.2vw, 11svh), 7.5rem); }
+        .hero-h1 { font-size: clamp(3.6rem, min(7vw, 11.8svh), 8rem); }
+        .hero-title-ending { display: inline-flex; align-items: baseline; gap: .22em; white-space: nowrap; }
+        .hero-students { color: var(--ink-soft); }
+        .hero-title-location { display: inline-flex; align-items: center; gap: .16em; }
+        .hero-here { background: var(--ink); color: var(--cream); padding: .04em .24em; border-radius: .13em; line-height: 1.08; }
         .hero-support { position: relative; z-index: 1; grid-column: 1; grid-row: 2; min-width: 0; }
         .hero-line { width: 100%; max-width: 520px; height: 1px; background: linear-gradient(90deg, rgba(8,16,42,.18), transparent); margin: clamp(1rem, 2.5svh, 1.75rem) 0; }
         .hero-sub { font-size: clamp(1rem, 1.25vw, 1.1rem); line-height: 1.65; color: var(--mist); max-width: 520px; font-weight: 400; }
@@ -165,10 +169,12 @@ export default function Home() {
         .hero-stat { display: flex; flex-direction: column; gap: .25rem; }
         .hero-stat-value { font-size: clamp(2.8rem, 6.5svh, 3.75rem); font-weight: 700; color: var(--ink); line-height: 1; letter-spacing: -.04em; }
         .hero-stat-label { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .16em; color: var(--mist); }
-        .hero-art { position: absolute; z-index: 0; top: calc(70px + 1.25rem); right: 0; bottom: 3.25rem; width: 64%; margin: 0; overflow: hidden; pointer-events: none; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%); mask-image: linear-gradient(90deg, transparent, #000 18%); animation: fadeIn 1.1s .3s ease both; }
-        .hero-art img { display: block; width: 100%; height: 108%; object-fit: contain; object-position: right top; }
+        .hero-art { position: absolute; z-index: 0; top: calc(70px + 1.25rem); right: 0; bottom: 3.25rem; width: 72%; margin: 0; overflow: hidden; pointer-events: none; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%); mask-image: linear-gradient(90deg, transparent, #000 18%); animation: fadeIn 1.1s .3s ease both; }
+        .hero-art img { display: block; width: 100%; height: 116%; object-fit: contain; object-position: right top; }
         .hero-marquee { position: relative; z-index: 1; flex-shrink: 0; display: flex; align-items: center; min-height: 3.25rem; overflow: hidden; border-top: 1px solid rgba(8,16,42,.07); border-bottom: 1px solid rgba(8,16,42,.07); padding: 1rem 0; background: var(--ink); }
         @media (min-width: 901px) {
+          .hero-support { margin-top: clamp(1.25rem, 3svh, 2rem); }
+          .hero-line { display: none; }
           .home-intro .freshers-home-banner { width: calc(50% - var(--home-gutter)); align-self: flex-start; padding: .85rem 1rem; border-radius: 1.25rem; }
           .home-intro .freshers-home-banner-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem; }
           .home-intro .freshers-home-banner-btns { flex-direction: column; gap: .4rem; }
@@ -177,18 +183,21 @@ export default function Home() {
           .home-intro .freshers-home-banner .freshers-home-banner-kicker { font-size: .58rem; line-height: 1.4; margin: 0 0 .35rem; }
           .home-intro .freshers-home-banner-btn { display: inline-flex; align-items: center; min-height: 40px; padding: .6rem 1rem; font-size: .75rem; }
           .home-intro.has-freshers-banner .hero-section { padding-top: 1rem; padding-bottom: 1rem; }
-          .home-intro.has-freshers-banner .hero-h1 { font-size: clamp(3.2rem, min(6.4vw, 9.4svh), 6.5rem); }
+          .home-intro.has-freshers-banner .hero-h1 { font-size: clamp(3.6rem, min(7vw, 10.8svh), 7.75rem); }
           .home-intro.has-freshers-banner .hero-heading .eyebrow { margin-bottom: .6rem; }
+          .home-intro.has-freshers-banner .hero-support { margin-top: .85rem; }
           .home-intro.has-freshers-banner .hero-line { margin: .5rem 0; }
           .home-intro.has-freshers-banner .hero-sub { font-size: 1rem; line-height: 1.55; }
           .home-intro.has-freshers-banner .hero-ctas { margin-top: .75rem; }
           .home-intro.has-freshers-banner .hero-stats { margin-top: .85rem; }
           .home-intro.has-freshers-banner .hero-stat-value { font-size: clamp(2.3rem, 5svh, 3.3rem); }
         }
-        @media (max-width: 1100px) and (min-width: 901px) { .hero-ctas { gap: .65rem; } .hero-ctas a { padding-left: 1.25rem; padding-right: 1.25rem; } .home-intro .freshers-home-banner-inner { display: flex; flex-direction: column; align-items: flex-start; gap: .65rem; } .home-intro .freshers-home-banner-btns { flex-direction: row; gap: .65rem; } }
+        @media (max-width: 1100px) and (min-width: 901px) { .hero-sub { max-width: 420px; } .hero-art { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32%); mask-image: linear-gradient(90deg, transparent, #000 32%); } .hero-ctas { gap: .65rem; } .hero-ctas a { padding-left: 1.25rem; padding-right: 1.25rem; } .home-intro .freshers-home-banner-inner { display: flex; flex-direction: column; align-items: flex-start; gap: .65rem; } .home-intro .freshers-home-banner-btns { flex-direction: row; gap: .65rem; } }
         @media (max-width: 900px) {
           .hero-layout { grid-template-columns: 1fr; }
           .hero-heading { grid-row: 1; }
+          .hero-title-ending { display: block; white-space: normal; }
+          .hero-students { display: block; }
           .hero-art { display: none; }
           .hero-support { grid-row: 2; }
           .hero-h1 { font-size: clamp(3.2rem, min(9vw, 8.6svh), 5.5rem); }
@@ -202,7 +211,7 @@ export default function Home() {
         @media (max-height: 800px) {
           .hero-section { padding-top: 5.5rem; padding-bottom: 1.25rem; }
           .hero-heading .eyebrow { margin-bottom: .65rem; }
-          .hero-h1 { font-size: clamp(3rem, min(7.2vw, 11svh), 6.5rem); }
+          .hero-h1 { font-size: clamp(3rem, min(7vw, 11.8svh), 7rem); }
           .hero-line { margin: .85rem 0; }
           .hero-sub { font-size: 1rem; line-height: 1.6; }
           .hero-ctas { margin-top: 1rem; }
@@ -524,16 +533,9 @@ export default function Home() {
                   }}
                 >
                   Il futuro degli<br />
-                  <span style={{ color: "var(--ink-soft)" }}>studenti</span><br />
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "1rem" }}>
-                    parte da{" "}
-                    <span style={{
-                      background: "var(--ink)",
-                      color: "var(--cream)",
-                      padding: ".05em .3em",
-                      borderRadius: "14px",
-                      lineHeight: 1.08,
-                    }}>qui</span>
+                  <span className="hero-title-ending">
+                    <span className="hero-students">studenti</span>{" "}
+                    <span className="hero-title-location">parte da <span className="hero-here">qui</span></span>
                   </span>
                 </h1>
               </div>
@@ -577,7 +579,7 @@ export default function Home() {
               alt="Il San Raffaele, con studenti in movimento davanti all’ingresso"
               width={1222}
               height={1287}
-              sizes="(max-width: 900px) 100vw, 64vw"
+              sizes="(max-width: 900px) 100vw, 72vw"
               loading="eager"
               fetchPriority="high"
             />
