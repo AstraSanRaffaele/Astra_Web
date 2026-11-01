@@ -50,3 +50,11 @@ test("unavailable browser storage never breaks creation and the current-page ID 
     assert.equal(calendarReadyForGuide([ready], ready.id, saved), ready.id);
   }
 });
+
+test("a saved partial subscription can open the guide before the full publication", () => {
+  const saved = storage();
+  const partial = { ...pending, cachedThrough: "2026-10-30" };
+  queueSubscriptionGuide(partial.id, saved);
+  assert.equal(calendarReadyForGuide([partial], null, saved), partial.id);
+  assert.equal(calendarReadyForGuide([{ ...partial, enabled: false }], null, saved), null);
+});

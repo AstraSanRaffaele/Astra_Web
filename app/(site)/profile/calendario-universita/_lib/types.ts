@@ -57,6 +57,7 @@ export type CalendarView = Omit<CalendarRecord, "token" | "source_events" | "sta
   feedUrl: string;
   eventCount: number;
   totalDays: number;
+  cachedThrough: string | null;
   subjects: { key: string; title: string; teacher: string }[];
 };
 

@@ -14,7 +14,7 @@ function request(body, origin = "https://astra.test") {
 
 const defaultPeriod = { start: "2026-10-11", end: "2027-06-15" };
 
-function harness({ enabled = true, user = { id: "user-a", isAdmin: false }, createError = null, scheduler = true, period = defaultPeriod, sourceLessons = [], cacheReady = true, cacheCursor = 0, syncPublishes = false, cacheError = null, refreshOpen = true } = {}) {
+function harness({ enabled = true, user = { id: "user-a", isAdmin: false }, createError = null, scheduler = true, period = defaultPeriod, sourcePeriod = period, sourceLessons = [], cacheReady = true, cacheCursor = 0, cacheMissing = false, cacheSyncedAt = "2026-10-09T16:10:00Z", syncPublishes = false, cacheError = null, refreshOpen = true } = {}) {
   const rows = [structuredClone(record), { ...structuredClone(record), id: otherId, owner_id: "user-b", token: "B".repeat(43) }];
   const writes = [], reads = [], syncs = [], rpcCalls = [], sourceReads = [], ensures = [];
   const client = {
@@ -36,15 +36,20 @@ function harness({ enabled = true, user = { id: "user-a", isAdmin: false }, crea
       };
       return query;
     },
-    async rpc(name, args) { rpcCalls.push({ name, args }); return { data: createError ? null : args.requested_id, error: createError }; },
+    async rpc(name, args) {
+      rpcCalls.push({ name, args });
+      if (!createError && name === "create_university_calendar" && !rows.some((row) => row.id === args.requested_id)) rows.push({ ...structuredClone(record), ...args.settings, id: args.requested_id, owner_id: args.requested_owner, token: args.requested_token, last_synced_at: null, sync_cursor: 0, created_at: "2026-10-11T12:00:00Z" });
+      return { data: createError ? null : args.requested_id, error: createError };
+    },
   };
+  const shared = load("shared", { "server-only": {}, "@/lib/admin-users-server": {} });
   const actualView = load("server", { "server-only": {}, "@/lib/supabase/server": {}, "@/lib/admin-users-server": {} }).calendarView;
   const routeMocks = {
     "server-only": {}, "./config": { PUBLIC_CALENDAR_ENABLED: enabled, PUBLIC_CALENDAR_LIMIT: 1 },
     "@/lib/admin-users-server": { createAdminClient: () => client },
     "./server": { getCalendarUser: async () => user && (user.isAdmin || enabled) ? user : null, calendarView: actualView,
       newFeedToken: () => "C".repeat(43), processSyncBatch: async (id) => { syncs.push(id); if (syncPublishes) cacheReady = true; }, serviceError: () => "Servizio non disponibile" },
-    "./shared": { ensureSharedSource: async (...args) => { ensures.push(args); }, readSharedSource: async (...args) => { sourceReads.push(args); return { course: args[0], semester_start: period.start, semester_end: period.end, ready: cacheReady, sync_cursor: cacheCursor, sync_error: cacheError, last_synced_at: "2026-10-11T12:00:00Z", events: sourceLessons.filter((lesson) => (args[1] === 0 || lesson.year === args[1]) && (!args[2] || lesson.date >= args[2]) && (!args[3] || lesson.date <= args[3])), lines: load("types").availableLines(sourceLessons) }; }, previewCovered: load("shared", { "server-only": {}, "@/lib/admin-users-server": {} }).previewCovered },
+    "./shared": { ...shared, ensureSharedSource: async (...args) => { ensures.push(args); }, readSharedSource: async (...args) => { sourceReads.push(args); return cacheMissing ? null : { course: args[0], semester_start: sourcePeriod.start, semester_end: sourcePeriod.end, ready: cacheReady, sync_cursor: cacheCursor, sync_started_at: "2026-10-09T16:00:00Z", sync_error: cacheError, last_synced_at: cacheReady ? cacheSyncedAt : null, events: sourceLessons.filter((lesson) => (args[1] === 0 || lesson.year === args[1]) && (!args[2] || lesson.date >= args[2]) && (!args[3] || lesson.date <= args[3])), lines: load("types").availableLines(sourceLessons) }; } },
     "./source": { fetchDay: async (...args) => { sourceReads.push(args); return sourceLessons.filter((lesson) => (args[1] === 0 || lesson.year === args[1]) && lesson.date === args[2]); }, deduplicateLessons: (items) => items },
     "./period": { calendarPeriod: () => period, calendarExpired: (end) => end < period.start, calendarSeasonOpen: () => load("period").calendarSeasonOpen(new Date(`${period.start}T12:00:00Z`)), calendarRefreshOpen: () => refreshOpen },
   };
@@ -303,7 +308,64 @@ test("weekend previews serve cached lessons but never initialize or warm a sourc
   assert.deepEqual(cold.ensures, []);
   assert.deepEqual(cold.syncs, []);
   const warm = harness({ refreshOpen: false, cacheReady: true });
-  assert.equal((await warm.api.previewCalendar(request({ course: "medicina", year: 4 }))).status, 200);
+  const cached = await warm.api.previewCalendar(request({ course: "medicina", year: 4 }));
+  assert.equal(cached.status, 200);
+  const body = await cached.json();
+  assert.equal(body.cached, true);
+  assert.equal(body.cachedThrough, null);
+  assert.equal(body.last_synced_at, "2026-10-09T16:10:00Z");
   assert.deepEqual(warm.ensures, []);
   assert.deepEqual(warm.syncs, []);
+});
+
+test("weekend previews use a shorter saved prefix and identify its real coverage", async () => {
+  const lesson = { date: "2026-10-12", year: 4, line: "BIANCA", title: "Anatomia", teacher: "Docente", room: "CA101", building: "CANOVA" };
+  const h = harness({ refreshOpen: false, cacheReady: false, cacheCursor: 3, sourceLessons: [lesson, { ...lesson, date: "2026-10-14" }] });
+  const response = await h.api.previewCalendar(request({ course: "medicina-2", year: 4 }));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.lessons, [lesson]);
+  assert.equal(body.end, "2026-10-13");
+  assert.equal(body.cachedThrough, "2026-10-13");
+  assert.equal(body.cached, true);
+  assert.equal(body.last_synced_at, null);
+  assert.deepEqual(body.period, defaultPeriod);
+  assert.deepEqual([h.ensures, h.syncs, h.rpcCalls], [[], [], []]);
+});
+
+test("a weekend creation immediately exposes the saved partial subscription without a worker", async () => {
+  const lesson = { date: "2026-10-12", start: "09:00", end: "10:00", year: 4, line: "BIANCA", title: "Anatomia", teacher: "Docente", room: "CA101", building: "CANOVA" };
+  for (const cacheReady of [false, true]) {
+    const h = harness({ refreshOpen: false, cacheReady, cacheCursor: 3, sourceLessons: [lesson] });
+    h.rows.length = 0;
+    assert.equal((await h.api.mutateCalendar(request({ action: "create", id: ownId, settings }))).status, 200);
+    const response = await h.api.listCalendars(request());
+    const calendar = (await response.json()).calendars[0];
+    assert.equal(calendar.feedUrl, `https://astra.test/api/calendars/university/${"C".repeat(43)}`);
+    assert.equal(calendar.eventCount, 1);
+    assert.equal(calendar.cachedThrough, cacheReady ? null : "2026-10-13");
+    assert.equal(calendar.last_synced_at, cacheReady ? "2026-10-09T16:10:00Z" : null);
+    assert.equal(h.rpcCalls.length, 1);
+    assert.deepEqual([h.ensures, h.syncs], [[], []]);
+  }
+});
+
+test("missing, expired or unstarted weekend caches cannot create an unusable calendar", async () => {
+  for (const cache of [{ cacheMissing: true }, { cacheReady: false, cacheCursor: 0 }, { cacheReady: false, cacheCursor: 3, sourcePeriod: { start: "2026-10-01", end: defaultPeriod.end } }, { sourcePeriod: { start: defaultPeriod.start, end: "2028-06-15" } }]) {
+    const h = harness({ refreshOpen: false, ...cache });
+    assert.equal((await h.api.previewCalendar(request({ course: "medicina", year: 4 }))).status, 503);
+    assert.equal((await h.api.mutateCalendar(request({ action: "create", id: ownId, settings }))).status, 503);
+    assert.deepEqual([h.rpcCalls, h.ensures, h.syncs, h.writes], [[], [], [], []]);
+  }
+});
+
+test("a saved empty day is a valid partial weekend cache, not a failed import", async () => {
+  const h = harness({ refreshOpen: false, cacheReady: false, cacheCursor: 1 });
+  const response = await h.api.previewCalendar(request({ course: "imdp", year: 3 }));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.lessons, []);
+  assert.equal(body.cachedThrough, defaultPeriod.start);
+  assert.equal((await h.api.mutateCalendar(request({ action: "create", id: ownId, settings: { name: "IMDP", course: "imdp", year: 3 } }))).status, 200);
+  assert.deepEqual([h.ensures, h.syncs], [[], []]);
 });

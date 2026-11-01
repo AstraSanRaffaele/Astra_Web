@@ -6,7 +6,7 @@ import { fetchDay, deduplicateLessons } from "./source";
 import { canUseCalendar } from "./eligibility";
 import { calendarExpired, calendarRefreshOpen, calendarSeasonOpen } from "./period";
 import { courseHasLines, daysBetween, selectLessons, unassignedSubjects, type CalendarRecord, type CalendarView } from "./types";
-import { applySharedSource, type SharedSource, type SourceJob } from "./shared";
+import { applySharedSource, cachedSourceThrough, type SharedSource, type SourceJob } from "./shared";
 
 export async function getCalendarUser() {
   const supabase = await createClient();
@@ -29,7 +29,8 @@ export function calendarView(original: CalendarRecord, origin: string, source: S
   void staging_events; void lease_token; void leased_until; void owner_id;
   const feedUrl = `${origin}/api/calendars/university/${token}`;
   const selected = selectLessons(source_events, record);
-  return { ...safe, feedUrl, eventCount: selected.length, totalDays: daysBetween(source?.semester_start ?? record.semester_start, record.semester_end).length, subjects: courseHasLines(record.course) ? unassignedSubjects(source_events, record.year) : [] };
+  const cachedThrough = !record.last_synced_at && !source?.ready ? cachedSourceThrough(record, source) : null;
+  return { ...safe, feedUrl, cachedThrough, eventCount: selected.length, totalDays: daysBetween(source?.semester_start ?? record.semester_start, record.semester_end).length, subjects: courseHasLines(record.course) ? unassignedSubjects(source_events, record.year) : [] };
 }
 
 export async function processSyncBatch(course?: string) {

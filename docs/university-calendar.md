@@ -28,7 +28,11 @@ salvato nel profilo. Lo stesso controllo si applica alle API.
    L’anteprima mostra i prossimi sette giorni.
 3. Crea il calendario: il periodo va automaticamente da oggi al 15 giugno successivo
    (incluso), senza chiedere date. Se il 15 giugno è già passato, usa l’anno seguente.
-4. Attendi la prima lettura completa. Per Medicina in italiano, controlla anche le
+4. Il link è subito disponibile se esiste una copia salvata, anche parziale.
+   Le lezioni arrivano automaticamente sullo stesso link al completamento della lettura.
+   La pagina usa un avviso generico sugli ultimi orari salvati, senza distinguere
+   copie complete e parziali.
+   Per Medicina in italiano, controlla anche le
    attività senza linea trovate nelle altre settimane e salva la selezione.
 5. Per Apple, copia il link in **Calendario → File → Nuovo abbonamento calendario**
    su Mac, oppure usa il pulsante **Calendario Apple**.
@@ -46,7 +50,7 @@ Quando il calendario ha un link utilizzabile, la guida è sempre visibile a dest
 della scheda su desktop, senza pulsanti di apertura o chiusura. Su mobile resta
 sotto la scheda, richiamabile dalla frase «Per aggiungerlo, segui la guida», in cui
 «segui la guida» è evidenziato come link. Comprende Mac, iPhone/iPad e Google Calendar.
-La prima apertura automatica su mobile attende la pubblicazione dell’importazione completa;
+La prima apertura automatica su mobile attende un link utilizzabile, anche da una copia parziale;
 resta in attesa anche dopo un ricaricamento della pagina nello stesso browser.
 Un indicatore locale per ID calendario memorizza `pending` oppure `seen`, senza
 salvare il link o il token. Se lo spazio locale è bloccato, la guida funziona comunque
@@ -213,7 +217,18 @@ partono **dal lunedì al venerdì alle 08:00, 12:00 e 18:00 Europe/Rome**,
 rispettando l’ora legale. Il sabato e la domenica non vengono avviate letture
 UniSR, nemmeno per una prima anteprima o per completare un’importazione.
 I feed e le anteprime già presenti nella cache continuano a funzionare.
-Se la cache non copre ancora l’anteprima richiesta, la pagina invita a riprovare lunedì.
+Nel weekend l’avviso della pausa rimane sempre visibile, ma il pulsante **Usa gli orari salvati**
+permette di creare il link dalla copia disponibile, completa o parziale, senza avviare worker.
+L’anteprima termina all’ultimo giorno interamente salvato dal cursore. La copertura
+parziale resta un dettaglio interno: la pagina mostra lo stato «Attivo» e spiega solo
+che il calendario usa gli ultimi orari salvati e si aggiorna automaticamente.
+Sono validi anche giorni salvati senza lezioni. Se non ci sono dati salvati che coprano
+almeno il giorno corrente, la pagina invita a riprovare lunedì; anche le API impediscono
+di creare un link inutilizzabile o cambiare corso verso una sorgente non disponibile.
+Il link parziale resta valido anche lunedì, mentre l’importazione prosegue, e viene
+completato automaticamente con la pubblicazione condivisa, mantenendo token e UID.
+I calendari già completi conservano la loro copia durante letture parziali o guasti.
+Le lezioni restano nelle sorgenti condivise: la creazione non le duplica nei record personali.
 Il worker ricontrolla il giorno anche prima di ogni richiesta alle due coorti UniSR:
 una richiesta già inviata può terminare, ma dopo mezzanotte non parte la successiva
 e non viene pubblicato il blocco. Le lezioni con data nel weekend, se pubblicate,

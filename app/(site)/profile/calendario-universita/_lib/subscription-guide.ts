@@ -1,4 +1,4 @@
-type GuideCalendar = { id: string; enabled: boolean; last_synced_at: string | null };
+type GuideCalendar = { id: string; enabled: boolean; last_synced_at: string | null; cachedThrough?: string | null };
 type GuideStorage = Pick<Storage, "getItem" | "setItem">;
 
 function storageKey(id: string) { return `astra:calendar-guide:${id}`; }
@@ -13,7 +13,7 @@ export function markSubscriptionGuideSeen(id: string, storage: GuideStorage | nu
 
 export function calendarReadyForGuide(calendars: readonly GuideCalendar[], pendingId: string | null, storage: GuideStorage | null): string | null {
   for (const calendar of calendars) {
-    if (!calendar.enabled || !calendar.last_synced_at) continue;
+    if (!calendar.enabled || (!calendar.last_synced_at && !calendar.cachedThrough)) continue;
     if (calendar.id === pendingId) return calendar.id;
     try { if (storage?.getItem(storageKey(calendar.id)) === "pending") return calendar.id; } catch { /* The manual help button remains available. */ }
   }

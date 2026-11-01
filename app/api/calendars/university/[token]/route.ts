@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/admin-users-server";
 import { createCalendar } from "@/app/(site)/profile/calendario-universita/_lib/ical";
 import { calendarExpired } from "@/app/(site)/profile/calendario-universita/_lib/period";
 import type { CalendarRecord } from "@/app/(site)/profile/calendario-universita/_lib/types";
-import { applySharedSource, readSharedSource } from "@/app/(site)/profile/calendario-universita/_lib/shared";
+import { applySharedSource, cachedSourceThrough, readSharedSource } from "@/app/(site)/profile/calendario-universita/_lib/shared";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,8 +20,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ tok
     if (!data) return new Response("Calendario non trovato.", { status: 404, headers });
     const original = data as CalendarRecord;
     if (calendarExpired(original.semester_end)) return new Response("Calendario scaduto.", { status: 404, headers });
-    const record = applySharedSource(original, await readSharedSource(original.course, original.year));
-    if (!record.last_synced_at) return new Response("Prima sincronizzazione in corso. Riprova più tardi.", { status: 503, headers: { ...headers, "Retry-After": "600" } });
+    const source = await readSharedSource(original.course, original.year);
+    const record = applySharedSource(original, source);
+    if (!record.last_synced_at && !cachedSourceThrough(original, source)) return new Response("Prima sincronizzazione in corso. Riprova più tardi.", { status: 503, headers: { ...headers, "Retry-After": "600" } });
     const calendar = createCalendar(record);
     const etag = `"${createHash("sha256").update(calendar).digest("hex")}"`;
     const responseHeaders = { ...headers, ETag: etag, "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": 'inline; filename="astra-unisr.ics"' };

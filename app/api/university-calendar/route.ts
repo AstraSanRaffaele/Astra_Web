@@ -4,8 +4,8 @@ import { createAdminClient } from "@/lib/admin-users-server";
 import { PUBLIC_CALENDAR_LIMIT } from "@/app/(site)/profile/calendario-universita/_lib/config";
 import { calendarView, getCalendarUser, newFeedToken, serviceError } from "@/app/(site)/profile/calendario-universita/_lib/server";
 import { validateSettings, type CalendarRecord } from "@/app/(site)/profile/calendario-universita/_lib/types";
-import { calendarExpired, calendarPeriod, calendarSeasonOpen } from "@/app/(site)/profile/calendario-universita/_lib/period";
-import { readSharedSource } from "@/app/(site)/profile/calendario-universita/_lib/shared";
+import { calendarExpired, calendarPeriod, calendarRefreshOpen, calendarSeasonOpen } from "@/app/(site)/profile/calendario-universita/_lib/period";
+import { cachedSourceThrough, readSharedSource, WEEKEND_CACHE_UNAVAILABLE } from "@/app/(site)/profile/calendario-universita/_lib/shared";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
     if (body.action === "create") {
       let settings;
       try { settings = automaticSettings(body.settings); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impostazioni non valide." }, { status: 400 }); }
+      if (!calendarRefreshOpen() && !cachedSourceThrough(settings, await readSharedSource(settings.course, settings.year))) return NextResponse.json({ error: WEEKEND_CACHE_UNAVAILABLE }, { status: 503, headers: noStore });
       const { data: createdId, error: createError } = await supabase.rpc("create_university_calendar", {
         requested_id: id, requested_owner: owner.id, requested_token: newFeedToken(), settings,
         maximum_calendars: PUBLIC_CALENDAR_LIMIT,
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
           let settings;
           try { settings = automaticSettings(body.settings); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impostazioni non valide." }, { status: 400 }); }
           const changedSource = settings.course !== current.course || settings.year !== current.year;
+          if (changedSource && !calendarRefreshOpen() && !cachedSourceThrough(settings, await readSharedSource(settings.course, settings.year))) return NextResponse.json({ error: WEEKEND_CACHE_UNAVAILABLE }, { status: 503, headers: noStore });
           patch = { ...settings, enabled: true, ...(changedSource ? { source_events: [], last_synced_at: null } : {}), sync_cursor: null, staging_events: [], retry_at: null, sync_error: null, lease_token: null, leased_until: null };
         }
         else if (body.action === "rotate") patch = { token: newFeedToken() };

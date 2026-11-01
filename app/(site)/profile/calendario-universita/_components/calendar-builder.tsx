@@ -12,7 +12,7 @@ import SubscriptionGuide from "./subscription-guide";
 import styles from "./calendar-builder.module.css";
 
 type Subject = { key: string; title: string; teacher: string };
-type Preview = { lessons: Lesson[]; lines: string[]; subjects: Subject[]; start: string; end: string; period: { start: string; end: string } };
+type Preview = { lessons: Lesson[]; lines: string[]; subjects: Subject[]; start: string; end: string; period: { start: string; end: string }; cached: boolean; cachedThrough: string | null; last_synced_at: string | null };
 type CreatingCalendar = Pick<CalendarView, "name" | "course" | "year" | "line" | "semester_start" | "semester_end">;
 type CopyNotice = { calendarId: string; target: "link" | "google"; message: string; failed: boolean };
 
@@ -72,7 +72,7 @@ function SavedSubjects({ calendar, busy, save, colors }: { calendar: CalendarVie
   if (!courseHasLines(calendar.course) || !calendar.subjects.length) return null;
   return <details className={styles.details}>
     <summary>Attività senza linea <span>{calendar.subjects.length}</span></summary>
-    <p className={styles.hint}>Attività trovate nell’intero semestre. Includi solo quelle che vuoi seguire.</p>
+    <p className={styles.hint}>Scegli le attività senza linea che vuoi seguire.</p>
     <Subjects subjects={calendar.subjects} selected={selected} onChange={setSelected} colors={colors} />
     <button className={styles.secondary} type="button" disabled={busy || !changed} onClick={() => void save({ action: "subjects", id: calendar.id, included_subjects: selected })}>Salva selezione</button>
   </details>;
@@ -123,6 +123,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
     setCalendars(data.calendars);
     setScheduler(data.scheduler?.enabled ?? false);
     revealReadyGuide(data.calendars);
+    return data.calendars;
   }, [API, enabled, revealReadyGuide]);
 
   useEffect(() => {
@@ -179,8 +180,9 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
         pendingGuideId.current = body.id;
         queueSubscriptionGuide(body.id, guideStorage());
       }
-      await reload();
+      const records = await reload();
       setNotice(body.action === "sync" ? "Stai usando gli ultimi orari condivisi disponibili." : "Modifiche salvate.");
+      return records;
     }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Impossibile salvare."); throw cause; }
     finally { mutationBusy.current = false; setBusy(false); }
@@ -193,9 +195,10 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
     const calendarName = name.trim() || `${COURSES.find((item) => item.key === course)!.label} · ${year}°${hasLines ? ` · ${line}` : ""}`;
     if (!existingCalendar) setCreatingCalendar({ name: calendarName, course, year, line: selectedLine, semester_start: period.start, semester_end: period.end });
     try {
-      await mutate({ action: existingCalendar ? "settings" : "create", id: existingCalendar?.id ?? creationId.current, settings: { name: calendarName, course, year, line: selectedLine, included_subjects: hasLines ? included : [] } });
+      const records = await mutate({ action: existingCalendar ? "settings" : "create", id: existingCalendar?.id ?? creationId.current, settings: { name: calendarName, course, year, line: selectedLine, included_subjects: hasLines ? included : [] } });
+      const saved = records?.find((record) => record.id === (existingCalendar?.id ?? creationId.current));
       creationId.current = null;
-      setNotice(existingCalendar ? "Calendario modificato. Il link resta lo stesso." : "Calendario creato. Il link sarà pronto al termine della prima importazione delle lezioni fino al 15 giugno.");
+      setNotice(existingCalendar ? "Calendario modificato. Il link resta lo stesso." : saved?.last_synced_at || saved?.cachedThrough ? "Calendario creato. Il tuo link è pronto: puoi aggiungerlo a Calendario Apple o Google Calendar." : "Calendario creato. Il link sarà pronto al termine della prima importazione delle lezioni fino al 15 giugno.");
     } catch { /* The error is shown above the form; keep the ID for a safe retry. */ }
     finally { setCreatingCalendar(null); }
   }
@@ -226,10 +229,10 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
         <span className={styles.private}><ShieldCheck size={15} /> {isAdmin && !PUBLIC_CALENDAR_ENABLED ? "Anteprima riservata agli admin" : "I tuoi corsi, il tuo link personale"}</span>
       </header>
 
-      {enabled && seasonOpen && <div className={`${styles.syncNotice} ${scheduler === false ? styles.syncInactive : ""}`} role="status">
+      {enabled && seasonOpen && <div className={`${styles.syncNotice} ${!refreshOpen || scheduler === false ? styles.syncInactive : ""}`} role="status">
         <div className={styles.syncNoticeIcon}><RefreshCw size={22} aria-hidden="true" /></div>
-        <div><strong>{scheduler === true ? "Aggiornamenti dal lunedì al venerdì: 08:00, 12:00 e 18:00" : scheduler === false ? "L’aggiornamento automatico non è ancora attivo" : "Verifica dell’aggiornamento automatico…"}</strong><p>{scheduler === true ? "In orario italiano, ASTRA avvia la lettura degli orari UniSR. Le variazioni e le aule arrivano nel tuo calendario al termine della lettura. Nel weekend le letture sono in pausa e resta disponibile l’ultima versione completa. Il tuo link resta sempre lo stesso." : scheduler === false ? "Gli aggiornamenti delle 08:00, 12:00 e 18:00, dal lunedì al venerdì, si attivano automaticamente quando crei il tuo calendario. Dal 1° settembre puoi preparare quello del nuovo anno accademico." : "Stiamo controllando che il servizio sia pronto a tenere aggiornate le tue lezioni."}</p></div>
-        {scheduler === true && <span className={styles.syncFrequency}><b>3 volte</b> lun–ven</span>}
+        <div><strong>{!refreshOpen ? "Le letture UniSR sono in pausa nel weekend" : scheduler === true ? "Aggiornamenti dal lunedì al venerdì: 08:00, 12:00 e 18:00" : scheduler === false ? "L’aggiornamento automatico non è ancora attivo" : "Verifica dell’aggiornamento automatico…"}</strong><p>{!refreshOpen ? "Puoi comunque creare il link usando gli ultimi orari salvati. Il calendario si aggiornerà automaticamente sullo stesso link appena saranno disponibili nuovi dati. Le letture riprenderanno lunedì dalle 08:00, in orario italiano." : scheduler === true ? "In orario italiano, ASTRA avvia la lettura degli orari UniSR. Le variazioni e le aule arrivano nel tuo calendario al termine della lettura. Nel weekend le letture sono in pausa e resta disponibile l’ultima copia salvata. Il tuo link resta sempre lo stesso." : scheduler === false ? "Gli aggiornamenti delle 08:00, 12:00 e 18:00, dal lunedì al venerdì, si attivano automaticamente quando crei il tuo calendario. Dal 1° settembre puoi preparare quello del nuovo anno accademico." : "Stiamo controllando che il servizio sia pronto a tenere aggiornate le tue lezioni."}</p></div>
+        {refreshOpen && scheduler === true && <span className={styles.syncFrequency}><b>3 volte</b> lun–ven</span>}
       </div>}
 
       {enabled && !seasonOpen && <div className={`${styles.syncNotice} ${styles.syncInactive}`} role="status"><div className={styles.syncNoticeIcon}><CalendarDays size={22} aria-hidden="true" /></div><div><strong>Il calendario è in pausa estiva</strong><p>Dal 1° settembre potrai creare il calendario del nuovo anno. Alla prima creazione ripartiranno automaticamente gli aggiornamenti delle 08:00, 12:00 e 18:00, dal lunedì al venerdì.</p></div></div>}
@@ -241,7 +244,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
 
       <div className={styles.layout}>
         <section className={styles.card}>
-          <div className={styles.sectionHead}><span className={styles.step}>01</span><div><h2>{existingCalendar ? "Modifica il tuo calendario" : "Crea il tuo calendario"}</h2><p>Scegli il corso e l’anno. La lettura parte da oggi.</p></div></div>
+          <div className={styles.sectionHead}><span className={styles.step}>01</span><div><h2>{existingCalendar ? "Modifica il tuo calendario" : "Crea il tuo calendario"}</h2><p>Scegli il corso e l’anno. {refreshOpen ? "La lettura parte da oggi." : "Nel weekend usiamo gli orari già salvati."}</p></div></div>
           <form onSubmit={loadPreview}><fieldset className={styles.fieldset} disabled={!enabled || !seasonOpen}>
             <div className={styles.fields}>
               <label className={styles.wide}>Corso di laurea<select value={course} onChange={(event) => { setCourse(event.target.value as CourseKey); resetPreview(); }}>
@@ -249,8 +252,10 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
               </select></label>
               <label className={styles.wide}>Anno<select value={year} onChange={(event) => { setYear(Number(event.target.value)); resetPreview(); }}>{[1, 2, 3, 4, 5, 6].map((value) => <option key={value} value={value}>{value}° anno</option>)}</select></label>
             </div>
-            <button className={styles.secondary} disabled={previewBusy || busy} type="submit">{previewBusy ? <LoaderCircle className={styles.spin} size={17} /> : <RefreshCw size={17} />}{previewBusy ? "Lettura degli orari…" : "Leggi gli orari UniSR"}</button>
+            <button className={styles.secondary} disabled={previewBusy || busy} type="submit">{previewBusy ? <LoaderCircle className={styles.spin} size={17} /> : <RefreshCw size={17} />}{previewBusy ? "Caricamento degli orari…" : refreshOpen ? "Leggi gli orari UniSR" : "Usa gli orari salvati"}</button>
           </fieldset></form>
+
+          {preview?.cached && <p className={styles.hint} role="status">Stai usando gli ultimi orari salvati{preview.last_synced_at ? ` il ${timeLabel(preview.last_synced_at)}` : ""}. Puoi creare subito il link: il calendario si aggiornerà automaticamente.</p>}
 
           <form onSubmit={create} className={styles.createForm}><fieldset className={styles.fieldset} disabled={!enabled || !seasonOpen}>
             {hasLines && <label>Linea<select required value={line} disabled={!preview || previewBusy} onChange={(event) => { setLine(event.target.value); creationId.current = null; }}>
@@ -272,7 +277,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
 
         <section className={styles.card}>
           <div className={styles.sectionHead}><span className={styles.step}>02</span><div><h2>Anteprima lezioni</h2><p>{preview ? `${dateLabel(preview.start)} – ${dateLabel(preview.end)}` : "Gli orari arrivano direttamente da UniSR."}</p></div></div>
-          {!preview ? <div className={styles.empty}><CalendarDays size={36} /><h3>Le lezioni, a partire da oggi</h3><p>Leggi gli orari per vedere un’anteprima dei prossimi sette giorni. Il calendario completo arriverà fino al 15 giugno.</p></div> : !selectedLine ? <div className={styles.empty}><CalendarDays size={36} /><h3>Scegli la tua linea</h3><p>Abbiamo trovato {preview.lessons.length} lezioni. Seleziona una linea per vedere quelle da includere.</p></div> : <>
+          {!preview ? <div className={styles.empty}><CalendarDays size={36} /><h3>Le lezioni, a partire da oggi</h3><p>Leggi gli orari per vedere un’anteprima dei prossimi sette giorni. Il calendario arriverà fino al 15 giugno.</p></div> : !selectedLine ? <div className={styles.empty}><CalendarDays size={36} /><h3>Scegli la tua linea</h3><p>Abbiamo trovato {preview.lessons.length} lezioni. Seleziona una linea per vedere quelle da includere.</p></div> : <>
             <div className={styles.previewCount}><strong>{visible.length}</strong> lezioni selezionate <span>Solo lezioni · orario italiano</span></div>
             <div className={styles.lessons}>
               {!visible.length && <p className={styles.hint}>{hasLines ? "Nessuna lezione selezionata nei prossimi giorni. Controlla le attività senza linea." : "Nessuna lezione pubblicata per l’anno scelto nei prossimi giorni."}</p>}
@@ -292,19 +297,21 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
               <p className={styles.hint}>{dateLabel(creatingCalendar.semester_start)} – {dateLabel(creatingCalendar.semester_end)}</p>
               <div className={styles.subscription}><p className={styles.hint}>Link per Apple e Google Calendar</p><div className={styles.linkPlaceholder} /><div className={styles.buttonPlaceholders}><span /><span /></div></div>
             </div>
-            <CalendarCreationOverlay percentage={0} weekend={seasonOpen && !refreshOpen} />
+            <CalendarCreationOverlay percentage={0} />
           </article>}
           {calendars.map((calendar) => {
-            const creating = calendar.enabled && calendar.sync_cursor !== null && !calendar.last_synced_at;
+            const hasLink = Boolean(calendar.last_synced_at || calendar.cachedThrough);
+            const creating = calendar.enabled && calendar.sync_cursor !== null && !hasLink;
             const percentage = calendar.totalDays > 0 ? Math.min(99, Math.max(0, Math.floor((calendar.sync_cursor ?? 0) / calendar.totalDays * 100))) : 0;
             return <Fragment key={calendar.id}><article className={`${styles.card} ${creating ? styles.calendarCreating : ""}`} aria-busy={creating || undefined}>
               <div className={styles.calendarContent} inert={creating || undefined} aria-hidden={creating || undefined}>
-                <div className={styles.calendarHead}><div><h3>{calendar.name}</h3><p>{selectionLabel(calendar)}</p></div><span className={styles.badge}>{!calendar.enabled ? "Disattivato" : calendar.sync_cursor !== null ? "Importazione" : "Attivo"}</span></div>
+                <div className={styles.calendarHead}><div><h3>{calendar.name}</h3><p>{selectionLabel(calendar)}</p></div><span className={styles.badge}>{!calendar.enabled ? "Disattivato" : hasLink ? "Attivo" : calendar.sync_cursor !== null ? "Importazione" : "Attivo"}</span></div>
                 <p className={styles.hint}>{dateLabel(calendar.semester_start)} – {dateLabel(calendar.semester_end)}<br />Si elimina automaticamente da ASTRA dopo il {dateLabel(calendar.semester_end)}.</p>
-                {!creating && calendar.enabled && calendar.sync_cursor !== null && <p className={styles.hint} role="status">Aggiornamento in corso · {percentage}% · il link mantiene l’ultima versione completa.</p>}
-                {calendar.sync_error && <p className={styles.syncError}>Lettura UniSR interrotta: {calendar.sync_error} Nuovo tentativo {calendar.retry_at ? timeLabel(calendar.retry_at) : "in corso"}.</p>}
+                {!creating && !calendar.cachedThrough && calendar.enabled && calendar.sync_cursor !== null && <p className={styles.hint} role="status">Aggiornamento in corso · {percentage}% · il link mantiene gli ultimi orari salvati.</p>}
+                {calendar.sync_error && <p className={styles.syncError}>Lettura UniSR interrotta: {calendar.sync_error} {refreshOpen ? `Nuovo tentativo ${calendar.retry_at ? timeLabel(calendar.retry_at) : "in corso"}.` : "Le letture riprenderanno lunedì dalle 08:00."}</p>}
                 {calendar.last_synced_at && <p className={styles.hint}><strong>{calendar.eventCount} lezioni</strong> · aggiornato {timeLabel(calendar.last_synced_at)}</p>}
-                {calendar.last_synced_at && calendar.enabled ? <div className={styles.subscription}>
+                {!calendar.last_synced_at && calendar.cachedThrough && <p className={styles.hint}><strong>{calendar.eventCount} lezioni</strong> · aggiornamenti automatici sullo stesso link.</p>}
+                {hasLink && calendar.enabled ? <div className={styles.subscription}>
                   <label>Link per Apple e Google Calendar<input readOnly value={calendar.feedUrl} onFocus={(event) => event.currentTarget.select()} /></label>
                   {subscriptionActions(calendar.id, calendar.feedUrl)}
                   <p className={styles.guideAccess}>Per aggiungerlo, <button id={`calendar-guide-trigger-${calendar.id}`} className={styles.guideButton} type="button" aria-expanded={openGuideId === calendar.id} aria-controls={`calendar-guide-${calendar.id}`} onClick={() => {
@@ -319,7 +326,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
               </div>
               {creating && <CalendarCreationOverlay percentage={percentage} error={calendar.sync_error} retryAt={calendar.retry_at} weekend={seasonOpen && !refreshOpen} />}
             </article>
-              {calendar.last_synced_at && calendar.enabled && <SubscriptionGuide id={`calendar-guide-${calendar.id}`} open={openGuideId === calendar.id} onClose={() => {
+              {hasLink && calendar.enabled && <SubscriptionGuide id={`calendar-guide-${calendar.id}`} open={openGuideId === calendar.id} onClose={() => {
                 setOpenGuideId(null);
                 document.getElementById(`calendar-guide-trigger-${calendar.id}`)?.focus();
               }} />}

@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/admin-users-server";
-import type { CalendarRecord, CourseKey, Lesson } from "./types";
+import type { CalendarRecord, CalendarSettings, CourseKey, Lesson } from "./types";
 
 export type SharedSource = {
   course: CourseKey;
@@ -38,13 +38,30 @@ export async function ensureSharedSource(course: CourseKey, start: string, end: 
   if (error) throw error;
 }
 
-// Existing subscriptions retain their last complete data until the first shared
-// import is ready. A published empty snapshot is authoritative (cancellations).
+export const WEEKEND_CACHE_UNAVAILABLE = "Le letture UniSR sono in pausa nel weekend. Non ci sono ancora dati salvati per questo periodo. Riprova lunedì dalle 08:00, in orario italiano.";
+
+// The cursor counts fully saved days, including days with no lessons. Never
+// expose events beyond that boundary or a cache from another academic year.
+export function cachedSourceThrough(settings: Pick<CalendarSettings, "course" | "semester_start" | "semester_end">, source: SharedSource | null): string | null {
+  if (!source || source.course !== settings.course || source.semester_end !== settings.semester_end || source.semester_start > settings.semester_start) return null;
+  if (source.ready) return source.semester_end;
+  const cursor = source.sync_cursor;
+  if (cursor === null || !Number.isInteger(cursor) || cursor < 1 || cursor > 366) return null;
+  const date = Date.parse(`${source.semester_start}T12:00:00Z`) + (cursor - 1) * 86400000;
+  if (!Number.isFinite(date)) return null;
+  const through = [source.semester_end, new Date(date).toISOString().slice(0, 10)].sort()[0];
+  return through >= settings.semester_start ? through : null;
+}
+
+// Existing subscriptions keep their complete snapshot during an import. New
+// subscriptions may use the saved prefix until the full publication is ready.
+// A published empty snapshot is authoritative (cancellations).
 export function applySharedSource(record: CalendarRecord, source: SharedSource | null): CalendarRecord {
   if (!source || source.course !== record.course || source.semester_end !== record.semester_end || source.semester_start > record.semester_start) return record;
   const published = source.ready;
+  const cachedThrough = !published && !record.last_synced_at ? cachedSourceThrough(record, source) : null;
   return {
-    ...record, source_events: published ? source.events : record.source_events,
+    ...record, source_events: published ? source.events : cachedThrough ? source.events.filter((lesson) => lesson.date <= cachedThrough) : record.source_events,
     last_synced_at: published ? source.last_synced_at : record.last_synced_at,
     sync_cursor: published || record.last_synced_at ? null : source.sync_cursor ?? 0,
     sync_started_at: source.sync_started_at, next_sync_at: source.next_sync_at,

@@ -44,3 +44,17 @@ test("a shared read requests only the needed year and preview range, without own
   assert.deepEqual(await reader.readSharedSource("medicina", 4, "2026-10-11", "2026-10-17"), source);
   assert.deepEqual(call, { name: "read_university_calendar_source", args: { requested_course: "medicina", requested_year: 4, requested_start: "2026-10-11", requested_end: "2026-10-17" } });
 });
+
+test("new subscriptions use only fully saved days of a partial cache", () => {
+  const pending = { ...record, source_events: [], last_synced_at: null };
+  const partial = { ...source, sync_cursor: 3, events: [lesson, { ...lesson, date: "2026-10-14" }] };
+  assert.equal(shared.cachedSourceThrough(pending, partial), "2026-10-13");
+  const resolved = shared.applySharedSource(pending, partial);
+  assert.deepEqual(resolved.source_events, [lesson]);
+  assert.equal(resolved.last_synced_at, null);
+  assert.equal(resolved.sync_cursor, 3);
+  for (const invalid of [{ sync_cursor: 0 }, { sync_cursor: null }, { sync_cursor: -1 }, { sync_cursor: 1.5 }, { sync_cursor: 1000000000 }, { semester_start: "2026-10-12" }, { semester_start: "2026-10-01" }, { semester_end: "2028-06-15" }, { course: "imdp" }]) {
+    assert.equal(shared.cachedSourceThrough(pending, { ...partial, ...invalid }), null);
+    assert.deepEqual(shared.applySharedSource(pending, { ...partial, ...invalid }).source_events, []);
+  }
+});

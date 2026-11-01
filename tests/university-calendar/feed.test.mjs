@@ -18,7 +18,7 @@ function harness(data = record, now = "2026-10-11T12:00:00Z", source = null) {
   const route = load("@/app/api/calendars/university/[token]/route", {
     "@/lib/admin-users-server": { createAdminClient: () => client },
     "@/app/(site)/profile/calendario-universita/_lib/ical": load("ical"),
-    "@/app/(site)/profile/calendario-universita/_lib/shared": { readSharedSource: async () => source, applySharedSource: load("shared", { "server-only": {}, "@/lib/admin-users-server": {} }).applySharedSource },
+    "@/app/(site)/profile/calendario-universita/_lib/shared": { ...load("shared", { "server-only": {}, "@/lib/admin-users-server": {} }), readSharedSource: async () => source },
     "@/app/(site)/profile/calendario-universita/_lib/period": { calendarExpired: (end) => period.calendarExpired(end, new Date(now)) },
   });
   const get = (query = "", etag, suppliedToken = token) => route.GET(new NextRequest(`https://astra.test/api/calendars/university/${suppliedToken}${query}`, etag ? { headers: { "If-None-Match": etag } } : undefined), { params: Promise.resolve({ token: suppliedToken }) });
@@ -111,4 +111,32 @@ test("shared publication updates existing URLs and preserves event identities ac
   const empty = await harness(record, "2026-10-11T16:00:00Z", { ...source, events: [] }).get();
   assert.equal(empty.status, 200);
   assert.ok(!(await empty.text()).includes("BEGIN:VEVENT"));
+});
+
+test("partial cached links work throughout the weekend and Monday with stable IDs and no invented sync date", async () => {
+  const pending = { ...record, source_events: [], last_synced_at: null, created_at: "2026-10-10T12:00:00Z" };
+  const source = { course: record.course, semester_start: "2026-10-09", semester_end: record.semester_end, ready: false, events: [lesson, { ...lesson, date: "2026-10-14" }], last_synced_at: null, sync_started_at: "2026-10-09T16:00:00Z", sync_cursor: 5 };
+  const h = harness(pending, "2026-10-11T12:00:00Z", source);
+  const partial = await h.get();
+  assert.equal(partial.status, 200);
+  const before = await partial.text();
+  assert.equal((before.match(/BEGIN:VEVENT/g) ?? []).length, 1);
+  assert.match(before, /LOCATION:CANOVA · CA101/);
+  assert.match(before, /DTSTAMP:20261009T160000Z/);
+  assert.doesNotMatch(before, /DTSTART;TZID=Europe\/Rome:20261014/);
+  assert.equal((await h.get("", partial.headers.get("etag"))).status, 304);
+  assert.equal((await harness(pending, "2026-10-12T06:00:00Z", source).get()).status, 200);
+  const complete = await harness(pending, "2026-10-12T06:10:00Z", { ...source, ready: true, last_synced_at: "2026-10-12T06:10:00Z", sync_cursor: null }).get();
+  const after = await complete.text();
+  assert.equal(complete.status, 200);
+  assert.equal((after.match(/BEGIN:VEVENT/g) ?? []).length, 2);
+  assert.equal(before.match(/UID:([^\r]+)/)[1], after.match(/UID:([^\r]+)/)[1]);
+  assert.notEqual(complete.headers.get("etag"), partial.headers.get("etag"));
+});
+
+test("a partial cache never removes lessons from an already complete subscription", async () => {
+  const source = { course: record.course, semester_start: record.semester_start, semester_end: record.semester_end, ready: false, events: [], last_synced_at: null, sync_started_at: "2026-10-09T16:00:00Z", sync_cursor: 3 };
+  const response = await harness(record, "2026-10-11T12:00:00Z", source).get();
+  assert.equal(response.status, 200);
+  assert.equal(((await response.text()).match(/BEGIN:VEVENT/g) ?? []).length, 2);
 });
