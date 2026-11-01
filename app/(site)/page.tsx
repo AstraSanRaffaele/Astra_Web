@@ -169,9 +169,8 @@ export default function Home() {
         .hero-stat { display: flex; flex-direction: column; gap: .25rem; }
         .hero-stat-value { font-size: clamp(2.8rem, 6.5svh, 3.75rem); font-weight: 700; color: var(--ink); line-height: 1; letter-spacing: -.04em; }
         .hero-stat-label { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .16em; color: var(--mist); }
-        .hero-art { --hero-image-fade: 18%; position: absolute; z-index: 0; top: calc(70px + 1.25rem); right: 0; bottom: 3.25rem; width: 72%; margin: 0; overflow: hidden; pointer-events: none; animation: fadeIn 1.1s .3s ease both; }
-        /* Keep the fade on the visible image, including when it is narrower than the figure. */
-        .hero-art img { display: block; width: auto; max-width: 100%; height: 116%; margin-left: auto; object-fit: contain; object-position: right top; -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--hero-image-fade)); mask-image: linear-gradient(90deg, transparent, #000 var(--hero-image-fade)); }
+        .hero-art { position: absolute; z-index: 0; top: calc(70px + 1.25rem); right: 0; bottom: 3.25rem; width: 72%; margin: 0; overflow: hidden; pointer-events: none; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%); mask-image: linear-gradient(90deg, transparent, #000 18%); animation: fadeIn 1.1s .3s ease both; }
+        .hero-art img { display: block; width: 100%; height: 116%; object-fit: contain; object-position: right top; }
         .hero-marquee { position: relative; z-index: 1; flex-shrink: 0; display: flex; align-items: center; min-height: 3.25rem; overflow: hidden; border-top: 1px solid rgba(8,16,42,.07); border-bottom: 1px solid rgba(8,16,42,.07); padding: 1rem 0; background: var(--ink); }
         @media (min-width: 901px) {
           .hero-support { margin-top: clamp(1.25rem, 3svh, 2rem); }
@@ -193,7 +192,7 @@ export default function Home() {
           .home-intro.has-freshers-banner .hero-stats { margin-top: .85rem; }
           .home-intro.has-freshers-banner .hero-stat-value { font-size: clamp(2.3rem, 5svh, 3.3rem); }
         }
-        @media (max-width: 1100px) and (min-width: 901px) { .hero-sub { max-width: 420px; } .hero-art { --hero-image-fade: 32%; } .hero-ctas { gap: .65rem; } .hero-ctas a { padding-left: 1.25rem; padding-right: 1.25rem; } .home-intro .freshers-home-banner-inner { display: flex; flex-direction: column; align-items: flex-start; gap: .65rem; } .home-intro .freshers-home-banner-btns { flex-direction: row; gap: .65rem; } }
+        @media (max-width: 1100px) and (min-width: 901px) { .hero-sub { max-width: 420px; } .hero-art { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32%); mask-image: linear-gradient(90deg, transparent, #000 32%); } .hero-ctas { gap: .65rem; } .hero-ctas a { padding-left: 1.25rem; padding-right: 1.25rem; } .home-intro .freshers-home-banner-inner { display: flex; flex-direction: column; align-items: flex-start; gap: .65rem; } .home-intro .freshers-home-banner-btns { flex-direction: row; gap: .65rem; } }
         @media (max-width: 900px) {
           .hero-layout { grid-template-columns: 1fr; }
           .hero-heading { grid-row: 1; }
@@ -576,10 +575,10 @@ export default function Home() {
 
           <figure className="hero-art">
             <Image
-              src="/san-raffaele-hero-refined.webp"
+              src="/san-raffaele-hero-clean.webp"
               alt="Il San Raffaele, con studenti in movimento davanti all’ingresso"
               width={1221}
-              height={1289}
+              height={1288}
               sizes="(max-width: 900px) 100vw, 72vw"
               loading="eager"
               fetchPriority="high"
