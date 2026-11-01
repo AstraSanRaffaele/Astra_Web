@@ -575,10 +575,10 @@ export default function Home() {
 
           <figure className="hero-art">
             <Image
-              src="/san-raffaele-hero-clean.webp"
+              src="/san-raffaele-hero-refined.webp"
               alt="Il San Raffaele, con studenti in movimento davanti all’ingresso"
               width={1221}
-              height={1288}
+              height={1289}
               sizes="(max-width: 900px) 100vw, 72vw"
               loading="eager"
               fetchPriority="high"
