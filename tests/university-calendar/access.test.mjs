@@ -191,7 +191,8 @@ test("preview includes lines from all years while lessons remain limited to the 
   assert.equal(body.start, "2026-10-11");
   assert.equal(body.end, "2026-10-17");
   assert.equal(h.sourceReads.length, 1);
-  assert.ok(h.sourceReads.every((args) => args[1] === 0));
+  assert.ok(h.sourceReads.every((args) => args[1] === 4));
+  assert.equal(h.sourceReads[0][3], defaultPeriod.end);
   assert.equal(h.sourceReads[0][2], defaultPeriod.start);
   assert.ok(body.lessons.every((lesson) => lesson.room === "BO402" && lesson.building === "BORROMINI"));
   assert.ok(body.lessons.every((lesson) => lesson.year === 4));
@@ -232,7 +233,7 @@ test("preview does not read past June 15 and accepts requests without a date", a
   const h = harness({ period });
   const response = await h.api.previewCalendar(request({ course: "medicina", year: 4 }));
   assert.equal(response.status, 200);
-  assert.deepEqual(h.sourceReads, [["medicina", 0, "2027-06-14", "2027-06-15"]]);
+  assert.deepEqual(h.sourceReads, [["medicina", 4, "2027-06-14", "2027-06-15"]]);
   assert.deepEqual((await response.json()).period, period);
 });
 
@@ -282,10 +283,15 @@ test("simultaneous cold previews wait for the shared importer instead of inventi
   assert.equal(h.sourceReads.length, 2);
 });
 
-test("a warmed seven-day prefix serves previews without restarting the semester import", async () => {
+test("a weekly prefix waits for the semester elective catalogue in Medicine, while IMDP needs only the week", async () => {
   const h = harness({ cacheReady: false, cacheCursor: 7 });
-  assert.equal((await h.api.previewCalendar(request({ course: "medicina", year: 4 }))).status, 200);
-  assert.deepEqual(h.syncs, []);
+  const response = await h.api.previewCalendar(request({ course: "medicina", year: 4 }));
+  assert.equal(response.status, 202);
+  assert.deepEqual(await response.json(), { pending: true });
+  assert.deepEqual(h.syncs, ["medicina"]);
+  const imdp = harness({ cacheReady: false, cacheCursor: 7 });
+  assert.equal((await imdp.api.previewCalendar(request({ course: "imdp", year: 4 }))).status, 200);
+  assert.deepEqual(imdp.syncs, []);
 });
 
 test("the first cold preview starts one course worker and uses its saved snapshot", async () => {
@@ -403,4 +409,54 @@ test("normal edits cannot race a revocation or forge its state", async () => {
   assert.equal((await h.api.mutateCalendar(request({ action: "toggle", id: ownId, enabled: true, revoked_at: "forged", revocation_reason: "forged" }))).status, 200);
   assert.deepEqual(h.writes[0].filters, [["id", ownId], ["owner_id", "user-a"], ["revoked_at", null]]);
   assert.deepEqual(h.writes[0].patch, { enabled: true });
+});
+
+
+for (const course of ["medicina", "medicina-2", "medicina-3"]) {
+  test(`${course}: semester electives are selectable before creating any calendar while lessons stay weekly`, async () => {
+    const lesson = { date: "2026-10-12", start: "09:00", end: "10:00", year: 4, line: "BIANCA", title: "Anatomia", teacher: "Docente", room: "CA101", building: "CANOVA" };
+    const elective = { ...lesson, date: "2026-11-23", line: null, title: "Corso elettivo futuro" };
+    const h = harness({ sourceLessons: [lesson, elective, { ...elective, date: "2027-05-12" }, { ...elective, date: "2027-06-15", title: "Elettivo di giugno" }, { ...elective, date: "2027-06-16", title: "Fuori periodo" }, { ...elective, date: "2026-10-10", title: "Già passato" }, { ...elective, year: 6, title: "Altro anno" }] });
+    h.rows.length = 0;
+    const response = await h.api.previewCalendar(request({ course, year: 4 }));
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.end, "2026-10-17");
+    assert.deepEqual(body.lessons, [lesson]);
+    assert.deepEqual(body.subjects.map(subject => subject.title), ["Corso elettivo futuro", "Elettivo di giugno"]);
+    assert.deepEqual(h.sourceReads, [[course, 4, defaultPeriod.start, defaultPeriod.end]]);
+    assert.deepEqual(h.syncs, []);
+    assert.deepEqual(h.rpcCalls, []);
+    assert.equal(h.rows.length, 0);
+    const included = body.subjects.map(subject => subject.key);
+    assert.equal((await h.api.mutateCalendar(request({ action: "create", id: ownId, settings: { ...settings, course, included_subjects: included } }))).status, 200);
+    assert.deepEqual(h.rpcCalls[0].args.settings.included_subjects, included);
+    const calendar = (await (await h.api.listCalendars(request())).json()).calendars[0];
+    assert.equal(calendar.eventCount, 4);
+    assert.deepEqual(calendar.included_subjects, included);
+  });
+}
+
+test("a complete published elective catalogue stays available during the next shared import", async () => {
+  const elective = { date: "2027-03-12", year: 4, line: null, title: "Elettivo del semestre", teacher: "Docente", room: "CA101", building: "CANOVA" };
+  const h = harness({ sourceLessons: [elective], cacheReady: true, cacheCursor: 7, cacheError: "Next import unavailable" });
+  const response = await h.api.previewCalendar(request({ course: "medicina", year: 4 }));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.lessons, []);
+  assert.equal(body.subjects[0].title, elective.title);
+  assert.deepEqual(h.syncs, []);
+});
+
+test("weekend elective choices include saved later weeks without reading beyond the saved cursor", async () => {
+  const elective = { date: "2026-10-25", year: 4, line: null, title: "Elettivo già salvato", teacher: "Docente", room: "CA101", building: "CANOVA" };
+  const h = harness({ refreshOpen: false, cacheReady: false, cacheCursor: 20, sourceLessons: [elective, { ...elective, date: "2026-11-12", title: "Non ancora letto" }] });
+  const response = await h.api.previewCalendar(request({ course: "medicina", year: 4 }));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.lessons, []);
+  assert.deepEqual(body.subjects.map(subject => subject.title), [elective.title]);
+  assert.equal(body.end, "2026-10-17");
+  assert.equal(body.cachedThrough, "2026-10-30");
+  assert.deepEqual([h.ensures, h.syncs, h.rpcCalls], [[], [], []]);
 });

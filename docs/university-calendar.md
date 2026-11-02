@@ -25,15 +25,15 @@ salvato nel profilo. Lo stesso controllo si applica alle API.
 2. Leggi il portale UniSR, scegli una delle linee rilevate per il corso in tutti gli anni e le attività
    senza linea da includere. IMDP non prevede linee: tutte le lezioni dell’anno scelto
    sono incluse automaticamente, senza selezionarle singolarmente.
-   L’anteprima mostra i prossimi sette giorni.
+   L’anteprima mostra i prossimi sette giorni; la selezione degli elettivi e delle
+   attività senza linea comprende già tutte le settimane pubblicate fino al 15 giugno.
 3. Crea il calendario: il periodo va automaticamente da oggi al 15 giugno successivo
    (incluso), senza chiedere date. Se il 15 giugno è già passato, usa l’anno seguente.
 4. Il link è subito disponibile se esiste una copia salvata, anche parziale.
    Le lezioni arrivano automaticamente sullo stesso link al completamento della lettura.
    La pagina usa un avviso generico sugli ultimi orari salvati, senza distinguere
    copie complete e parziali.
-   Per Medicina in italiano, controlla anche le
-   attività senza linea trovate nelle altre settimane e salva la selezione.
+   Gli elettivi possono essere modificati anche in seguito dalla scheda del calendario.
 5. Per Apple, copia il link in **Calendario → File → Nuovo abbonamento calendario**
    su Mac, oppure usa il pulsante **Calendario Apple**.
 6. Per Google, da un computer premi **Google Calendar**: il pulsante copia lo stesso
@@ -192,8 +192,10 @@ con POST; includono `lezioni=ok` ed escludono `esami`. I due codici ufficiali pe
 corso vengono consultati perché UniSR suddivide le coorti in record con nomi uguali.
 La risposta è decodificata come Windows-1252, salvo un charset esplicito.
 Data, corso, struttura e completezza della risposta sono verificati prima dell’importazione.
-L’anteprima interroga `ANNO_CORSO=0` (tutti gli anni) per proporre tutte le linee
-pubblicate del corso, mentre mostra solo le lezioni dell’anno scelto nei prossimi sette giorni.
+L’importatore interroga `ANNO_CORSO=0` (tutti gli anni) per proporre tutte le linee
+pubblicate del corso. L’anteprima legge dalla cache soltanto l’anno scelto:
+mostra le lezioni dei prossimi sette giorni e propone subito gli elettivi di tutto
+il periodo fino al 15 giugno, senza consultare UniSR nuovamente per ciascun utente.
 Per IMDP si consultano `10124` e `10321`: nelle pagine ufficiali verificate il
 26, 28 e 30 ottobre 2026, la prima voce contiene gli anni 3–6, la seconda gli anni
 1–2. Nessuna delle lezioni verificate ha una linea. Il filtro personale IMDP usa
@@ -208,8 +210,13 @@ le tre di Medicina in italiano e una per IMDP, condivisa da tutti i suoi student
 `university_calendar_sources` conserva periodo, avanzamento, errori e lease;
 `university_calendar_source_years` contiene sei copie pubblicate, una per anno.
 I record personali conservano filtri e token, senza duplicare le lezioni. API e feed
-leggono solo l’anno necessario; l’anteprima legge dalla cache i prossimi sette giorni.
-Una prima anteprima può scaldare la cache per quel corso. Le anteprime simultanee
+leggono solo l’anno necessario. Per Medicina l’anteprima legge l’intero periodo
+per costruire la selezione degli elettivi, restituendo al browser solo la lista
+delle attività e le lezioni della settimana. I metadati della cache forniscono
+comunque le linee di tutti gli anni. Per IMDP basta la settimana, senza selezione elettivi.
+Una prima anteprima può scaldare la cache per quel corso. Nei giorni feriali la
+selezione Medicina attende la copertura dell’intero periodo, così non conferma
+una lista limitata alla prima settimana. Le anteprime simultanee
 condividono la lease; una risposta 202 indica di attendere il blocco già in corso.
 
 La prima creazione prepara la sorgente e riattiva il servizio. Poi gli aggiornamenti
@@ -219,7 +226,8 @@ UniSR, nemmeno per una prima anteprima o per completare un’importazione.
 I feed e le anteprime già presenti nella cache continuano a funzionare.
 Nel weekend l’avviso della pausa rimane sempre visibile, ma il pulsante **Usa gli orari salvati**
 permette di creare il link dalla copia disponibile, completa o parziale, senza avviare worker.
-L’anteprima termina all’ultimo giorno interamente salvato dal cursore. La copertura
+Nel weekend le lezioni e gli elettivi usano tutti i giorni interamente salvati dal
+cursore, anche oltre la settimana mostrata, senza avviare nuove letture. La copertura
 parziale resta un dettaglio interno: la pagina mostra lo stato «Attivo» e spiega solo
 che il calendario usa gli ultimi orari salvati e si aggiorna automaticamente.
 Sono validi anche giorni salvati senza lezioni. Se non ci sono dati salvati che coprano
@@ -283,6 +291,9 @@ Pagina e API sono riservate all’account verificato `scopeledoardo@gmail.com`,
 non al generico ruolo admin. Non usano il campo `locked`.
 I contatori si attivano con il SQL fornito in chat, senza migration nella repository.
 Il pannello filtra oggi o ultimi 7 giorni, cerca il proprietario e mostra 25 link per pagina.
+L’aggiornamento SQL dell’ordinamento, fornito in chat, dispone tutti i link per numero
+totale di accessi decrescente nel periodo selezionato, prima della paginazione.
+Il picco giornaliero viene usato come criterio secondario a parità di accessi.
 
 Ogni GET/HEAD per un link riconosciuto registra un contatore giornaliero e l’ultima
 consultazione, separando risposte con file, 304 invariati, HEAD ed errori.

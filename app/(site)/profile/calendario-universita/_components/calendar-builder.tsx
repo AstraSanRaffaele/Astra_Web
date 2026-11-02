@@ -212,7 +212,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
   }
 
   const visible = preview && selectedLine ? selectLessons(preview.lessons, { name: "", course, year, line: selectedLine, semester_start: preview.start, semester_end: preview.end, included_subjects: included }) : [];
-  const colors = new Map([...subjectColors([...(preview?.lessons.map((lesson) => lesson.title) ?? []), ...calendars.flatMap((calendar) => calendar.subjects.map((subject) => subject.title))])].map(([key, color]) => [key, color.hex]));
+  const colors = new Map([...subjectColors([...(preview?.lessons.map((lesson) => lesson.title) ?? []), ...(preview?.subjects.map((subject) => subject.title) ?? []), ...calendars.flatMap((calendar) => calendar.subjects.map((subject) => subject.title))])].map(([key, color]) => [key, color.hex]));
   const copyFeedback = (calendarId: string, target: CopyNotice["target"]) => copyNotice?.calendarId === calendarId && copyNotice.target === target ? <span className={`${styles.copyFeedback} ${copyNotice.failed ? styles.copyFailed : ""}`} role={copyNotice.failed ? "alert" : "status"}>{!copyNotice.failed && <Check size={14} aria-hidden="true" />}{copyNotice.message}</span> : null;
   const subscriptionActions = (id: string, url: string) => <div className={`${styles.actions} ${styles.subscriptionActions}`}>
     <a className={styles.primary} href={url.replace(/^https?:/, "webcal:")}><CalendarDays size={16} /> Calendario Apple</a>
@@ -254,7 +254,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
               </select></label>
               <label className={styles.wide}>Anno<select value={year} onChange={(event) => { setYear(Number(event.target.value)); resetPreview(); }}>{[1, 2, 3, 4, 5, 6].map((value) => <option key={value} value={value}>{value}° anno</option>)}</select></label>
             </div>
-            <button className={styles.secondary} disabled={previewBusy || busy} type="submit">{previewBusy ? <LoaderCircle className={styles.spin} size={17} /> : <RefreshCw size={17} />}{previewBusy ? "Caricamento degli orari…" : refreshOpen ? "Leggi gli orari UniSR" : "Usa gli orari salvati"}</button>
+            <button className={styles.secondary} disabled={previewBusy || busy} type="submit">{previewBusy ? <LoaderCircle className={styles.spin} size={17} /> : <RefreshCw size={17} />}{previewBusy ? hasLines ? "Caricamento lezioni ed elettivi…" : "Caricamento degli orari…" : refreshOpen ? "Leggi gli orari UniSR" : "Usa gli orari salvati"}</button>
           </fieldset></form>
 
           {preview?.cached && <p className={styles.hint} role="status">Stai usando gli ultimi orari salvati{preview.last_synced_at ? ` il ${timeLabel(preview.last_synced_at)}` : ""}. Puoi creare subito il link: il calendario si aggiornerà automaticamente.</p>}
@@ -271,7 +271,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
               <label className={styles.wide}>Nome calendario <span className={styles.optional}>(facoltativo)</span><input maxLength={100} placeholder={hasLines ? "Es. Le mie lezioni di Medicina" : "Es. Le mie lezioni IMDP"} value={name} onChange={(event) => { setName(event.target.value); creationId.current = null; }} /></label>
             </div>
             <p className={styles.hint}>{seasonOpen ? <><strong>Periodo automatico:</strong> {dateLabel(period.start)} – {dateLabel(period.end)}.</> : "Il periodo sarà calcolato quando creerai il nuovo calendario dal 1° settembre."} Il calendario include anche l’aula e l’edificio di ogni lezione.</p>
-            {hasLines && preview && preview.subjects.length > 0 && <div className={styles.unassigned}><h3>Attività senza linea</h3><p className={styles.hint}>Scegli quali includere. Dopo l’importazione potrai vedere anche quelle delle altre settimane.</p><Subjects subjects={preview.subjects} selected={included} colors={colors} onChange={(keys) => { setIncluded(keys); creationId.current = null; }} /></div>}
+            {hasLines && preview && preview.subjects.length > 0 && <div className={styles.unassigned}><h3>Corsi elettivi e attività senza linea</h3><p className={styles.hint}>Scegli quali includere tra quelli pubblicati per il tuo anno fino al 15 giugno, anche nelle settimane successive.</p><Subjects subjects={preview.subjects} selected={included} colors={colors} onChange={(keys) => { setIncluded(keys); creationId.current = null; }} /></div>}
             <button className={styles.primary} disabled={!enabled || !seasonOpen || !preview || !selectedLine || loading || busy || previewBusy} type="submit">{busy ? <LoaderCircle className={styles.spin} size={18} /> : existingCalendar ? <RefreshCw size={18} /> : <Plus size={18} />} {!enabled ? "Disponibile prossimamente" : !seasonOpen ? "Nuovi calendari dal 1° settembre" : existingCalendar ? "Aggiorna il mio calendario" : "Crea calendario del semestre"}</button>
             <p className={styles.hint}>Un solo calendario personale. Puoi modificare {hasLines ? "corso, anno e linea" : "corso e anno"} mantenendo lo stesso link. {seasonOpen ? <>Dopo il {dateLabel(period.end)} verrà eliminato automaticamente da ASTRA.</> : "Ogni anno viene eliminato automaticamente dopo il 15 giugno."}</p>
           </fieldset></form>
