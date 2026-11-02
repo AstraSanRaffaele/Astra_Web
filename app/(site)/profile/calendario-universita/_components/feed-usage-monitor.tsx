@@ -56,7 +56,6 @@ export default function FeedUsageMonitor() {
   return <main className={styles.page}><div className={styles.shell}>
     <Link href="/admin" className={styles.back}><ArrowLeft size={16} /> Dashboard admin</Link>
     <header className={styles.hero}><span>ASTRA · Monitoraggio</span><h1>Accessi al calendario</h1><p>Richieste ricevute dai link personali di abbonamento.</p></header>
-    <div className={styles.notice}><p>Oltre 9 richieste al giorno il link viene segnalato; da 200 il traffico è elevato. Le richieste non corrispondono al numero di persone o dispositivi. Anche nella vista settimanale le soglie si applicano al picco giornaliero.</p><p>Lo svuotamento e l’avviso al creatore partono solo quando premi <b>Svuota e revoca</b> e confermi sul link scelto. I dati iniziano dall’attivazione del monitoraggio.</p></div>
     <form onSubmit={search} className={styles.filters}>
       <label>Periodo<select value={filters.days} onChange={event => refresh({ ...filters, days: Number(event.target.value) as 1 | 7, page: 1 })}><option value={1}>Oggi · orario italiano</option><option value={7}>Ultimi 7 giorni</option></select></label>
       <label className={styles.search}>Cerca utente o calendario<input value={draft} maxLength={100} onChange={event => setDraft(event.target.value)} placeholder="Nome, email o calendario" /></label>
