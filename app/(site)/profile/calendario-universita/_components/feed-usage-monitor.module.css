@@ -43,6 +43,7 @@
 .badge { display: inline-block; margin-top: 7px; padding: 2px 7px; border-radius: 6px; background: #edf1fd; color: #375285; font-size: 10px; }
 .trafficAttention { background: #fff5db; color: #805d18; }
 .trafficHigh { background: #ffe9e9; color: #9a3535; }
+.regenerated { background: #edf7f1; color: #215940; }
 .page .revoke { color: #8c3030; background: #fff1f1; border-color: #ebc7c7; white-space: nowrap; }
 .clients { display: flex; flex-direction: column; gap: 4px; }
 .clients > span { display: flex; justify-content: space-between; gap: 10px; }

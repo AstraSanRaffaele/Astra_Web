@@ -325,8 +325,12 @@ Oltre 9 richieste al giorno appare un avviso; da 200 un avviso di traffico eleva
 Nel riepilogo settimanale si considera il massimo giornaliero, non il totale dei 7 giorni.
 Nessuna soglia revoca automaticamente il link o avvisa il creatore.
 La scheda **Da gestire** esclude i link revocati; la scheda **Revocati** li raccoglie
-fino alla scadenza del calendario, anche dopo la rigenerazione e senza accessi nel
-periodo scelto. In quest’ultimo caso i contatori valgono zero e non si inventa
+per sette giorni esatti dalla revoca, anche dopo la rigenerazione e senza accessi
+nel periodo scelto. Mostra se l’utente ha effettivamente generato un nuovo token,
+confrontando il riferimento revocato con il token corrente, e la data della revoca.
+Dopo sette giorni la voce scompare dall’elenco, ma il blocco del vecchio URL resta
+valido fino alla scadenza del calendario: non si cancellano i riferimenti necessari
+a restituire un feed vuoto ai vecchi abbonamenti. In quest’ultimo caso i contatori valgono zero e non si inventa
 una data di ultima consultazione. La funzione SQL
 a quattro parametri filtra lo stato prima della paginazione; la precedente versione
 a tre parametri resta disponibile per compatibilità durante la pubblicazione.
@@ -334,6 +338,8 @@ a tre parametri resta disponibile per compatibilità durante la pubblicazione.
 Solo **Svuota e revoca** oppure **Revoca selezionati**, con conferma esplicita,
 eseguono la revoca. Le caselle consentono di selezionare fino a 25 utenti della
 pagina corrente; seleziona tutti comprende solo i link correnti non ancora revocati.
+**Seleziona con 20+ accessi** seleziona i link revocabili di quella pagina con almeno
+20 richieste nel periodo scelto, senza eseguire alcuna revoca automatica.
 Cambiare pagina, ricerca, periodo o scheda azzera la selezione. L’API convalida
 l’intera lista prima di modificarla, elimina i duplicati e riusa la funzione SQL
 esistente con l’identità verificata dell’operatore. Esegue al massimo cinque revoche

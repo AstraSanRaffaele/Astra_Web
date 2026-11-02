@@ -28,6 +28,8 @@ export type CalendarUsageRow = {
   currentLink: boolean;
   enabled: boolean;
   revoked: boolean;
+  revokedAt?: string | null;
+  newLinkGenerated?: boolean;
   peakDailyRequests: number;
   requests: number;
   downloads: number;
