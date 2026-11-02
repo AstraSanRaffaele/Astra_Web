@@ -209,6 +209,23 @@ ufficiali del corso vengono consultate con `ANNO_CORSO=0`: una lettura comprende
 le tre di Medicina in italiano e una per IMDP, condivisa da tutti i suoi studenti.
 `university_calendar_sources` conserva periodo, avanzamento, errori e lease;
 `university_calendar_source_years` contiene sei copie pubblicate, una per anno.
+Le tre voci italiane sono coorti dello stesso percorso: per esempio le lezioni di
+secondo anno, linea rossa, sono nella terza voce, mentre gli elettivi comuni sono
+nella prima. `readSharedSource` unisce la sorgente richiesta alle copie pubblicate
+compatibili delle altre due, deduplicando gli eventi prima del filtro anno/linea.
+Questo vale per anteprima, scheda personale e feed ICS, senza chiamate UniSR per
+singolo utente e senza cambiare token o scelte già salvate. Le coorti supplementari
+non ancora pubblicate o di un altro periodo vengono escluse; gli errori di lettura
+non producono un feed incompleto. IMDP resta separato. Le importazioni condivise
+e la loro pianificazione non cambiano.
+
+Il modulo iniziale carica corso, anno, linea, nome ed elettivi già salvati; rileggere
+gli orari conserva le caselle selezionate. Anche un salvataggio dalla scheda degli
+elettivi aggiorna la selezione del modulo, evitando che un successivo aggiornamento
+la cancelli. L’opzione solo elettivi spiega che esclude le lezioni di linea. Il
+conteggio per linea sull’intero periodo segnala e blocca combinazioni prive di
+lezioni quando la lettura è completa; le copie salvate nel weekend restano utilizzabili.
+
 I record personali conservano filtri e token, senza duplicare le lezioni. API e feed
 leggono solo l’anno necessario. Per Medicina l’anteprima legge l’intero periodo
 per costruire la selezione degli elettivi, restituendo al browser solo la lista
@@ -307,7 +324,23 @@ I conteggi vengono conservati per 14 giorni. Non esiste uno storico retroattivo.
 Oltre 9 richieste al giorno appare un avviso; da 200 un avviso di traffico elevato.
 Nel riepilogo settimanale si considera il massimo giornaliero, non il totale dei 7 giorni.
 Nessuna soglia revoca automaticamente il link o avvisa il creatore.
-Solo il pulsante **Svuota e revoca**, con conferma, esegue la revoca manuale.
+La scheda **Da gestire** esclude i link revocati; la scheda **Revocati** li raccoglie
+fino alla scadenza del calendario, anche dopo la rigenerazione e senza accessi nel
+periodo scelto. In quest’ultimo caso i contatori valgono zero e non si inventa
+una data di ultima consultazione. La funzione SQL
+a quattro parametri filtra lo stato prima della paginazione; la precedente versione
+a tre parametri resta disponibile per compatibilità durante la pubblicazione.
+
+Solo **Svuota e revoca** oppure **Revoca selezionati**, con conferma esplicita,
+eseguono la revoca. Le caselle consentono di selezionare fino a 25 utenti della
+pagina corrente; seleziona tutti comprende solo i link correnti non ancora revocati.
+Cambiare pagina, ricerca, periodo o scheda azzera la selezione. L’API convalida
+l’intera lista prima di modificarla, elimina i duplicati e riusa la funzione SQL
+esistente con l’identità verificata dell’operatore. Esegue al massimo cinque revoche
+contemporanee, con timeout breve e un risultato per link: un errore non nasconde
+le revoche riuscite. I link falliti rimangono selezionati se sono ancora revocabili.
+I link riusciti passano alla scheda Revocati. Non servono nuove tabelle o funzioni
+SQL di revoca; il SQL della scheda viene fornito in chat, senza migration.
 La funzione SQL verifica anche l’identità dell’operatore e blocca richieste obsolete.
 
 Il link revocato restituisce un ICS con tutte le lezioni rimosse e tre avvisi

@@ -53,16 +53,26 @@ test("missing SQL activation, background failures and non-read methods never bre
 const ownerId = "33333333-3333-4333-8333-333333333333";
 const calendarId = "22222222-2222-4222-8222-222222222222";
 const feedHash = "a".repeat(64);
-function reportApi({ owner = true, error = null, revoked = true } = {}) {
+function reportApi({ owner = true, error = null, revoked = true, outcomes = {}, delay = 0 } = {}) {
   const calls = [];
+  const concurrency = { active: 0, maximum: 0 };
   const report = { since: "2026-11-02", days: 1, page: 1, pageSize: 25, totalLinks: 0, totalRequests: 0, attentionLinks: 0, highTrafficLinks: 0, rows: [] };
   const route = load("@/app/api/admin/university-calendar-usage/route", {
     "./feed-usage-owner": { getCalendarUsageOwner: async () => owner ? { userId: ownerId } : null },
     "@/lib/admin-users-server": {
       createAdminClient: () => ({ rpc: (name, args) => {
         calls.push({ name, args });
-        const result = { data: error ? null : name === "revoke_university_calendar_feed" ? revoked : report, error };
-        return { abortSignal: async () => result, then: resolve => resolve(result) };
+        const result = outcomes[args.requested_feed_hash] ?? { data: error ? null : name === "revoke_university_calendar_feed" ? revoked : report, error };
+        return { abortSignal: async signal => {
+          assert.ok(signal instanceof AbortSignal);
+          concurrency.active++;
+          concurrency.maximum = Math.max(concurrency.maximum, concurrency.active);
+          try {
+            if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+            if (result.throws) throw new Error("Network failure");
+            return result;
+          } finally { concurrency.active--; }
+        } };
       } }),
     },
   });
@@ -71,7 +81,7 @@ function reportApi({ owner = true, error = null, revoked = true } = {}) {
     post: (body, options = {}) => route.POST(new NextRequest("https://astra.test/api/admin/university-calendar-usage", {
       method: "POST", headers: { "Content-Type": "application/json", Origin: "https://astra.test", ...options.headers },
       body: options.raw ?? JSON.stringify(body),
-    })), calls, report,
+    })), calls, report, concurrency,
   };
 }
 
@@ -88,10 +98,10 @@ test("report filters are bounded, parameterized and never expose the feed URL", 
   const h = reportApi();
   const response = await h.get("?days=7&page=2&q=%20Edoardo%20");
   assert.equal(response.status, 200);
-  assert.deepEqual(h.calls, [{ name: "read_university_calendar_feed_usage", args: { requested_days: 7, requested_page: 2, requested_query: "Edoardo" } }]);
+  assert.deepEqual(h.calls, [{ name: "read_university_calendar_feed_usage", args: { requested_days: 7, requested_page: 2, requested_query: "Edoardo", requested_state: "active" } }]);
   assert.deepEqual(await response.json(), h.report);
   assert.equal(response.headers.get("cache-control"), "private, no-store");
-  for (const query of ["?days=30", "?days=0", "?page=0", "?page=1.5", "?page=100001", `?q=${"x".repeat(101)}`]) {
+  for (const query of ["?state=invalid", "?state=", "?days=30", "?days=0", "?page=0", "?page=1.5", "?page=100001", `?q=${"x".repeat(101)}`]) {
     const invalid = reportApi();
     assert.equal((await invalid.get(query)).status, 400);
     assert.deepEqual(invalid.calls, []);
@@ -167,4 +177,67 @@ test("revoked lookups use a hash and tolerate only a missing activation table", 
     else assert.equal(await revoked.readRevokedCalendarFeed(token), null);
     assert.deepEqual(calls[1], ["feed_hash", createHash("sha256").update(token).digest("hex")]);
   }
+});
+
+
+test("revoked-tab requests are filtered on the server before pagination", async () => {
+  const h = reportApi();
+  assert.equal((await h.get("?state=revoked&days=7&page=2")).status, 200);
+  assert.deepEqual(h.calls, [{ name: "read_university_calendar_feed_usage", args: { requested_days: 7, requested_page: 2, requested_query: "", requested_state: "revoked" } }]);
+});
+
+test("bulk revocation is owner-only and validates every target before any mutation", async () => {
+  const unauthorized = reportApi({ owner: false });
+  assert.equal((await unauthorized.post({ calendars: [{ calendarId, feedHash }] })).status, 403);
+  assert.deepEqual(unauthorized.calls, []);
+  for (const calendars of [[], null, {}, [null], [{ calendarId: "invalid", feedHash }], [{ calendarId, feedHash }, { calendarId, feedHash: "invalid" }], Array.from({ length: 26 }, () => ({ calendarId, feedHash }))]) {
+    const h = reportApi();
+    assert.equal((await h.post({ calendars })).status, 400);
+    assert.deepEqual(h.calls, []);
+  }
+  const h = reportApi();
+  assert.equal((await h.post({ calendars: [{ calendarId, feedHash }] }, { headers: { Origin: "https://other.test" } })).status, 403);
+  assert.deepEqual(h.calls, []);
+});
+
+test("bulk revocation deduplicates exact targets and never trusts a supplied actor", async () => {
+  const h = reportApi();
+  const target = { calendarId, feedHash };
+  const response = await h.post({ calendars: [target, target], requested_actor: "forged" });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  assert.deepEqual(await response.json(), { ok: true, results: [{ ...target, ok: true }] });
+  assert.deepEqual(h.calls, [{ name: "revoke_university_calendar_feed", args: { requested_calendar: calendarId, requested_feed_hash: feedHash, requested_actor: ownerId } }]);
+});
+
+test("bulk results distinguish success, stale regenerated URLs and database failures", async () => {
+  const second = { calendarId, feedHash: "b".repeat(64) };
+  const third = { calendarId, feedHash: "c".repeat(64) };
+  const h = reportApi({ outcomes: { [second.feedHash]: { data: false, error: null }, [third.feedHash]: { data: null, error: { code: "offline" } } } });
+  const response = await h.post({ calendars: [{ calendarId, feedHash }, second, third] });
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.ok, false);
+  assert.equal(data.results.length, 3);
+  assert.deepEqual(data.results[0], { calendarId, feedHash, ok: true });
+  assert.equal(data.results[1].ok, false);
+  assert.equal(data.results[1].status, 409);
+  assert.match(data.results[1].error, /link è cambiato/);
+  assert.equal(data.results[2].ok, false);
+  assert.equal(data.results[2].status, 503);
+  assert.equal(h.calls.length, 3);
+});
+
+test("bulk requests keep concurrency bounded and continue after an individual network failure", async () => {
+  const targets = Array.from({ length: 25 }, (_, index) => ({ calendarId, feedHash: index.toString(16).padStart(64, "0") }));
+  const h = reportApi({ delay: 3, outcomes: { [targets[0].feedHash]: { throws: true } } });
+  const response = await h.post({ calendars: targets });
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.results.length, 25);
+  assert.equal(data.results.filter(result => result.ok).length, 24);
+  assert.equal(data.results[0].status, 503);
+  assert.equal(h.calls.length, 25);
+  assert.equal(h.concurrency.maximum, 5);
+  assert.ok(h.calls.every(call => call.args.requested_actor === ownerId));
 });

@@ -38,11 +38,12 @@ test("empty previews require actual cached day coverage, rather than just an emp
   assert.equal(shared.previewCovered(source, "2027-06-14", "2027-06-16"), false);
 });
 
-test("a shared read requests only the needed year and preview range, without owner or token data", async () => {
-  let call;
-  const reader = load("shared", { "server-only": {}, "@/lib/admin-users-server": { createAdminClient: () => ({ rpc: async (name, args) => { call = { name, args }; return { data: source, error: null }; } }) } });
-  assert.deepEqual(await reader.readSharedSource("medicina", 4, "2026-10-11", "2026-10-17"), source);
-  assert.deepEqual(call, { name: "read_university_calendar_source", args: { requested_course: "medicina", requested_year: 4, requested_start: "2026-10-11", requested_end: "2026-10-17" } });
+test("a Medicine shared read consults cohort caches with only the needed year and range", async () => {
+  const calls = [];
+  const reader = load("shared", { "server-only": {}, "@/lib/admin-users-server": { createAdminClient: () => ({ rpc: async (name, args) => { calls.push({ name, args }); return { data: args.requested_course === "medicina" ? source : null, error: null }; } }) } });
+  assert.deepEqual(await reader.readSharedSource("medicina", 4, "2026-10-11", "2026-10-17"), { ...source, lines: [] });
+  assert.deepEqual(calls.map(call => call.args.requested_course), ["medicina", "medicina-2", "medicina-3"]);
+  assert.ok(calls.every(call => call.name === "read_university_calendar_source" && call.args.requested_year === 4 && call.args.requested_start === "2026-10-11" && call.args.requested_end === "2026-10-17"));
 });
 
 test("new subscriptions use only fully saved days of a partial cache", () => {
@@ -57,4 +58,63 @@ test("new subscriptions use only fully saved days of a partial cache", () => {
     assert.equal(shared.cachedSourceThrough(pending, { ...partial, ...invalid }), null);
     assert.deepEqual(shared.applySharedSource(pending, { ...partial, ...invalid }).source_events, []);
   }
+});
+
+
+function familyReader(sources, errorCourse) {
+  const calls = [];
+  const reader = load("shared", { "server-only": {}, "@/lib/admin-users-server": { createAdminClient: () => ({ rpc: async (name, args) => { calls.push(args); return { data: sources[args.requested_course] ?? null, error: args.requested_course === errorCourse ? { code: "offline" } : null }; } }) } });
+  return { ...reader, calls };
+}
+
+const familyLesson = { ...lesson, date: "2026-11-04", start: "09:00", end: "10:00", year: 2, line: "ROSSA", title: "Lezione della linea rossa" };
+const familyElective = { ...familyLesson, date: "2026-11-05", line: null, title: "Elettivo comune" };
+const snapshot = (course, events, overrides = {}) => ({ ...source, course, ready: true, sync_cursor: null, last_synced_at: "2026-11-02T08:00:00Z", lines: load("types").availableLines(events), events, ...overrides });
+
+for (const requestedCourse of ["medicina", "medicina-2", "medicina-3"]) {
+  test(`${requestedCourse}: the same subscription includes cohort lessons and common electives`, async () => {
+    const sources = { medicina: snapshot("medicina", [familyElective]), "medicina-2": snapshot("medicina-2", [{ ...familyLesson, line: "VERDE" }]), "medicina-3": snapshot("medicina-3", [familyLesson]) };
+    const reader = familyReader(sources);
+    const combined = await reader.readSharedSource(requestedCourse, 2, "2026-11-02", "2027-06-15");
+    assert.equal(combined.course, requestedCourse);
+    assert.equal(combined.ready, true);
+    const types = load("types");
+    const settings = { ...record, course: requestedCourse, year: 2, line: "ROSSA", included_subjects: [types.subjectKey(familyElective)] };
+    assert.deepEqual(types.selectLessons(combined.events, settings), [familyLesson, familyElective]);
+    assert.deepEqual(types.unassignedSubjects(combined.events, 2).map(subject => subject.title), [familyElective.title]);
+    assert.equal(reader.calls.length, 3);
+  });
+}
+
+test("Medicine cache composition deduplicates shared events and updates the publication timestamp", async () => {
+  const reader = familyReader({ medicina: snapshot("medicina", [familyElective]), "medicina-2": snapshot("medicina-2", []), "medicina-3": snapshot("medicina-3", [familyLesson, familyElective], { last_synced_at: "2026-11-02T12:00:00Z" }) });
+  const combined = await reader.readSharedSource("medicina", 2);
+  assert.deepEqual(combined.events, [familyLesson, familyElective]);
+  assert.equal(combined.last_synced_at, "2026-11-02T12:00:00Z");
+});
+
+test("unpublished, incompatible or insufficiently covered companion snapshots cannot erase or leak lessons", async () => {
+  for (const invalid of [{ ready: false }, { semester_end: "2028-06-15" }, { semester_start: "2026-11-03" }]) {
+    const reader = familyReader({ medicina: snapshot("medicina", [familyElective]), "medicina-3": snapshot("medicina-3", [familyLesson], invalid) });
+    const combined = await reader.readSharedSource("medicina", 2, "2026-11-02", "2027-06-15");
+    assert.deepEqual(combined.events, [familyElective]);
+  }
+  const incomplete = familyReader({ medicina: snapshot("medicina", [familyElective], { ready: false, last_synced_at: null, sync_cursor: 7 }), "medicina-3": snapshot("medicina-3", [familyLesson]) });
+  const combined = await incomplete.readSharedSource("medicina", 2);
+  assert.equal(combined.ready, false);
+  assert.equal(combined.last_synced_at, null);
+  assert.equal(combined.sync_cursor, 7);
+});
+
+test("a companion lookup failure returns an error rather than publishing a calendar without its lessons", async () => {
+  const reader = familyReader({ medicina: snapshot("medicina", [familyElective]) }, "medicina-3");
+  await assert.rejects(reader.readSharedSource("medicina", 2));
+});
+
+test("IMDP remains a separate single-source read and does not acquire Medicine events", async () => {
+  const imdp = snapshot("imdp", [{ ...familyLesson, line: null, title: "IMDP lesson" }]);
+  const reader = familyReader({ imdp, medicina: snapshot("medicina", [familyElective]) });
+  assert.deepEqual(await reader.readSharedSource("imdp", 2), imdp);
+  assert.equal(reader.calls.length, 1);
+  assert.equal(reader.calls[0].requested_course, "imdp");
 });

@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/admin-users-server";
 import type { CalendarRecord, CalendarSettings, CourseKey, Lesson } from "./types";
+import { deduplicateLessons } from "./source";
 
 export type SharedSource = {
   course: CourseKey;
@@ -23,12 +24,31 @@ export type SourceJob = Omit<SharedSource, "events" | "lines" | "ready"> & {
 };
 
 export async function readSharedSource(course: CourseKey, year: number, start?: string, end?: string): Promise<SharedSource | null> {
-  const { data, error } = await createAdminClient().rpc("read_university_calendar_source", {
-    requested_course: course, requested_year: year,
-    requested_start: start ?? null, requested_end: end ?? null,
-  });
-  if (error) throw error;
-  return data as SharedSource | null;
+  const client = createAdminClient();
+  // UniSR splits Italian Medicine cohorts across three entries. For example,
+  // second-year red-line lessons live in Medicina 3, but electives in Medicina.
+  // Read the existing shared snapshots; this never fetches UniSR per subscriber.
+  const courses: CourseKey[] = course === "imdp" ? [course] : [course, ...(["medicina", "medicina-2", "medicina-3"] as CourseKey[]).filter(value => value !== course)];
+  const sources = await Promise.all(courses.map(async requestedCourse => {
+    const { data, error } = await client.rpc("read_university_calendar_source", {
+      requested_course: requestedCourse, requested_year: year,
+      requested_start: start ?? null, requested_end: end ?? null,
+    });
+    if (error) throw error;
+    return data as SharedSource | null;
+  }));
+  const primary = sources[0];
+  if (!primary || course === "imdp") return primary;
+  const supplementary = sources.slice(1).filter((source): source is SharedSource => Boolean(source?.ready && source.semester_end === primary.semester_end && source.semester_start <= (start ?? primary.semester_start)));
+  const published = [primary, ...supplementary];
+  const stamps = published.map(source => source.last_synced_at).filter((stamp): stamp is string => Boolean(stamp));
+  const newest = stamps.reduce<string | null>((latest, stamp) => !latest || Date.parse(stamp) > Date.parse(latest) ? stamp : latest, null);
+  return {
+    ...primary,
+    events: deduplicateLessons(published.flatMap(source => source.events)),
+    lines: [...new Set(published.flatMap(source => source.lines ?? []))].sort(),
+    last_synced_at: primary.ready ? newest : primary.last_synced_at,
+  };
 }
 
 export async function ensureSharedSource(course: CourseKey, start: string, end: string) {

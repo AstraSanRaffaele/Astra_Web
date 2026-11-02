@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ tok
     if (calendarExpired(original.semester_end)) return finish(new Response("Calendario scaduto.", { status: 404, headers }));
     if (original.revoked_at) return revokedFeed(original.revoked_at, original.id);
     if (!original.enabled) return finish(new Response("Calendario non trovato.", { status: 404, headers }));
-    const source = await readSharedSource(original.course, original.year);
+    const source = await readSharedSource(original.course, original.year, original.semester_start, original.semester_end);
     const record = applySharedSource(original, source);
     if (!record.last_synced_at && !cachedSourceThrough(original, source)) return finish(new Response("Prima sincronizzazione in corso. Riprova più tardi.", { status: 503, headers: { ...headers, "Retry-After": "600" } }));
     const calendar = createCalendar(record);

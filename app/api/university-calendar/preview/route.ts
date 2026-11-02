@@ -44,6 +44,8 @@ export async function POST(request: NextRequest) {
     const semesterLessons = source!.events.filter((lesson) => lesson.year === year && lesson.date >= date && lesson.date <= catalogueEnd);
     const lessons = semesterLessons.filter((lesson) => lesson.date <= previewEnd);
     const lines = hasLines ? (source!.lines.length ? source!.lines : availableLines(semesterLessons)) : [];
-    return NextResponse.json({ lessons, lines, subjects: hasLines ? unassignedSubjects(semesterLessons, year) : [], start: date, end: previewEnd, period, cached, cachedThrough: source!.ready ? null : through, last_synced_at: source!.last_synced_at }, { headers: noStore });
+    const lineLessonCounts: Record<string, number> = {};
+    for (const lesson of semesterLessons) if (lesson.line) lineLessonCounts[lesson.line] = (lineLessonCounts[lesson.line] ?? 0) + 1;
+    return NextResponse.json({ lessons, lines, lineLessonCounts, lineCountsComplete: source!.ready, subjects: hasLines ? unassignedSubjects(semesterLessons, year) : [], start: date, end: previewEnd, period, cached, cachedThrough: source!.ready ? null : through, last_synced_at: source!.last_synced_at }, { headers: noStore });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impossibile leggere gli orari UniSR." }, { status: 502, headers: { "Cache-Control": "private, no-store" } }); }
 }

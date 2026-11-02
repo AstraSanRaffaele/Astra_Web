@@ -1,4 +1,8 @@
 export type CalendarClient = "apple" | "google" | "browser" | "other";
+export type CalendarUsageState = "active" | "revoked";
+export const CALENDAR_REVOCATION_LIMIT = 25;
+export type CalendarRevocationTarget = { calendarId: string; feedHash: string };
+export type CalendarRevocationResult = CalendarRevocationTarget & { ok: boolean; error?: string; status?: number };
 
 export function calendarTrafficLevel(peakDailyRequests: number): "ordinary" | "attention" | "high" {
   return peakDailyRequests >= 200 ? "high" : peakDailyRequests > 9 ? "attention" : "ordinary";
@@ -30,7 +34,7 @@ export type CalendarUsageRow = {
   unchanged: number;
   headRequests: number;
   errors: number;
-  lastSeen: string;
+  lastSeen: string | null;
   clients: Record<CalendarClient, number>;
 };
 

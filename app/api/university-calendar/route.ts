@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const { data: config, error: configError } = await supabase.from("university_calendar_sync_config").select("enabled,last_dispatch_at").eq("id", true).maybeSingle();
     if (configError) throw configError;
     const records = (data as CalendarRecord[]).filter((record) => !calendarExpired(record.semester_end));
-    const calendars = await Promise.all(records.map(async (record) => calendarView(record, request.nextUrl.origin, record.revoked_at ? null : await readSharedSource(record.course, record.year))));
+    const calendars = await Promise.all(records.map(async (record) => calendarView(record, request.nextUrl.origin, record.revoked_at ? null : await readSharedSource(record.course, record.year, record.semester_start, record.semester_end))));
     return NextResponse.json({ calendars, scheduler: { enabled: calendarSeasonOpen() && Boolean(config?.enabled) } }, { headers: noStore });
   } catch (error) { return NextResponse.json({ error: serviceError(error) }, { status: 503, headers: noStore }); }
 }
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (body.action === "create") {
       let settings;
       try { settings = automaticSettings(body.settings); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impostazioni non valide." }, { status: 400 }); }
-      if (!calendarRefreshOpen() && !cachedSourceThrough(settings, await readSharedSource(settings.course, settings.year))) return NextResponse.json({ error: WEEKEND_CACHE_UNAVAILABLE }, { status: 503, headers: noStore });
+      if (!calendarRefreshOpen() && !cachedSourceThrough(settings, await readSharedSource(settings.course, settings.year, settings.semester_start, settings.semester_end))) return NextResponse.json({ error: WEEKEND_CACHE_UNAVAILABLE }, { status: 503, headers: noStore });
       const { data: createdId, error: createError } = await supabase.rpc("create_university_calendar", {
         requested_id: id, requested_owner: owner.id, requested_token: newFeedToken(), settings,
         maximum_calendars: PUBLIC_CALENDAR_LIMIT,
@@ -65,14 +65,14 @@ export async function POST(request: NextRequest) {
       if (current.revoked_at && body.action !== "rotate") return NextResponse.json({ error: "Il link è stato disattivato. Genera un nuovo link dalla pagina del calendario." }, { status: 403, headers: noStore });
       if (body.action === "continue" || body.action === "sync") {
         // Personal requests never restart a shared import or bypass fixed times.
-        await readSharedSource(current.course, current.year);
+        await readSharedSource(current.course, current.year, current.semester_start, current.semester_end);
       } else {
         let patch: Record<string, unknown>;
         if (body.action === "settings") {
           let settings;
           try { settings = automaticSettings(body.settings); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Impostazioni non valide." }, { status: 400 }); }
           const changedSource = settings.course !== current.course || settings.year !== current.year;
-          if (changedSource && !calendarRefreshOpen() && !cachedSourceThrough(settings, await readSharedSource(settings.course, settings.year))) return NextResponse.json({ error: WEEKEND_CACHE_UNAVAILABLE }, { status: 503, headers: noStore });
+          if (changedSource && !calendarRefreshOpen() && !cachedSourceThrough(settings, await readSharedSource(settings.course, settings.year, settings.semester_start, settings.semester_end))) return NextResponse.json({ error: WEEKEND_CACHE_UNAVAILABLE }, { status: 503, headers: noStore });
           patch = { ...settings, enabled: true, ...(changedSource ? { source_events: [], last_synced_at: null } : {}), sync_cursor: null, staging_events: [], retry_at: null, sync_error: null, lease_token: null, leased_until: null };
         }
         else if (body.action === "rotate") patch = { token: newFeedToken(), ...("revoked_at" in current ? { revoked_at: null, revocation_reason: null, enabled: current.revoked_at ? true : current.enabled } : {}) };

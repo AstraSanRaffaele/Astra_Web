@@ -13,7 +13,7 @@ import SubscriptionGuide from "./subscription-guide";
 import styles from "./calendar-builder.module.css";
 
 type Subject = { key: string; title: string; teacher: string };
-type Preview = { lessons: Lesson[]; lines: string[]; subjects: Subject[]; start: string; end: string; period: { start: string; end: string }; cached: boolean; cachedThrough: string | null; last_synced_at: string | null };
+type Preview = { lessons: Lesson[]; lines: string[]; lineLessonCounts?: Record<string, number>; lineCountsComplete?: boolean; subjects: Subject[]; start: string; end: string; period: { start: string; end: string }; cached: boolean; cachedThrough: string | null; last_synced_at: string | null };
 type CreatingCalendar = Pick<CalendarView, "name" | "course" | "year" | "line" | "semester_start" | "semester_end">;
 type CopyNotice = { calendarId: string; target: "link" | "google"; message: string; failed: boolean };
 
@@ -108,6 +108,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
   const period = preview?.period ?? calendarPeriod(new Date(`${today}T12:00:00Z`));
   const seasonOpen = calendarSeasonOpen(new Date(`${today}T12:00:00Z`));
   const refreshOpen = calendarRefreshOpen(new Date(`${today}T12:00:00Z`));
+  const lineWithoutLessons = Boolean(hasLines && preview?.lineCountsComplete && preview.lineLessonCounts && selectedLine && selectedLine !== "COMUNE" && !preview.lineLessonCounts[selectedLine]);
 
   const revealReadyGuide = useCallback((records: CalendarView[]) => {
     const id = calendarReadyForGuide(records.filter((record) => !seenGuideIds.current.has(record.id)), pendingGuideId.current, guideStorage());
@@ -131,7 +132,11 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
     if (!enabled) return;
     let active = true;
     request<{ calendars: CalendarView[]; scheduler: { enabled: boolean } | null }>(API).then((data) => {
-      if (active) { setCalendars(data.calendars); setScheduler(data.scheduler?.enabled ?? false); revealReadyGuide(data.calendars); }
+      if (active) {
+        setCalendars(data.calendars); setScheduler(data.scheduler?.enabled ?? false); revealReadyGuide(data.calendars);
+        const saved = data.calendars[0];
+        if (saved) { setCourse(saved.course); setYear(saved.year); setLine(saved.line); setIncluded(saved.included_subjects); setName(saved.name); }
+      }
     }).catch((cause: Error) => { if (active) setError(cause.message); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [API, enabled, revealReadyGuide]);
@@ -159,7 +164,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
         const data = await request<Preview & { pending?: boolean }>(`${API}/preview`, { course, year });
         if (sequence !== previewSequence.current) return;
         if (!data.pending) {
-          setPreview(data); setIncluded([]); setLine(data.lines.length === 1 ? data.lines[0] : ""); creationId.current = null;
+          setPreview(data); setLine(current => current || (data.lines.length === 1 ? data.lines[0] : "")); creationId.current = null;
           return;
         }
         await new Promise((resolve) => window.setTimeout(resolve, 3000));
@@ -182,6 +187,8 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
         queueSubscriptionGuide(body.id, guideStorage());
       }
       const records = await reload();
+      const saved = records?.find(record => record.id === body.id);
+      if (body.action === "subjects" && saved?.course === course && saved.year === year) setIncluded(saved.included_subjects);
       setNotice(body.action === "sync" ? "Stai usando gli ultimi orari condivisi disponibili." : "Modifiche salvate.");
       return records;
     }
@@ -191,7 +198,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
 
   async function create(event: FormEvent) {
     event.preventDefault();
-    if (!enabled || !seasonOpen || !preview || !selectedLine) return;
+    if (!enabled || !seasonOpen || !preview || !selectedLine || lineWithoutLessons) return;
     creationId.current ??= crypto.randomUUID();
     const calendarName = name.trim() || `${COURSES.find((item) => item.key === course)!.label} · ${year}°${hasLines ? ` · ${line}` : ""}`;
     if (!existingCalendar) setCreatingCalendar({ name: calendarName, course, year, line: selectedLine, semester_start: period.start, semester_end: period.end });
@@ -247,7 +254,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
       <div className={styles.layout}>
         <section className={styles.card}>
           <div className={styles.sectionHead}><span className={styles.step}>01</span><div><h2>{existingCalendar ? "Modifica il tuo calendario" : "Crea il tuo calendario"}</h2><p>Scegli il corso e l’anno. {refreshOpen ? "La lettura parte da oggi." : "Nel weekend usiamo gli orari già salvati."}</p></div></div>
-          <form onSubmit={loadPreview}><fieldset className={styles.fieldset} disabled={!enabled || !seasonOpen || Boolean(existingCalendar?.revoked_at)}>
+          <form onSubmit={loadPreview}><fieldset className={styles.fieldset} disabled={loading || !enabled || !seasonOpen || Boolean(existingCalendar?.revoked_at)}>
             <div className={styles.fields}>
               <label className={styles.wide}>Corso di laurea<select value={course} onChange={(event) => { setCourse(event.target.value as CourseKey); resetPreview(); }}>
                 {COURSES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
@@ -259,20 +266,22 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
 
           {preview?.cached && <p className={styles.hint} role="status">Stai usando gli ultimi orari salvati{preview.last_synced_at ? ` il ${timeLabel(preview.last_synced_at)}` : ""}. Puoi creare subito il link: il calendario si aggiornerà automaticamente.</p>}
 
-          <form onSubmit={create} className={styles.createForm}><fieldset className={styles.fieldset} disabled={!enabled || !seasonOpen || Boolean(existingCalendar?.revoked_at)}>
-            {hasLines && <label>Linea<select required value={line} disabled={!preview || previewBusy} onChange={(event) => { setLine(event.target.value); creationId.current = null; }}>
+          <form onSubmit={create} className={styles.createForm}><fieldset className={styles.fieldset} disabled={loading || !enabled || !seasonOpen || Boolean(existingCalendar?.revoked_at)}>
+            {hasLines && <label>Linea delle lezioni<select required value={line} disabled={!preview || previewBusy} onChange={(event) => { setLine(event.target.value); creationId.current = null; }}>
               <option value="">{preview ? "Seleziona la linea" : "Leggi prima gli orari"}</option>
               {preview?.lines.map((value) => <option key={value} value={value}>Linea {value.toLocaleLowerCase("it")}</option>)}
-              {preview && preview.subjects.length > 0 && <option value="COMUNE">Solo attività senza linea</option>}
+              {preview && preview.subjects.length > 0 && <option value="COMUNE">Solo elettivi, senza lezioni di linea</option>}
             </select></label>}
             {hasLines && preview && preview.lines.length > 0 && <p className={styles.hint}>Tutte le linee del corso, rilevate negli orari UniSR di tutti gli anni. Le lezioni restano filtrate sull’anno scelto.</p>}
+            {lineWithoutLessons && <p className={styles.error} role="alert">Non risultano lezioni di questa linea per l’anno scelto. Controlla anno e linea per includere anche le lezioni.</p>}
+            {hasLines && selectedLine === "COMUNE" && <p className={styles.hint}><strong>Hai scelto solo gli elettivi:</strong> le lezioni di linea non saranno incluse. Per avere entrambi, scegli la tua linea e spunta gli elettivi qui sotto.</p>}
             {hasLines && preview && !preview.lines.length && <p className={styles.hint}>Nessuna linea indicata nei prossimi giorni.{preview.subjects.length > 0 ? " Puoi scegliere le attività senza linea." : " Gli orari potrebbero non essere ancora pubblicati: riprova più avanti."}</p>}
             <div className={styles.fields}>
               <label className={styles.wide}>Nome calendario <span className={styles.optional}>(facoltativo)</span><input maxLength={100} placeholder={hasLines ? "Es. Le mie lezioni di Medicina" : "Es. Le mie lezioni IMDP"} value={name} onChange={(event) => { setName(event.target.value); creationId.current = null; }} /></label>
             </div>
             <p className={styles.hint}>{seasonOpen ? <><strong>Periodo automatico:</strong> {dateLabel(period.start)} – {dateLabel(period.end)}.</> : "Il periodo sarà calcolato quando creerai il nuovo calendario dal 1° settembre."} Il calendario include anche l’aula e l’edificio di ogni lezione.</p>
-            {hasLines && preview && preview.subjects.length > 0 && <div className={styles.unassigned}><h3>Corsi elettivi e attività senza linea</h3><p className={styles.hint}>Scegli quali includere tra quelli pubblicati per il tuo anno fino al 15 giugno, anche nelle settimane successive.</p><Subjects subjects={preview.subjects} selected={included} colors={colors} onChange={(keys) => { setIncluded(keys); creationId.current = null; }} /></div>}
-            <button className={styles.primary} disabled={!enabled || !seasonOpen || !preview || !selectedLine || loading || busy || previewBusy} type="submit">{busy ? <LoaderCircle className={styles.spin} size={18} /> : existingCalendar ? <RefreshCw size={18} /> : <Plus size={18} />} {!enabled ? "Disponibile prossimamente" : !seasonOpen ? "Nuovi calendari dal 1° settembre" : existingCalendar ? "Aggiorna il mio calendario" : "Crea calendario del semestre"}</button>
+            {hasLines && preview && preview.subjects.length > 0 && <div className={styles.unassigned}><h3>Corsi elettivi e attività senza linea</h3><p className={styles.hint}>Le lezioni della linea scelta sono incluse automaticamente. Spunta gli elettivi da aggiungere, tra quelli pubblicati per il tuo anno fino al 15 giugno.</p><Subjects subjects={preview.subjects} selected={included} colors={colors} onChange={(keys) => { setIncluded(keys); creationId.current = null; }} /></div>}
+            <button className={styles.primary} disabled={!enabled || !seasonOpen || !preview || !selectedLine || lineWithoutLessons || loading || busy || previewBusy} type="submit">{busy ? <LoaderCircle className={styles.spin} size={18} /> : existingCalendar ? <RefreshCw size={18} /> : <Plus size={18} />} {!enabled ? "Disponibile prossimamente" : !seasonOpen ? "Nuovi calendari dal 1° settembre" : existingCalendar ? "Aggiorna il mio calendario" : "Crea calendario del semestre"}</button>
             <p className={styles.hint}>Un solo calendario personale. Puoi modificare {hasLines ? "corso, anno e linea" : "corso e anno"} mantenendo lo stesso link. {seasonOpen ? <>Dopo il {dateLabel(period.end)} verrà eliminato automaticamente da ASTRA.</> : "Ogni anno viene eliminato automaticamente dopo il 15 giugno."}</p>
           </fieldset></form>
         </section>
