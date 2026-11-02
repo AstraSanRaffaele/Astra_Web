@@ -2,6 +2,10 @@
 .shell { max-width: 1180px; margin: 0 auto; }
 .credits { margin: 28px 0 0; color: #68758d; font-size: 11px; font-weight: 400; line-height: 1.7; text-align: center; }
 .back { display: inline-flex; align-items: center; gap: 8px; color: #475b88; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 24px; }
+.revokedNotice { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 20px 22px; margin-bottom: 24px; border: 1px solid #ebc7c7; border-radius: 16px; background: #fff1f1; color: #8c3030; }
+.revokedNotice > div { flex: 1; min-width: min(240px, 100%); }
+.revokedNotice strong { font-size: 15px; }
+.revokedNotice p { margin: 6px 0 0; font-size: 13px; line-height: 1.7; }
 .hero { background: linear-gradient(120deg, #0e1f6b, #2743b4); color: #fff; border-radius: 26px; padding: 38px 40px 30px; position: relative; overflow: hidden; display: flex; align-items: center; flex-wrap: wrap; gap: 28px; box-shadow: 0 16px 40px #112e6e18; margin-bottom: 28px; }
 .hero > div:first-child { flex: 1; }
 .tag { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; display: inline-block; opacity: .8; }
@@ -69,6 +73,10 @@
 .calendarHead .badge { flex-shrink: 0; }
 .subscription { border-top: 1px solid #e3e9f4; margin-top: 18px; padding-top: 18px; }
 .subscription input { font-size: 11px !important; }
+.personalLinkNotice { display: flex; align-items: flex-start; gap: 10px; padding: 13px 15px; margin-bottom: 16px; border: 1px solid #ead9af; border-radius: 12px; background: #fff8e8; color: #795a22; }
+.personalLinkNotice svg { flex-shrink: 0; margin-top: 2px; }
+.personalLinkNotice p { margin: 0; font-size: 12px; line-height: 1.7; }
+.personalLinkNotice strong { display: block; margin-bottom: 2px; font-weight: 700; }
 .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
 .subscriptionActions { align-items: flex-start; }
 .guideAccess { display: none; margin: 17px 0 0; }

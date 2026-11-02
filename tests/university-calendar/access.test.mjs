@@ -30,6 +30,7 @@ function harness({ enabled = true, user = { id: "user-a", isAdmin: false }, crea
       };
       const query = {
         select: () => query, eq: (key, value) => { filters.push([key, value]); return query; },
+        is: (key, value) => { filters.push([key, value]); return query; },
         order: () => query, limit: (value) => { limit = value; return query; },
         update: (value) => { patch = value; return query; },
         maybeSingle: async () => result(true), then: (resolve) => resolve(result(false)),
@@ -368,4 +369,38 @@ test("a saved empty day is a valid partial weekend cache, not a failed import", 
   assert.equal(body.cachedThrough, defaultPeriod.start);
   assert.equal((await h.api.mutateCalendar(request({ action: "create", id: ownId, settings: { name: "IMDP", course: "imdp", year: 3 } }))).status, 200);
   assert.deepEqual([h.ensures, h.syncs], [[], []]);
+});
+
+
+test("revocation blocks every personal mutation except explicit token regeneration", async () => {
+  const h = harness();
+  Object.assign(h.rows[0], { revoked_at: "2026-11-02T10:00:00Z", revocation_reason: "shared_link", enabled: false });
+  const list = await (await h.api.listCalendars(request())).json();
+  assert.equal(list.calendars[0].revoked_at, h.rows[0].revoked_at);
+  assert.equal(list.calendars[0].feedUrl, "");
+  assert.deepEqual(h.sourceReads, []);
+  for (const action of ["settings", "toggle", "subjects", "sync", "continue"]) {
+    const response = await h.api.mutateCalendar(request({ action, id: ownId, enabled: true, included_subjects: [], settings, revoked_at: null }));
+    assert.equal(response.status, 403);
+    assert.match((await response.json()).error, /Genera un nuovo link/);
+  }
+  assert.deepEqual(h.writes, []);
+  const beforeCount = h.rows.length;
+  assert.equal((await h.api.mutateCalendar(request({ action: "rotate", id: ownId }))).status, 200);
+  assert.equal(h.rows.length, beforeCount);
+  assert.equal(h.rows[0].id, ownId);
+  assert.equal(h.rows[0].token, "C".repeat(43));
+  assert.equal(h.rows[0].revoked_at, null);
+  assert.equal(h.rows[0].revocation_reason, null);
+  assert.equal(h.rows[0].enabled, true);
+  assert.deepEqual(h.writes[0].filters, [["id", ownId], ["owner_id", "user-a"], ["token", "A".repeat(43)]]);
+  assert.equal(h.rows[1].token, "B".repeat(43));
+});
+
+test("normal edits cannot race a revocation or forge its state", async () => {
+  const h = harness();
+  Object.assign(h.rows[0], { revoked_at: null, revocation_reason: null });
+  assert.equal((await h.api.mutateCalendar(request({ action: "toggle", id: ownId, enabled: true, revoked_at: "forged", revocation_reason: "forged" }))).status, 200);
+  assert.deepEqual(h.writes[0].filters, [["id", ownId], ["owner_id", "user-a"], ["revoked_at", null]]);
+  assert.deepEqual(h.writes[0].patch, { enabled: true });
 });

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const { data: config, error: configError } = await supabase.from("university_calendar_sync_config").select("enabled,last_dispatch_at").eq("id", true).maybeSingle();
     if (configError) throw configError;
     const records = (data as CalendarRecord[]).filter((record) => !calendarExpired(record.semester_end));
-    const calendars = await Promise.all(records.map(async (record) => calendarView(record, request.nextUrl.origin, await readSharedSource(record.course, record.year))));
+    const calendars = await Promise.all(records.map(async (record) => calendarView(record, request.nextUrl.origin, record.revoked_at ? null : await readSharedSource(record.course, record.year))));
     return NextResponse.json({ calendars, scheduler: { enabled: calendarSeasonOpen() && Boolean(config?.enabled) } }, { headers: noStore });
   } catch (error) { return NextResponse.json({ error: serviceError(error) }, { status: 503, headers: noStore }); }
 }
@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       const { data: current, error } = await supabase.from("university_calendars").select("*").eq("id", id).eq("owner_id", owner.id).maybeSingle();
       if (error) throw error;
       if (!current || calendarExpired(current.semester_end)) return NextResponse.json({ error: "Calendario non trovato." }, { status: 404 });
+      if (current.revoked_at && body.action !== "rotate") return NextResponse.json({ error: "Il link è stato disattivato. Genera un nuovo link dalla pagina del calendario." }, { status: 403, headers: noStore });
       if (body.action === "continue" || body.action === "sync") {
         // Personal requests never restart a shared import or bypass fixed times.
         await readSharedSource(current.course, current.year);
@@ -74,14 +75,17 @@ export async function POST(request: NextRequest) {
           if (changedSource && !calendarRefreshOpen() && !cachedSourceThrough(settings, await readSharedSource(settings.course, settings.year))) return NextResponse.json({ error: WEEKEND_CACHE_UNAVAILABLE }, { status: 503, headers: noStore });
           patch = { ...settings, enabled: true, ...(changedSource ? { source_events: [], last_synced_at: null } : {}), sync_cursor: null, staging_events: [], retry_at: null, sync_error: null, lease_token: null, leased_until: null };
         }
-        else if (body.action === "rotate") patch = { token: newFeedToken() };
+        else if (body.action === "rotate") patch = { token: newFeedToken(), ...("revoked_at" in current ? { revoked_at: null, revocation_reason: null, enabled: current.revoked_at ? true : current.enabled } : {}) };
         else if (body.action === "toggle" && typeof body.enabled === "boolean") patch = { enabled: body.enabled };
         else if (body.action === "subjects" && Array.isArray(body.included_subjects)) {
           let settings;
           try { settings = validateSettings({ ...current, included_subjects: body.included_subjects }); } catch { return NextResponse.json({ error: "Selezione non valida." }, { status: 400 }); }
           patch = { included_subjects: settings.included_subjects };
         } else return NextResponse.json({ error: "Azione non valida." }, { status: 400 });
-        const { error: updateError } = await supabase.from("university_calendars").update(patch).eq("id", id).eq("owner_id", owner.id);
+        let update = supabase.from("university_calendars").update(patch).eq("id", id).eq("owner_id", owner.id);
+        if (body.action === "rotate") update = update.eq("token", current.token);
+        else if ("revoked_at" in current) update = update.is("revoked_at", null);
+        const { error: updateError } = await update;
         if (updateError) throw updateError;
       }
     }

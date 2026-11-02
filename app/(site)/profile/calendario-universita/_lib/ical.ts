@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { selectLessons, type CalendarRecord, type Lesson } from "./types";
 import { CALENDAR_APP_REFRESH_HOURS } from "./config";
+import { calendarToday } from "./period";
+import { REVOKED_CALENDAR_NOTICE } from "./revocation-notice";
 
 function escapeText(value: string): string { return value.replace(/\\/g, "\\\\").replace(/\r\n|\r|\n/g, "\\n").replace(/;/g, "\\;").replace(/,/g, "\\,"); }
 
@@ -17,6 +19,24 @@ export function foldLine(line: string): string {
 }
 
 function dateTime(event: Lesson, field: "start" | "end") { return `${event.date.replaceAll("-", "")}T${event[field].replace(":", "")}00`; }
+
+export function createRevokedCalendar(notice?: { calendarId: string; revokedAt: string; profileUrl: string }): string {
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ASTRA San Raffaele//Calendario UniSR//IT", "CALSCALE:GREGORIAN", "X-WR-CALNAME:ASTRA · Link disattivato", "X-WR-TIMEZONE:Europe/Rome", `REFRESH-INTERVAL;VALUE=DURATION:PT${CALENDAR_APP_REFRESH_HOURS}H`, `X-PUBLISHED-TTL:PT${CALENDAR_APP_REFRESH_HOURS}H`];
+  if (notice) {
+    const revokedAt = new Date(notice.revokedAt);
+    const firstDay = Date.parse(`${calendarToday(revokedAt)}T12:00:00Z`);
+    const stamp = revokedAt.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+    const day = (offset: number) => new Date(firstDay + offset * 86400000).toISOString().slice(0, 10).replaceAll("-", "");
+    // Fixed Italian dates and UIDs: refreshing never moves or duplicates warnings.
+    for (let index = 0; index < 3; index++) {
+      const date = day(index);
+      const uid = createHash("sha256").update(JSON.stringify(["revocation", notice.calendarId, notice.revokedAt, date])).digest("hex");
+      lines.push("BEGIN:VEVENT", `UID:${uid}@astrasanraffaele.it`, `DTSTAMP:${stamp}`, `LAST-MODIFIED:${stamp}`, `DTSTART;VALUE=DATE:${date}`, `DTEND;VALUE=DATE:${day(index + 1)}`, `SUMMARY:${escapeText(REVOKED_CALENDAR_NOTICE.title)}`, `DESCRIPTION:${escapeText(`${REVOKED_CALENDAR_NOTICE.description}\n\nGenera un nuovo link su ASTRA: ${notice.profileUrl}`)}`, `URL:${notice.profileUrl}`, "STATUS:CONFIRMED", "TRANSP:TRANSPARENT", "END:VEVENT");
+    }
+  }
+  lines.push("END:VCALENDAR");
+  return lines.map(foldLine).join("\r\n") + "\r\n";
+}
 
 export function createCalendar(record: CalendarRecord): string {
   const stamp = new Date(record.last_synced_at ?? record.sync_started_at ?? record.created_at).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");

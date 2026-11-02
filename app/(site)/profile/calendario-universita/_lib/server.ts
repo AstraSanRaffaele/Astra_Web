@@ -24,12 +24,12 @@ export function equalSecret(actual: string, expected: string) {
 }
 
 export function calendarView(original: CalendarRecord, origin: string, source: SharedSource | null = null): CalendarView {
-  const record = applySharedSource(original, source);
+  const record = original.revoked_at ? { ...original, source_events: [], staging_events: [], sync_cursor: null } : applySharedSource(original, source);
   const { token, source_events, staging_events, lease_token, leased_until, owner_id, ...safe } = record;
   void staging_events; void lease_token; void leased_until; void owner_id;
-  const feedUrl = `${origin}/api/calendars/university/${token}`;
+  const feedUrl = record.revoked_at ? "" : `${origin}/api/calendars/university/${token}`;
   const selected = selectLessons(source_events, record);
-  const cachedThrough = !record.last_synced_at && !source?.ready ? cachedSourceThrough(record, source) : null;
+  const cachedThrough = !record.revoked_at && !record.last_synced_at && !source?.ready ? cachedSourceThrough(record, source) : null;
   return { ...safe, feedUrl, cachedThrough, eventCount: selected.length, totalDays: daysBetween(source?.semester_start ?? record.semester_start, record.semester_end).length, subjects: courseHasLines(record.course) ? unassignedSubjects(source_events, record.year) : [] };
 }
 

@@ -276,6 +276,48 @@ di creazione è già applicato nella funzione SQL.
 
 ## Verifiche
 
+### Monitoraggio degli accessi ai link
+
+La dashboard contiene **Accessi calendario** (`/admin/accessi-calendario`).
+Pagina e API sono riservate all’account verificato `scopeledoardo@gmail.com`,
+non al generico ruolo admin. Non usano il campo `locked`.
+I contatori si attivano con il SQL fornito in chat, senza migration nella repository.
+Il pannello filtra oggi o ultimi 7 giorni, cerca il proprietario e mostra 25 link per pagina.
+
+Ogni GET/HEAD per un link riconosciuto registra un contatore giornaliero e l’ultima
+consultazione, separando risposte con file, 304 invariati, HEAD ed errori.
+La registrazione avviene con `after` e un timeout breve: guasti al monitoraggio
+o attivazione SQL mancante non impediscono lo scaricamento del calendario.
+Il riferimento del link è SHA-256; non si salvano token, URL, IP, IMEI o
+user-agent completi. Le categorie Apple/Google/browser/altro sono solo quelle
+dichiarate dal client e non identificano dispositivi o persone.
+I conteggi vengono conservati per 14 giorni. Non esiste uno storico retroattivo.
+
+Oltre 9 richieste al giorno appare un avviso; da 200 un avviso di traffico elevato.
+Nel riepilogo settimanale si considera il massimo giornaliero, non il totale dei 7 giorni.
+Nessuna soglia revoca automaticamente il link o avvisa il creatore.
+Solo il pulsante **Svuota e revoca**, con conferma, esegue la revoca manuale.
+La funzione SQL verifica anche l’identità dell’operatore e blocca richieste obsolete.
+
+Il link revocato restituisce un ICS con tutte le lezioni rimosse e tre avvisi
+giornalieri: il giorno della revoca in Italia e i due successivi. Gli avvisi sono
+eventi per tutta la giornata, non bloccano la disponibilità e non inviano inviti.
+Titolo e testo provengono dalla stessa costante usata nell’avviso del sito;
+includono il collegamento alla pagina del calendario. Date, UID e timestamp restano
+stabili nei successivi aggiornamenti. Il creatore può generare un nuovo token
+sullo stesso calendario, mantenendo il limite di uno per account.
+La rigenerazione rimuove anche i tre avvisi dal vecchio URL: il feed passa a un ICS
+vuoto con un ETag diverso, evitando un 404 che potrebbe lasciare eventi nelle app.
+Entrambi i cambiamenti dipendono dal successivo aggiornamento di Apple/Google e
+non eliminano copie importate manualmente. Non servono nuove colonne o funzioni SQL.
+Il vecchio URL continua a restituire un calendario vuoto dopo la rigenerazione:
+si conserva solo il suo hash fino alla scadenza del calendario. Le fonti UniSR
+condivise e gli altri calendari non vengono modificati. La cancellazione stagionale
+elimina anche contatori e riferimenti dei link revocati.
+
+I conteggi non dimostrano una condivisione. L’autenticazione legata agli account
+Apple/Google richiede un’integrazione separata.
+
 `npm run test:calendar` verifica i dati reali UniSR salvati come fixture, i filtri,
 l’esclusione degli esami, il formato ICS, gli UID e la conservazione del feed durante
 import parziali/falliti. Comprende anche l’accesso pubblico di Medicina/IMDP, gli admin,

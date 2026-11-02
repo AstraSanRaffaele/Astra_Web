@@ -40,6 +40,8 @@ export type CalendarRecord = CalendarSettings & {
   owner_id: string;
   token: string;
   enabled: boolean;
+  revoked_at?: string | null;
+  revocation_reason?: string | null;
   source_events: Lesson[];
   staging_events: Lesson[];
   sync_cursor: number | null;

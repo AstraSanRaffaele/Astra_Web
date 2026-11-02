@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isCalendarUsageOwner } from "@/app/(site)/profile/calendario-universita/_lib/feed-usage-owner";
 
 type DashboardStats = {
   totalUsers: number;
@@ -183,6 +184,15 @@ export default async function AdminPage() {
                   </span>
                   <span className="adminMenuArrow">→</span>
                 </Link>
+
+                {isCalendarUsageOwner(user) && <Link href="/admin/accessi-calendario" className="adminMenuItem">
+                  <span className="adminMenuIcon">08</span>
+                  <span className="adminMenuText">
+                    <strong>Accessi calendario</strong>
+                    <small>Consulta le richieste ricevute dai link personali</small>
+                  </span>
+                  <span className="adminMenuArrow">→</span>
+                </Link>}
 
               </nav>
             </div>

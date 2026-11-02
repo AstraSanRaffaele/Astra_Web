@@ -6,6 +6,7 @@ import { ArrowLeft, CalendarDays, Check, Copy, ExternalLink, LoaderCircle, Plus,
 import { COURSES, courseHasLines, selectLessons, type CalendarView, type CourseKey, type Lesson } from "../_lib/types";
 import { GOOGLE_CALENDAR_SUBSCRIPTION_URL, PUBLIC_CALENDAR_ENABLED } from "../_lib/config";
 import { calendarPeriod, calendarRefreshOpen, calendarSeasonOpen } from "../_lib/period";
+import { REVOKED_CALENDAR_NOTICE } from "../_lib/revocation-notice";
 import { subjectColorKey, subjectColors } from "../_lib/subject-colors";
 import { calendarReadyForGuide, markSubscriptionGuideSeen, queueSubscriptionGuide } from "../_lib/subscription-guide";
 import SubscriptionGuide from "./subscription-guide";
@@ -241,11 +242,12 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
 
       {error && <div className={styles.error} role="alert">{error}</div>}
       {notice && <div className={styles.success} role="status"><Check size={18} />{notice}</div>}
+      {existingCalendar?.revoked_at && <div className={styles.revokedNotice} role="alert"><div><strong>{REVOKED_CALENDAR_NOTICE.title}</strong><p>{REVOKED_CALENDAR_NOTICE.description}</p></div><button className={styles.primary} type="button" disabled={busy || !seasonOpen} onClick={() => void safeMutate({ action: "rotate", id: existingCalendar.id })}><RefreshCw size={17} /> Genera un nuovo link</button></div>}
 
       <div className={styles.layout}>
         <section className={styles.card}>
           <div className={styles.sectionHead}><span className={styles.step}>01</span><div><h2>{existingCalendar ? "Modifica il tuo calendario" : "Crea il tuo calendario"}</h2><p>Scegli il corso e l’anno. {refreshOpen ? "La lettura parte da oggi." : "Nel weekend usiamo gli orari già salvati."}</p></div></div>
-          <form onSubmit={loadPreview}><fieldset className={styles.fieldset} disabled={!enabled || !seasonOpen}>
+          <form onSubmit={loadPreview}><fieldset className={styles.fieldset} disabled={!enabled || !seasonOpen || Boolean(existingCalendar?.revoked_at)}>
             <div className={styles.fields}>
               <label className={styles.wide}>Corso di laurea<select value={course} onChange={(event) => { setCourse(event.target.value as CourseKey); resetPreview(); }}>
                 {COURSES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
@@ -257,7 +259,7 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
 
           {preview?.cached && <p className={styles.hint} role="status">Stai usando gli ultimi orari salvati{preview.last_synced_at ? ` il ${timeLabel(preview.last_synced_at)}` : ""}. Puoi creare subito il link: il calendario si aggiornerà automaticamente.</p>}
 
-          <form onSubmit={create} className={styles.createForm}><fieldset className={styles.fieldset} disabled={!enabled || !seasonOpen}>
+          <form onSubmit={create} className={styles.createForm}><fieldset className={styles.fieldset} disabled={!enabled || !seasonOpen || Boolean(existingCalendar?.revoked_at)}>
             {hasLines && <label>Linea<select required value={line} disabled={!preview || previewBusy} onChange={(event) => { setLine(event.target.value); creationId.current = null; }}>
               <option value="">{preview ? "Seleziona la linea" : "Leggi prima gli orari"}</option>
               {preview?.lines.map((value) => <option key={value} value={value}>Linea {value.toLocaleLowerCase("it")}</option>)}
@@ -301,17 +303,18 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
           </article>}
           {calendars.map((calendar) => {
             const hasLink = Boolean(calendar.last_synced_at || calendar.cachedThrough);
-            const creating = calendar.enabled && calendar.sync_cursor !== null && !hasLink;
+            const creating = !calendar.revoked_at && calendar.enabled && calendar.sync_cursor !== null && !hasLink;
             const percentage = calendar.totalDays > 0 ? Math.min(99, Math.max(0, Math.floor((calendar.sync_cursor ?? 0) / calendar.totalDays * 100))) : 0;
             return <Fragment key={calendar.id}><article className={`${styles.card} ${creating ? styles.calendarCreating : ""}`} aria-busy={creating || undefined}>
               <div className={styles.calendarContent} inert={creating || undefined} aria-hidden={creating || undefined}>
-                <div className={styles.calendarHead}><div><h3>{calendar.name}</h3><p>{selectionLabel(calendar)}</p></div><span className={styles.badge}>{!calendar.enabled ? "Disattivato" : hasLink ? "Attivo" : calendar.sync_cursor !== null ? "Importazione" : "Attivo"}</span></div>
+                <div className={styles.calendarHead}><div><h3>{calendar.name}</h3><p>{selectionLabel(calendar)}</p></div><span className={styles.badge}>{calendar.revoked_at ? "Link revocato" : !calendar.enabled ? "Disattivato" : hasLink ? "Attivo" : calendar.sync_cursor !== null ? "Importazione" : "Attivo"}</span></div>
                 <p className={styles.hint}>{dateLabel(calendar.semester_start)} – {dateLabel(calendar.semester_end)}<br />Si elimina automaticamente da ASTRA dopo il {dateLabel(calendar.semester_end)}.</p>
                 {!creating && !calendar.cachedThrough && calendar.enabled && calendar.sync_cursor !== null && <p className={styles.hint} role="status">Aggiornamento in corso · {percentage}% · il link mantiene gli ultimi orari salvati.</p>}
                 {calendar.sync_error && <p className={styles.syncError}>Lettura UniSR interrotta: {calendar.sync_error} {refreshOpen ? `Nuovo tentativo ${calendar.retry_at ? timeLabel(calendar.retry_at) : "in corso"}.` : "Le letture riprenderanno lunedì dalle 08:00."}</p>}
-                {calendar.last_synced_at && <p className={styles.hint}><strong>{calendar.eventCount} lezioni</strong> · aggiornato {timeLabel(calendar.last_synced_at)}</p>}
+                {!calendar.revoked_at && calendar.last_synced_at && <p className={styles.hint}><strong>{calendar.eventCount} lezioni</strong> · aggiornato {timeLabel(calendar.last_synced_at)}</p>}
                 {!calendar.last_synced_at && calendar.cachedThrough && <p className={styles.hint}><strong>{calendar.eventCount} lezioni</strong> · aggiornamenti automatici sullo stesso link.</p>}
-                {hasLink && calendar.enabled ? <div className={styles.subscription}>
+                {hasLink && calendar.enabled && !calendar.revoked_at ? <div className={styles.subscription}>
+                  <div className={styles.personalLinkNotice} role="note"><ShieldCheck size={18} aria-hidden="true" /><p><strong>Il tuo link è personale.</strong>Non condividerlo con nessuno: in caso di condivisione verrà bloccato e dovrai generarne uno nuovo.</p></div>
                   <label>Link per Apple e Google Calendar<input readOnly value={calendar.feedUrl} onFocus={(event) => event.currentTarget.select()} /></label>
                   {subscriptionActions(calendar.id, calendar.feedUrl)}
                   <p className={styles.guideAccess}>Per aggiungerlo, <button id={`calendar-guide-trigger-${calendar.id}`} className={styles.guideButton} type="button" aria-expanded={openGuideId === calendar.id} aria-controls={`calendar-guide-${calendar.id}`} onClick={() => {
@@ -319,14 +322,14 @@ export default function CalendarBuilder({ today, isAdmin = false, enabled = true
                     markSubscriptionGuideSeen(calendar.id, guideStorage());
                     setOpenGuideId((current) => current === calendar.id ? null : calendar.id);
                   }}>segui la guida</button>.</p>
-                </div> : <p className={styles.hint}>{calendar.enabled ? "Il link sarà disponibile dopo la lettura dell’intero semestre." : "Il link è sospeso. Riattiva il calendario per utilizzarlo."}</p>}
-                <SavedSubjects key={`${calendar.id}-${JSON.stringify(calendar.included_subjects)}`} calendar={calendar} busy={busy} save={safeMutate} colors={colors} />
-                <div className={styles.actions}><button className={styles.textButton} disabled={busy || !calendar.enabled || calendar.sync_cursor !== null} onClick={() => void safeMutate({ action: "sync", id: calendar.id })} type="button"><RefreshCw size={14} /> Verifica aggiornamenti</button><button className={styles.textButton} disabled={busy} onClick={() => void safeMutate({ action: "toggle", id: calendar.id, enabled: !calendar.enabled })} type="button">{calendar.enabled ? "Disattiva" : "Riattiva"}</button>
-                  <button className={styles.textButton} disabled={busy} type="button" onClick={() => { if (window.confirm("Il vecchio link smetterà di funzionare. Dovrai sostituire l’abbonamento in Calendario Apple o Google Calendar. Generare un nuovo link?")) void safeMutate({ action: "rotate", id: calendar.id }); }}>Rigenera link</button></div>
+                </div> : <p className={styles.hint}>{calendar.revoked_at ? "Al posto delle lezioni, il vecchio link mostra l’avviso nel giorno della revoca e nei due successivi. Generando un nuovo link verranno rimossi anche gli avvisi, al prossimo aggiornamento dell’app." : calendar.enabled ? "Il link sarà disponibile dopo la lettura dell’intero semestre." : "Il link è sospeso. Riattiva il calendario per utilizzarlo."}</p>}
+                {!calendar.revoked_at && <SavedSubjects key={`${calendar.id}-${JSON.stringify(calendar.included_subjects)}`} calendar={calendar} busy={busy} save={safeMutate} colors={colors} />}
+                {!calendar.revoked_at && <div className={styles.actions}><button className={styles.textButton} disabled={busy || !calendar.enabled || calendar.sync_cursor !== null} onClick={() => void safeMutate({ action: "sync", id: calendar.id })} type="button"><RefreshCw size={14} /> Verifica aggiornamenti</button><button className={styles.textButton} disabled={busy} onClick={() => void safeMutate({ action: "toggle", id: calendar.id, enabled: !calendar.enabled })} type="button">{calendar.enabled ? "Disattiva" : "Riattiva"}</button>
+                  <button className={styles.textButton} disabled={busy} type="button" onClick={() => { if (window.confirm("Il vecchio link smetterà di funzionare. Dovrai sostituire l’abbonamento in Calendario Apple o Google Calendar. Generare un nuovo link?")) void safeMutate({ action: "rotate", id: calendar.id }); }}>Rigenera link</button></div>}
               </div>
               {creating && <CalendarCreationOverlay percentage={percentage} error={calendar.sync_error} retryAt={calendar.retry_at} weekend={seasonOpen && !refreshOpen} />}
             </article>
-              {hasLink && calendar.enabled && <SubscriptionGuide id={`calendar-guide-${calendar.id}`} open={openGuideId === calendar.id} onClose={() => {
+              {hasLink && calendar.enabled && !calendar.revoked_at && <SubscriptionGuide id={`calendar-guide-${calendar.id}`} open={openGuideId === calendar.id} onClose={() => {
                 setOpenGuideId(null);
                 document.getElementById(`calendar-guide-trigger-${calendar.id}`)?.focus();
               }} />}
